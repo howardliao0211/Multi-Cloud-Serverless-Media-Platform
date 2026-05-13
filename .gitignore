@@ -217,6 +217,11 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# terraform
+terraform/.terraform/**
+*.terraform.lock.hcl
+*.tfstate*
+
 # macOS
 .DS_Store
 .AppleDouble
