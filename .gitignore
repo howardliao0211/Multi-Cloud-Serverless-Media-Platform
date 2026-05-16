@@ -242,3 +242,7 @@ Icon
 
 # Finder window settings
 .DS_Store?
+
+*.JPG
+backend/file_handle/mdv5a.pt
+backend/file_handle/model.pt
