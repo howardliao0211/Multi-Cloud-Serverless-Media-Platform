@@ -109,7 +109,7 @@ class ImageTagger:
 
         # If image is an existing file path, run MegaDetector directly on file.
         # This avoids writing a temporary image file.
-        if isinstance(image, (str, Path)) and Path(image).exists():
+        if isinstance(image, Path):
             detections = self._run_detector_from_file(str(image), image_array)
         else:
             detections = self._run_detector_from_array(image_array)
@@ -179,7 +179,8 @@ class ImageTagger:
             success = cv2.imwrite(tmp_path, image_array)
 
             if not success:
-                raise ValueError(f"Failed to write temporary image for detector: {tmp_path}")
+                raise ValueError(
+                    f"Failed to write temporary image for detector: {tmp_path}")
 
             results = run_detector_batch.load_and_run_detector_batch(
                 image_file_names=[tmp_path],
@@ -319,16 +320,13 @@ class ImageTagger:
             - base64 string
             - OpenCV ndarray
         """
-        if isinstance(image, (str, Path)) and Path(image).exists():
+        if isinstance(image, Path):
             image_array = cv2.imread(str(image))
 
         elif isinstance(image, str):
-            try:
-                img_bytes = base64.b64decode(image)
-                np_arr = np.frombuffer(img_bytes, np.uint8)
-                image_array = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-            except Exception as e:
-                raise ValueError(f"Failed to decode base64 image: {e}")
+            img_bytes = base64.b64decode(image)
+            np_arr = np.frombuffer(img_bytes, np.uint8)
+            image_array = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
         elif isinstance(image, np.ndarray):
             image_array = image
@@ -340,7 +338,6 @@ class ImageTagger:
             raise ValueError("Failed to load image")
 
         return image_array
-
 
 
 if __name__ == "__main__":
@@ -357,7 +354,7 @@ if __name__ == "__main__":
         detector_conf_thres=0.2,
     )
 
-    image_path = Path("../../model_src_code/images/Uromys_caudimaculatus_2.JPG")
+    image_path = Path("./elephants.jpg")
     result = tagger.tag_image(image_path)
 
     print(result["tags"])
