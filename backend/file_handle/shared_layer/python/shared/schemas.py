@@ -1,8 +1,11 @@
-from pydantic import BaseModel, Base64Str, HttpUrl
 from typing import List
+
+from pydantic import Base64Str, BaseModel, HttpUrl
+
 
 class ImageRequest(BaseModel):
     image: Base64Str
+
 
 class ImageResponse(BaseModel):
     hash_id: str

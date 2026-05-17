@@ -1,4 +1,6 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-docker buildx build --platform linux/amd64 --provenance=false -t howardliao0211:upload_image .
+LOCAL_IMAGE="${LOCAL_IMAGE:-howardliao0211:upload_image}"
+
+docker buildx build --platform linux/amd64 --provenance=false --no-cache -t "$LOCAL_IMAGE" .

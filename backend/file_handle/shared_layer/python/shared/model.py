@@ -12,6 +12,9 @@ from torchvision import transforms
 from megadetector.detection import run_detector_batch
 
 
+LAYER_DIR = Path(__file__).resolve().parent
+
+
 class ImageTagger:
     """
     Combined MegaDetector + image classifier pipeline.
@@ -26,8 +29,8 @@ class ImageTagger:
 
     def __init__(
         self,
-        classifier_model_path: str = "./model.pt",
-        detector_model_path: str = "./mdv5a.pt",
+        classifier_model_path: str | Path = LAYER_DIR / "model.pt",
+        detector_model_path: str | Path = LAYER_DIR / "mdv5a.pt",
         classifier_conf_thres: float = 0.5,
         detector_conf_thres: float = 0.2,
     ) -> None:
@@ -41,7 +44,7 @@ class ImageTagger:
 
         print("Using device:", self.device)
 
-        self.detector_model_path = detector_model_path
+        self.detector_model_path = str(detector_model_path)
         self.detector_conf_thres = detector_conf_thres
         self.classifier_conf_thres = classifier_conf_thres
 
@@ -68,7 +71,7 @@ class ImageTagger:
         ]
 
         self.classifier_model = torch.load(
-            classifier_model_path,
+            str(classifier_model_path),
             map_location=self.device,
             weights_only=False,
         )
@@ -348,8 +351,8 @@ if __name__ == "__main__":
         return base64.b64encode(buffer).decode("utf-8")
 
     tagger = ImageTagger(
-        classifier_model_path="./model.pt",
-        detector_model_path="./mdv5a.pt",
+        classifier_model_path=LAYER_DIR / "model.pt",
+        detector_model_path=LAYER_DIR / "mdv5a.pt",
         classifier_conf_thres=0.5,
         detector_conf_thres=0.2,
     )

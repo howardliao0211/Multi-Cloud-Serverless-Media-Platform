@@ -3,7 +3,6 @@ import os
 import base64
 import uuid
 from datetime import datetime, timezone
-from model import ImageTagger
 
 import boto3
 
@@ -15,7 +14,18 @@ BUCKET_NAME = "aussie-eco-len-bucket-444177708053-us-east-1-an"
 TABLE_NAME = "aussie-eco-len-table"
 
 table = dynamodb.Table(TABLE_NAME)
-tagger = ImageTagger()
+tagger = None
+
+
+def get_tagger():
+    global tagger
+
+    if tagger is None:
+        from shared.model import ImageTagger
+
+        tagger = ImageTagger()
+
+    return tagger
 
 
 def lambda_handler(event, context):
@@ -29,6 +39,7 @@ def lambda_handler(event, context):
 
         image_id = str(uuid.uuid4())
         s3_key = f"uploads/{user_id}/{image_id}-{image_name}"
+        tagger = get_tagger()
 
         # 1. Upload image to S3
         s3.put_object(
@@ -40,6 +51,10 @@ def lambda_handler(event, context):
 
         object_url = f"https://{BUCKET_NAME}.s3.us-east-1.amazonaws.com/{s3_key}"
 
+        result = tagger.tag_image(image_base64)
+        tags = list(result["tags"].keys())
+        counts = list(result["tags"].values())
+
         # 2. Store metadata in DynamoDB
         item = {
             "uuid": image_id,
@@ -48,7 +63,9 @@ def lambda_handler(event, context):
             "s3_bucket": BUCKET_NAME,
             "s3_key": s3_key,
             "full_url": object_url,
-            "uploaded_at": datetime.now(timezone.utc).isoformat()
+            "tags": tags,
+            "counts": counts,
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
         }
 
         table.put_item(Item=item)
