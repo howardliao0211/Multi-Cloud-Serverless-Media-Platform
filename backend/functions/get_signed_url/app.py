@@ -7,11 +7,16 @@ from pydantic import BaseModel, ValidationError
 
 from shared.schemas import MediaRecord, UploadUrlRequest
 
+from botocore.config import Config
 
-s3 = boto3.client("s3")
+s3 = boto3.client(
+    "s3",
+    region_name="us-east-1",
+    config=Config(signature_version="s3v4")
+)
 dynamodb = boto3.resource("dynamodb")
 
-BUCKET_NAME = "aussie-eco-len-bucket-444177708053-us-east-1-an"
+BUCKET_NAME = "aussie-eco-len-bucket-12345"
 TABLE_NAME = "aussie-eco-len-media"
 URL_EXPIRES_SECONDS = int(os.environ.get("URL_EXPIRES_SECONDS", "300"))
 
