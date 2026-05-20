@@ -7,10 +7,7 @@ LAYER_NAME="${LAYER_NAME:-aussie-eco-len-shared}"
 RUNTIME="${RUNTIME:-python3.12}"
 HANDLER="${HANDLER:-app.lambda_handler}"
 ARCHITECTURE="${ARCHITECTURE:-x86_64}"
-LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-$(aws iam get-role \
-  --role-name LabRole \
-  --query 'Role.Arn' \
-  --output text)}"
+LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-arn:aws:iam::539913718279:role/aussie-eco-len-lambda-role}"
 
 URL_EXPIRES_SECONDS="${URL_EXPIRES_SECONDS:-300}"
 PYTHON_VERSION="${RUNTIME#python}"

@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+AWS_REGION="${AWS_REGION:-us-east-1}"
+ROLE_NAME="${ROLE_NAME:-aussie-eco-len-lambda-role}"
+
+MEDIA_TABLE_NAME="${MEDIA_TABLE_NAME:-aussie-eco-len-media}"
+BUCKET_NAME="${BUCKET_NAME:-aussie-eco-len-bucket-444177708053-us-east-1-an}"
+
+ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+
+echo "Account ID: ${ACCOUNT_ID}"
+echo "Creating/updating Lambda role: ${ROLE_NAME}"
+
+cat > /tmp/lambda-trust-policy.json <<'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
+if aws iam get-role --role-name "${ROLE_NAME}" >/dev/null 2>&1; then
+  echo "Role already exists: ${ROLE_NAME}"
+else
+  echo "Creating role: ${ROLE_NAME}"
+  aws iam create-role \
+    --role-name "${ROLE_NAME}" \
+    --assume-role-policy-document file:///tmp/lambda-trust-policy.json >/dev/null
+fi
+
+echo "Attaching AWSLambdaBasicExecutionRole..."
+aws iam attach-role-policy \
+  --role-name "${ROLE_NAME}" \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DynamoDBMediaTableAccess",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem"
+      ],
+      "Resource": "arn:aws:dynamodb:${AWS_REGION}:${ACCOUNT_ID}:table/${MEDIA_TABLE_NAME}"
+    },
+    {
+      "Sid": "S3MediaObjectAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::${BUCKET_NAME}/*"
+    }
+  ]
+}
+EOF
+
+echo "Adding inline S3/DynamoDB policy..."
+aws iam put-role-policy \
+  --role-name "${ROLE_NAME}" \
+  --policy-name aussie-eco-len-lambda-policy \
+  --policy-document file:///tmp/aussie-eco-len-lambda-policy.json
+
+ROLE_ARN="$(aws iam get-role \
+  --role-name "${ROLE_NAME}" \
+  --query "Role.Arn" \
+  --output text)"
+
+echo ""
+echo "Done."
+echo "Role ARN:"
+echo "${ROLE_ARN}"
+echo ""
+echo "Export it with:"
+echo "export LAMBDA_ROLE_ARN=\"${ROLE_ARN}\""
