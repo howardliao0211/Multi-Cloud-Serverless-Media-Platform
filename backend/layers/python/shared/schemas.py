@@ -9,7 +9,7 @@ class MediaRecord(BaseModel):
     s3_key: str
     thumbnail_s3_key: str
 
-    counts: Dict[str, int]
+    tags: Dict[str, int]
 
     upload_status: Literal[
         "PENDING_UPLOAD",
