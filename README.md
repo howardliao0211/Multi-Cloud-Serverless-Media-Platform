@@ -12,5 +12,16 @@ sudo ./aws/install
 
 ## Frontend Start Command
 ```
-npm start dev
+# install dependencies
+npm install
+
+# run development server
+npm run dev
+```
+
+Create an .env file under ./frontend/ with these environment variables:
+```
+export VITE_COGNITO_USER_POOL_ID="<Actual User Pool ID>"
+export VITE_COGNITO_USER_POOL_CLIENT_ID="<Actual Client ID>"
+export VITE_API_URL="<Actual API Gateway API URL>"
 ```
