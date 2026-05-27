@@ -338,7 +338,7 @@ class ImageTagger:
             raise ValueError(f"Unsupported image type: {type(image)}")
 
         if image_array is None:
-            raise ValueError("Failed to load image")
+            raise ValueError(f"Failed to load image. image: {image}")
 
         return image_array
 

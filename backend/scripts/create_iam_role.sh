@@ -5,12 +5,14 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 ROLE_NAME="${ROLE_NAME:-aussie-eco-len-lambda-role}"
 
 MEDIA_TABLE_NAME="${MEDIA_TABLE_NAME:-aussie-eco-len-media}"
-BUCKET_NAME="${BUCKET_NAME:-aussie-eco-len-bucket-444177708053-us-east-1-an}"
+BUCKET_NAME="${BUCKET_NAME:-aussie-eco-len-bucket-12345}"
 
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 
 echo "Account ID: ${ACCOUNT_ID}"
 echo "Creating/updating Lambda role: ${ROLE_NAME}"
+echo "Media table: ${MEDIA_TABLE_NAME}"
+echo "Bucket: ${BUCKET_NAME}"
 
 cat > /tmp/lambda-trust-policy.json <<'EOF'
 {
@@ -29,6 +31,11 @@ EOF
 
 if aws iam get-role --role-name "${ROLE_NAME}" >/dev/null 2>&1; then
   echo "Role already exists: ${ROLE_NAME}"
+
+  echo "Updating trust policy..."
+  aws iam update-assume-role-policy \
+    --role-name "${ROLE_NAME}" \
+    --policy-document file:///tmp/lambda-trust-policy.json
 else
   echo "Creating role: ${ROLE_NAME}"
   aws iam create-role \
@@ -56,13 +63,44 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
       "Resource": "arn:aws:dynamodb:${AWS_REGION}:${ACCOUNT_ID}:table/${MEDIA_TABLE_NAME}"
     },
     {
-      "Sid": "S3MediaObjectAccess",
+      "Sid": "S3UploadedMediaReadAccess",
       "Effect": "Allow",
       "Action": [
-        "s3:PutObject",
         "s3:GetObject"
       ],
-      "Resource": "arn:aws:s3:::${BUCKET_NAME}/*"
+      "Resource": [
+        "arn:aws:s3:::${BUCKET_NAME}/images/*",
+        "arn:aws:s3:::${BUCKET_NAME}/videos/*"
+      ]
+    },
+    {
+      "Sid": "S3UploadAndThumbnailWriteAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${BUCKET_NAME}/images/*",
+        "arn:aws:s3:::${BUCKET_NAME}/videos/*",
+        "arn:aws:s3:::${BUCKET_NAME}/thumbnails/*"
+      ]
+    },
+    {
+      "Sid": "S3ListBucketLimitedAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::${BUCKET_NAME}",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "images/*",
+            "videos/*",
+            "thumbnails/*"
+          ]
+        }
+      }
     }
   ]
 }
