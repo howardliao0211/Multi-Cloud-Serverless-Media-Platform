@@ -15,7 +15,6 @@ function LoginScreen({ onLoginSuccess, onReturn, }:
         event.preventDefault();
         setStatus(createStatus("idle", ""));
         try {
-            await signOut();
             const result = await signIn({
                 username: email,
                 password,
