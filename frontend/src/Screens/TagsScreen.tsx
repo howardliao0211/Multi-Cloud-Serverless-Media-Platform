@@ -5,7 +5,7 @@ function TagsScreen(){
     const [tagText, setTagText] = useState<string>("");
     const [deleteUrlText, setDeleteUrlText] = useState<string>("");
     const [operation, setOperation] = useState<1 | 0>(1);
-    const 
+    
     function handleTagChange(event: React.ChangeEvent<HTMLInputElement>){
         setTagText(event.target.value);
     }

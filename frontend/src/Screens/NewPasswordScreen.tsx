@@ -1,19 +1,19 @@
 import { confirmSignIn } from "aws-amplify/auth";
-import { getErrorMessage } from "../utils";
+import { createStatus, getErrorMessage, type StatusMessage } from "../utils";
 import { useState } from "react";
 
 function NewPasswordScreen({ onNewPassSuccess }: {onNewPassSuccess: () => void }){
     
     const [password, setPassword] = useState<string>("");
     const [confirmPassword, setConfirmPassword] = useState<string>("");
-    const [errorMessage, setErrorMessage] = useState<string>("");
+    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
     
     async function handleNewPassword(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        setErrorMessage("");
+        setStatus(createStatus("idle", ""));
 
         if (password !== confirmPassword) {
-            setErrorMessage("Passwords do not match.");
+            setStatus(createStatus("error", "Passwords do not match."));
             return;
         }
 
@@ -23,7 +23,7 @@ function NewPasswordScreen({ onNewPassSuccess }: {onNewPassSuccess: () => void }
             });
             onNewPassSuccess();
         } catch (error) {
-            setErrorMessage(getErrorMessage(error));
+            setStatus(createStatus("error", getErrorMessage(error)));
         }
     }
 
@@ -31,7 +31,7 @@ function NewPasswordScreen({ onNewPassSuccess }: {onNewPassSuccess: () => void }
         <main className="app-container"> 
             <form onSubmit={handleNewPassword}>
                 <h1>New Password Setting</h1><br/>
-                <p>Please set a new password, the requirenents:</p>
+                <p>Please set a new password, the requirements:</p>
                 <p>Contains at least 1 number</p>
                 <p>Contains at least 1 special character</p>
                 <p>Contains at least 1 uppercase letter</p>
@@ -42,10 +42,14 @@ function NewPasswordScreen({ onNewPassSuccess }: {onNewPassSuccess: () => void }
                 </label>
 
                 <label className="form-label">
-                    Comfirm Password: <input type="comfirm" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)}/>
+                    Confirm Password: <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)}/>
                 </label><br/>
 
-                {errorMessage && <p>{errorMessage}</p>}
+                {status.text && (
+                    <div className={`status-message ${status.type}`}>
+                        <p>{status.text}</p>
+                    </div>
+                )}
                 <div className="button-row">
                     <button type="submit">Set Password</button>
                 </div>

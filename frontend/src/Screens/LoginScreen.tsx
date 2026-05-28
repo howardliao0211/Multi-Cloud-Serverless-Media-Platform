@@ -1,4 +1,4 @@
-import { getErrorMessage } from "../utils";
+import { createStatus, getErrorMessage, type StatusMessage } from "../utils";
 import { useState } from "react";
 import { signIn, signOut } from "aws-amplify/auth";
 import NewPasswordScreen from "./NewPasswordScreen";
@@ -9,11 +9,11 @@ function LoginScreen({ onLoginSuccess, onReturn, }:
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [needNewPassword, setNeedNewPassword] = useState<boolean>(false);
-    const [errorMessage, setErrorMessage] = useState<string>("");
+    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
     
     async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        setErrorMessage("");
+        setStatus(createStatus("idle", ""));
         try {
             await signOut();
             const result = await signIn({
@@ -27,7 +27,7 @@ function LoginScreen({ onLoginSuccess, onReturn, }:
             }
             onLoginSuccess();
         } catch (error) {
-       setErrorMessage(getErrorMessage(error));
+            setStatus(createStatus("error", getErrorMessage(error)));
         }
     }
 
@@ -48,7 +48,11 @@ function LoginScreen({ onLoginSuccess, onReturn, }:
                     Password: <input type="password" value={password} onChange={(event) => setPassword(event.target.value)}/>
                 </label><br/><br/>
 
-                {errorMessage && <p>{errorMessage}</p>}
+                {status.text && (
+                    <div className={`status-message ${status.type}`}>
+                        <p>{status.text}</p>
+                    </div>
+                )}
 
                 <div className="button-row">
                     <button type="button" onClick={ onReturn }>Return</button>

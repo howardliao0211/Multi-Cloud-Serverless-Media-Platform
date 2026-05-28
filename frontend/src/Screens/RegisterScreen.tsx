@@ -1,4 +1,4 @@
-import { getErrorMessage } from "../utils";
+import { createStatus, getErrorMessage, type StatusMessage } from "../utils";
 import { useState } from "react";
 
 function RegisterScreen({ onRegisterSuccess, onReturn, }: 
@@ -7,11 +7,11 @@ function RegisterScreen({ onRegisterSuccess, onReturn, }:
     const [email, setEmail] = useState<string>("");
     const [firstName, setFirstName] = useState<string>("");
     const [lastName, setLastName] = useState<string>("");
-    const [errorMessage, setErrorMessage] = useState<string>("");
+    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
     
     async function handleRegister(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        setErrorMessage("");
+        setStatus(createStatus("idle", ""));
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/register-user`,{
                  method: "POST",
@@ -26,8 +26,7 @@ function RegisterScreen({ onRegisterSuccess, onReturn, }:
 
             onRegisterSuccess();
         } catch (error) {
-            console.log(error);
-            setErrorMessage(getErrorMessage(error));
+            setStatus(createStatus("error", getErrorMessage(error)));
         }
     }
 
@@ -50,7 +49,11 @@ function RegisterScreen({ onRegisterSuccess, onReturn, }:
                 </label><br/><br/>
 
 
-                {errorMessage && <p>{errorMessage}</p>}
+                {status.text && (
+                    <div className={`status-message ${status.type}`}>
+                        <p>{status.text}</p>
+                    </div>
+                )}
 
                 <div className="button-row">
                     <button type="button" onClick={ onReturn }>Return</button>

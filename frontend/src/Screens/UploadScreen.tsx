@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
-import { calculateFileHash, getMediaType } from "../utils";
+import { calculateFileHash, createStatus, getMediaType, type StatusMessage } from "../utils";
 import { authFetch } from "../services/api";
 
 function UploadScreen(){
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const [uploadMessage, setUploadMessage] = useState<string>("");
+    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
 
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
         if (event.target.files){
@@ -22,8 +22,8 @@ function UploadScreen(){
     async function handleUpload() {
         if (files.length === 0) return;
 
-        setUploadMessage("Uploading...");
-        
+        setStatus(createStatus("idle", "Uploading..."));
+
         try{
             let uploadedCount = 0;
             let duplicatedFiles: string[] = [];
@@ -65,12 +65,12 @@ function UploadScreen(){
             }
 
             if (duplicatedFiles.length > 0){
-                setUploadMessage(`Upload complete. ${uploadedCount} uploaded. Duplicate skipped: ${duplicatedFiles.join(", ")}`);
+                setStatus(createStatus("success", `Upload complete. ${uploadedCount} uploaded. Duplicate skipped: ${duplicatedFiles.join(", ")}`));
             } else {
-                setUploadMessage(`Upload complete. ${uploadedCount} uploaded.`);
+                setStatus(createStatus("success", `Upload complete. ${uploadedCount} uploaded.`));
             }
         } catch (error) {
-            setUploadMessage("Upload failed.")
+            setStatus(createStatus("error", "Upload failed."));
             console.error(error);
             }
         }
@@ -102,7 +102,11 @@ function UploadScreen(){
                 <button type="button" onClick={handleUpload} disabled={files.length === 0}>
                     Upload
                 </button>
-                {uploadMessage && <p className="success-message">{uploadMessage}</p>}
+                {status.text && (
+                    <div className={`status-message ${status.type}`}>
+                        <p>{status.text}</p>
+                    </div>
+                )}
             </div>
         </main>
     );
