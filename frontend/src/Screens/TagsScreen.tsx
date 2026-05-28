@@ -1,14 +1,26 @@
 import { useState } from "react";
 
 function TagsScreen(){
-    const [urls, setUrls] = useState<string[]>([]);
-    const [tagList, setTagList] = useState<string[]>([]);
-
-    function handleUrlChange(){
+    const [tagUrlText, setTagUrlText] = useState<string>("");
+    const [tagText, setTagText] = useState<string>("");
+    const [deleteUrlText, setDeleteUrlText] = useState<string>("");
+    const [operation, setOperation] = useState<1 | 0>(1);
+    const 
+    function handleTagChange(event: React.ChangeEvent<HTMLInputElement>){
+        setTagText(event.target.value);
     }
 
-    function handleTagChange(){
+    function handleApplyChanges(){
+        const urls = tagUrlText.split("\n").map((url) => url.trim()).filter(Boolean);
+        const tags = tagText.split(",").map((tag) => tag.trim()).filter(Boolean);
+        
+        console.log({
+            urls,
+            tags,
+            operation,
+        });
 
+        
     }
 
     return(
@@ -18,29 +30,25 @@ function TagsScreen(){
             <section className="search-card">
                 <h2>Bulk Tag Modification</h2>
                 <p>File URLs (one per line):</p>
+                <textarea value={tagUrlText} onChange={(event) => setTagUrlText(event.target.value)} placeholder="https://s3.amazonaws.com/bucket/file1.jpg" />
+                <p>Tags (comma-separated):</p>
                 <div className="search-row">
-                    <input value={urls} onChange={handleUrlChange} placeholder="https://s3.amazonaws.com/bucket/file1.jpg" />
-                </div>
-                <p>Tags (comma-seperated):</p>
-                <div className="search-row">
-                    <input value={tagList} onChange={handleTagChange} placeholder="koala, wambat, magpie"/>
+                    <input value={tagText} onChange={handleTagChange} placeholder="koala, wombat, magpie"/>
                 </div>
                 <p>Operation</p>
                 <div className="button-operator">
-                    <button type="button">+ Add Tags</button>
-                    <button type="button">- Remove Tags</button>
+                    <button type="button" onClick={() => setOperation(1)}>+ Add Tags</button>
+                    <button type="button" onClick={() => setOperation(0)}>- Remove Tags</button>
                 </div>
-                <button className="button-row">Apply Changes</button>
+                <button className="button-row" type="button" onClick={handleApplyChanges}>Apply Changes</button>
             </section>
 
             <section className="search-card">
                 <h2>⚠️ Delete Files</h2>
-                <p>Files, thumbnails, and all datavase entries will be permanently removed.</p>
+                <p>Files, thumbnails, and all database entries will be permanently removed.</p>
                 <p>File URLs to delete (one per line)</p>
-                <div className="search-row">
-                    <input value={urls} onChange={handleUrlChange} placeholder="https://s3.amazonaws.com/bucket/file.jpg" />
-                </div>
-                <button className="button-row">Delete Files</button>
+                <textarea value={deleteUrlText} onChange={(event) => setDeleteUrlText(event.target.value)} placeholder="https://s3.amazonaws.com/bucket/file.jpg" />
+                <button className="button-row" type="button">Delete Files</button>
             </section>
         </main>
     );

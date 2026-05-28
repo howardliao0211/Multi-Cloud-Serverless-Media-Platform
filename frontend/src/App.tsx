@@ -7,7 +7,7 @@ import koala from "./assets/koala.png";
 
 function App(){
   const [view, setView] = useState<string>("Welcome");
-  const [message, setMessage] = useState<string>("");
+  const [showRegisterSuccess, setShowRegisterSuccess] = useState<boolean>(false);
 
   function handleSuccess(){
     console.log("login successfull");
@@ -22,7 +22,7 @@ function App(){
     return (
       <RegisterScreen
         onRegisterSuccess={() => {
-          setMessage("Registration successful. Please check your email for the temporary password, then log in.");
+          setShowRegisterSuccess(true);
           setView("Welcome");
         }}
         onReturn={() => setView("Welcome")}
@@ -35,12 +35,12 @@ function App(){
 
   return(
     <main className="app-container">
-      <h1>Welcome to Aussie EcolLens</h1><br/>
+      <h1>Welcome to Aussie EcoLens</h1><br/>
       <img src={koala} alt="Aussie EcoLens logo" className="koala" />
       <p>A wildlife observation platform</p><br/>
 
-      {message && (
-        <div className="success-message">
+      {showRegisterSuccess && (
+        <div className="status-message success">
           <p>Registration successful.</p>
           <p>Please check your email for the temporary password.</p>
           <p>Then log in using that temporary password.</p>

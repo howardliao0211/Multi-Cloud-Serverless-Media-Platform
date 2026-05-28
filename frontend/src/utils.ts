@@ -1,6 +1,17 @@
 export function getErrorMessage(error: unknown): string {
-    if (error instanceof Error) return error.message;
-    return "Something went wrong.";
+  if (error instanceof Error) return error.message;
+  return "Something went wrong.";
+}
+
+export type StatusType = "idle" | "loading" | "success" | "error";
+
+export type StatusMessage = {
+  type: StatusType;
+  text: string;
+};
+
+export function createStatus(type: StatusType, text: string): StatusMessage {
+  return {type, text};
 }
 
 export async function calculateFileHash(file: File): Promise<string> {

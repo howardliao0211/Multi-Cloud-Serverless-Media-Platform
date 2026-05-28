@@ -68,7 +68,7 @@ function QueryScreen(){
     return(
         <main className="dashboard-content">
             <h1>Search Files</h1>
-            <p>Find wildfife media using different search methods.</p>
+            <p>Find wildlife media using different search methods.</p>
         
             <div className="button-row">
                 <button className={mode === "tags" ? "active" : ""} onClick={() => setMode("tags")}>
