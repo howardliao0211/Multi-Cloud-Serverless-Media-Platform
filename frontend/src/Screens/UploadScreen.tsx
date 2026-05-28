@@ -13,6 +13,14 @@ function UploadScreen(){
         }
     }
 
+    function handleDrop(event: React.DragEvent<HTMLLabelElement>){
+        event.preventDefault();
+
+        if (event.dataTransfer.files){
+            setFiles(Array.from(event.dataTransfer.files));
+        }
+    }
+
     type UploadResponse = {
         duplicate: boolean;
         upload_url?: string;
@@ -80,7 +88,7 @@ function UploadScreen(){
             <h1>Upload Media</h1>
             <p>Upload images or videos for wildlife species detection.</p>
             
-            <label className="upload-dropzone">
+            <label className="upload-dropzone" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
                 <input ref={fileInputRef} className="file-input-hidden" type="file" 
                     accept="image/*,video/*" multiple onChange={handleFileChange} />
                 <div className="upload-icon">📁</div>

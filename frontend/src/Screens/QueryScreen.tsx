@@ -36,6 +36,15 @@ function QueryScreen(){
             setFile(event.target.files[0]);
         }
     }
+
+    function handleDrop(event: React.DragEvent<HTMLLabelElement>){
+        event.preventDefault();
+
+        if (event.dataTransfer.files && event.dataTransfer.files[0]){
+            setFile(event.dataTransfer.files[0]);
+        }
+    }
+
     type UploadResponse = {
         uploadUrl: string;
         fileUrl: string;
@@ -127,7 +136,7 @@ function QueryScreen(){
                 {mode === "content" && (
                     <>
                         <h2>Upload a file to find all database files with matching species:</h2>
-                        <label className="content-dropzone">
+                        <label className="content-dropzone" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
                             <input ref={fileInputRef} className="file-input-hidden" type="file" 
                                 accept="image/*,video/*" onChange={handleFileChange} />
                             <div className="upload-icon">📁</div>
