@@ -57,3 +57,15 @@ output "gcp_firestore_location" {
 output "gcp_firestore_type" {
   value = google_firestore_database.metadata_replica.type
 }
+
+output "gcp_query_service_name" {
+  value = google_cloud_run_v2_service.query.name
+}
+
+output "gcp_query_service_location" {
+  value = google_cloud_run_v2_service.query.location
+}
+
+output "gcp_query_service_url" {
+  value = google_cloud_run_v2_service.query.uri
+}

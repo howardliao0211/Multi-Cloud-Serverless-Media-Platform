@@ -81,3 +81,15 @@ variable "domain_name" {
   type        = string
   default     = ""
 }
+
+variable "gcp_cloud_run_image" {
+  description = "Container image for the GCP Cloud Run query service."
+  type        = string
+  default     = "us-docker.pkg.dev/cloudrun/container/hello"
+}
+
+variable "gcp_cloud_run_allow_public" {
+  description = "Whether to allow unauthenticated access to the Cloud Run service. For the assignment frontend, this is true, and the service validates Cognito JWTs at application level."
+  type        = bool
+  default     = true
+}
