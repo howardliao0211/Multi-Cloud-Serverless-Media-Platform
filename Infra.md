@@ -263,3 +263,247 @@ bash npm --prefix frontend run dev
 Build upload processing container:
 
 bash docker build \   -f backend/container_function/upload_to_db/DockerFile \   -t aussie-ecolens-upload-to-db \   backend/container_function/upload_to_db 
+## Current AWS Deployment Status
+
+### AWS Account and Region
+
+- AWS account ID: `539913718279`
+- IAM user used locally: `ChungYu`
+- Local AWS CLI profile: `AussieEcoLense`
+- Main deployed region: `us-east-1`
+
+### Frontend Local Environment
+
+`frontend/.env.local`:
+
+```env
+VITE_COGNITO_USER_POOL_ID="us-east-1_JefGiQ7lB"
+VITE_COGNITO_USER_POOL_CLIENT_ID="7umv70h1q682h6pogi6hhc1lpc"
+VITE_API_URL="https://1jpi28kbj7.execute-api.us-east-1.amazonaws.com"
+```
+
+Local frontend URL:
+
+```text
+http://localhost:5173/
+```
+
+### Cognito
+
+- User pool name: `User pool - AussieEcoLens`
+- User pool ID: `us-east-1_JefGiQ7lB`
+- App client name: `AussieEcoLens`
+- App client ID: `7umv70h1q682h6pogi6hhc1lpc`
+- Client secret: none
+- ID token expiration: 60 minutes
+- Access token expiration: 60 minutes
+- Refresh token expiration: 5 days
+
+### API Gateway
+
+Invoke URL:
+
+```text
+https://1jpi28kbj7.execute-api.us-east-1.amazonaws.com
+```
+
+Currently deployed routes:
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/` | None | Root health check |
+| POST | `/register-user` | None | Create Cognito user |
+| POST | `/get_signed_url` | JWT | Generate presigned S3 upload URL |
+
+Verified root endpoint:
+
+```bash
+curl https://1jpi28kbj7.execute-api.us-east-1.amazonaws.com/
+```
+
+Expected response:
+
+```json
+"Hello from Lambda!"
+```
+
+### Lambda Functions
+
+Currently deployed Lambda functions:
+
+- `root`
+- `register-user`
+- `get_signed_url`
+- `upload_to_db`
+
+`upload_to_db` configuration:
+
+- Package type: `Image`
+- Memory size: `3000 MB`
+- Timeout: `900 seconds`
+- IAM role: `arn:aws:iam::539913718279:role/aussie-eco-len-lambda-role`
+- Last checked status: triggered by S3 and successfully loads the ML model.
+
+Known configuration issue:
+
+```text
+TABLE_NAME currently appears as "\"aussie-eco-len-media\"" instead of "aussie-eco-len-media".
+```
+
+### S3
+
+Media bucket:
+
+```text
+aussie-eco-len-bucket-12345
+```
+
+Verified prefixes:
+
+```text
+images/
+models/
+thumbnails/
+videos/
+```
+
+S3 event notification:
+
+- Event: `s3:ObjectCreated:Put`
+- Target Lambda: `upload_to_db`
+
+Confirmed flow:
+
+```text
+S3 object uploaded
+→ S3 ObjectCreated:Put event
+→ upload_to_db Lambda
+→ ML processing / thumbnail / DynamoDB update
+```
+
+### DynamoDB
+
+Media metadata table:
+
+```text
+aussie-eco-len-media
+```
+
+Verified table status:
+
+```text
+ACTIVE
+```
+
+Verified key schema:
+
+| Attribute | Key type |
+|---|---|
+| `hash` | Partition key |
+
+### Lambda Layer
+
+Shared layer:
+
+```text
+arn:aws:lambda:us-east-1:539913718279:layer:aussie-eco-len-shared:2
+```
+
+Compatible runtime:
+
+```text
+python3.12
+```
+
+### Confirmed Working Flow
+
+```text
+Frontend local config
+→ Cognito user pool/app client
+→ API Gateway root endpoint
+→ S3 bucket exists
+→ DynamoDB table exists
+→ Lambda layer exists
+→ S3 can invoke upload_to_db
+→ S3 ObjectCreated:Put triggers upload_to_db
+→ upload_to_db loads ML model on CPU
+→ upload_to_db completes media processing
+```
+
+Recent successful `upload_to_db` log:
+
+```text
+Using device: cpu
+Loaded model in 7.18 seconds
+Finished processing media: 4782772f0a8adc7ac1864efdd982088109530582e3d5cdd61d76e6a2b1a35c3c
+```
+
+### Currently Missing / Not Yet Deployed
+
+- Query by tags/counts/species API
+- Query by thumbnail URL API
+- Query by uploaded query file API
+- Bulk manual tag add/remove API
+- Delete files API
+- Tag-based notification API
+- SNS notification workflow
+- Multi-cloud provider integration
+- Video processing verification
+
+### Useful Verification Commands
+
+```bash
+aws sts get-caller-identity --profile AussieEcoLense
+```
+
+```bash
+aws apigatewayv2 get-routes \
+  --api-id 1jpi28kbj7 \
+  --region us-east-1 \
+  --profile AussieEcoLense
+```
+
+```bash
+aws s3 ls s3://aussie-eco-len-bucket-12345 --profile AussieEcoLense
+```
+
+```bash
+aws dynamodb describe-table \
+  --table-name aussie-eco-len-media \
+  --region us-east-1 \
+  --profile AussieEcoLense \
+  --query "Table.{TableName:TableName,KeySchema:KeySchema,Status:TableStatus}"
+```
+
+```bash
+aws s3api get-bucket-notification-configuration \
+  --bucket aussie-eco-len-bucket-12345 \
+  --profile AussieEcoLense
+```
+
+```bash
+aws logs tail /aws/lambda/upload_to_db \
+  --region us-east-1 \
+  --profile AussieEcoLense \
+  --follow
+```
+
+```bash
+aws logs tail /aws/lambda/get_signed_url \
+  --region us-east-1 \
+  --profile AussieEcoLense \
+  --follow
+```
+
+### Next Verification Steps
+
+1. Test registration through the local frontend.
+2. Test login through the local frontend.
+3. Upload `test/upload_to_s3/test_image.jpg` through the frontend.
+4. Confirm `/get_signed_url` is called successfully.
+5. Confirm the image appears in S3 under `images/`.
+6. Confirm a thumbnail appears in S3 under `thumbnails/`.
+7. Confirm the DynamoDB record is created or updated.
+8. Confirm `upload_to_db` logs show successful processing.
+9. Verify video upload behaviour.
+10. Start planning missing query, tag-edit, delete, notification, and multi-cloud APIs.
