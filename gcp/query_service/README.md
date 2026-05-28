@@ -1,14 +1,30 @@
 # GCP Query Service
 
-This service will run on Google Cloud Run and provide the multi-cloud query API for Aussie EcoLens.
+This service runs on Google Cloud Run and provides the GCP side of the multi-cloud architecture.
 
-Planned endpoints:
+## Responsibilities
 
+- Store replicated AWS media metadata in Firestore.
+- Provide query endpoints for the frontend.
+- Later validate AWS Cognito JWTs for user-facing endpoints.
+
+## Current endpoints
+
+- `GET /`
 - `GET /health`
 - `POST /internal/replicate-media`
 - `POST /query/tags`
-- `POST /query/species`
-- `POST /query/thumbnail`
-- `POST /query/file`
 
-The service will validate AWS Cognito JWTs and query replicated metadata from Firestore.
+## Local run
+
+```bash
+cd gcp/query_service
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+export FIRESTORE_PROJECT_ID="hazel-sphinx-490908-u6"
+export FIRESTORE_DATABASE="(default)"
+export ENVIRONMENT="local"
+
+uvicorn app.main:app --reload --port 8080
