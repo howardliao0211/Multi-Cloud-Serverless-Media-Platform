@@ -1,0 +1,634 @@
+<!doctype html>
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>FIT5225 A2 Final Checklist</title>
+<style>
+  :root { --bg:#f6f8fb; --card:#ffffff; --text:#1f2937; --muted:#64748b; --border:#dbe3ef; --accent:#2563eb; --done:#ecfdf5; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Arial, Helvetica, sans-serif; background:var(--bg); color:var(--text); line-height:1.45; }
+  header { position:sticky; top:0; z-index:10; background:linear-gradient(180deg,#fff,rgba(255,255,255,.94)); border-bottom:1px solid var(--border); padding:18px 24px; }
+  h1 { margin:0 0 6px; font-size:24px; }
+  h2 { margin:0 0 14px; font-size:20px; }
+  .subtitle { color:var(--muted); margin:0 0 14px; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .toolbar input[type='search'] { flex:1 1 280px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; }
+  .toolbar button { padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:white; cursor:pointer; }
+  .toolbar button:hover { border-color:var(--accent); }
+  .progress { min-width:170px; font-weight:700; color:var(--accent); }
+  main { padding:24px; max-width:1400px; margin:auto; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:22px; box-shadow:0 3px 12px rgba(15,23,42,.04); }
+  .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:12px; }
+  table { width:100%; border-collapse:collapse; min-width:900px; }
+  th, td { border-bottom:1px solid var(--border); padding:10px 12px; vertical-align:top; text-align:left; }
+  th { background:#eef5ff; position:sticky; top:0; z-index:1; }
+  tr.done-row { background:var(--done); }
+  td.done, th:first-child { width:70px; text-align:center; }
+  .rid { width:70px; font-weight:700; white-space:nowrap; }
+  input[type='checkbox'] { width:18px; height:18px; cursor:pointer; }
+  .source-key { display:flex; gap:10px; flex-wrap:wrap; }
+  .pill { background:#eef2ff; border:1px solid #c7d2fe; border-radius:999px; padding:6px 10px; }
+  ul.checklist { columns:2; column-gap:32px; padding-left:22px; }
+  ul.checklist li { break-inside:avoid; margin:0 0 8px; }
+  mark { background:#fef08a; padding:0 2px; }
+  @media (max-width: 800px) { ul.checklist { columns:1; } header { position:static; } }
+</style>
+</head>
+<body>
+<header>
+<h1>FIT5225 2026 S1 Assignment 2 — Final Requirement Checklist</h1>
+<p class="subtitle">Interactive HTML version with persistent checkboxes. It replaces the old coverage column with a Done column.</p>
+<div class="toolbar">
+<input id="search" placeholder="Search requirements, IDs, or source explanation..." type="search"/>
+<button id="showAll">Show all</button>
+<button id="showTodo">Show todo only</button>
+<button id="showDone">Show done only</button>
+<button id="clearChecks">Clear checks</button>
+<span class="progress" id="progress">0 / 0 done</span>
+</div>
+</header>
+<main>
+<section class="card">
+<h2>Source key</h2>
+<div class="source-key">
+<span class="pill"><b>Spec</b>: FIT5225 2026 S1 A2.pdf</span>
+<span class="pill"><b>Rubric</b>: FIT5225 2026 S1 A2 Marking Rubric.pdf</span>
+<span class="pill"><b>Existing checklist</b>: Random.pdf</span>
+</div>
+</section>
+<section class="card">
+<h2>Review summary</h2>
+<div class="table-wrap"><table><thead><tr><th>Area</th><th>Previous coverage in Random.pdf</th><th>What was strengthened</th></tr></thead><tbody><tr><td>Architecture / system scope</td><td>Partially included</td><td>Random.pdf only notes “cloud2” and “PPT”; final checklist states at least two major cloud providers, serverless compute, RESTful API, storage, database, public cloud storage, automatic sorting/moving, and highly available DB.</td></tr><tr><td>Authentication</td><td>Mostly included</td><td>Random.pdf covers email, first/last name, password, verification, login, signout, redirection, IAM, and cross-token handling; final checklist adds Cognito must be used, all post-login services must be protected, temporary password/change workflow, Hosted UI/custom option, and AWS Academy IAM limitations.</td></tr><tr><td>Core file handling</td><td>Mostly included</td><td>Random.pdf covers checksum, thumbnail aspect ratio, 1 frame/sec video extraction, file type/tags/URLs; final checklist adds API/SDK upload, automatic trigger, compression, execution roles, model-version flexibility without code changes, and automatic directory sorting/moving.</td></tr><tr><td>Queries</td><td>Partially included</td><td>Random.pdf covers AND/count, thumbnail-to-full URL, file-as-query, no permanent query storage; final checklist adds separate species query without counts, thumbnails for image results and full URLs for videos, correct URLs, RESTful JSON API, and UI bandwidth rationale.</td></tr><tr><td>Management and notifications</td><td>Mostly included</td><td>Random.pdf covers bulk add/remove, ignore missing tags, multiple files, storage+DB deletion, SNS watched tags; final checklist adds operation key values 1/0, list of URLs/tags in JSON, full images/thumbnails/videos deletion, update notifications, filtering, consistency, and email formatting.</td></tr><tr><td>UI</td><td>Mostly included</td><td>Random.pdf covers feedback, error handling, complex query, preview/click, bulk tag edit/delete; final checklist adds sign-in/sign-up/upload UI, professional usability, all core functions, and no-UI cap/alternative demo rules.</td></tr><tr><td>Demo and reports</td><td>Partially included</td><td>Random.pdf covers diagram, contribution table, user guide, repo, balanced commits, self report; final checklist adds 3-5 minute architecture presentation, all members present, 15 minute demo/Q&amp;A, mandatory demo/no marks, Zoom, report word counts/font/PDF submission, private repo sharing, individual report details, peer assessment, and GenAI statement.</td></tr></tbody></table></div>
+</section>
+<section class="card">
+<h2>2. System Scope and Architecture</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Done</th><th>ID</th><th>Requirement</th><th>How this requirement is found from context</th></tr></thead>
+<tbody>
+<tr data-section="2. System Scope and Architecture">
+<td class="done"><input data-id="A1" id="req-A1" type="checkbox"/></td>
+<td class="rid">A1</td>
+<td>Build Aussie EcoLens as a multi-cloud online storage system for wildlife media: store, organise, retrieve images/videos using auto-generated and manual tags.</td>
+<td>Spec p.1 background states the assignment aims to build a multi-cloud online storage system to store, organise, and retrieve media files based on auto-generated and manual tags.</td>
+</tr>
+<tr data-section="2. System Scope and Architecture">
+<td class="done"><input data-id="A2" id="req-A2" type="checkbox"/></td>
+<td class="rid">A2</td>
+<td>Use at least two major cloud providers, e.g., AWS plus GCP/Azure/Oracle.</td>
+<td>Spec p.1 says serverless application across at least two major cloud providers; Spec p.2 repeats multi-cloud solution across multiple providers.</td>
+</tr>
+<tr data-section="2. System Scope and Architecture">
+<td class="done"><input data-id="A3" id="req-A3" type="checkbox"/></td>
+<td class="rid">A3</td>
+<td>Use serverless compute, RESTful API, cloud storage, and database services across the providers.</td>
+<td>Spec p.2 says teams should leverage serverless compute, RESTful API, storage, and database services.</td>
+</tr>
+<tr data-section="2. System Scope and Architecture">
+<td class="done"><input data-id="A4" id="req-A4" type="checkbox"/></td>
+<td class="rid">A4</td>
+<td>End users can upload files to a public cloud storage bucket.</td>
+<td>Spec p.1 and p.2 describe uploading media files to public cloud storage / designated cloud storage bucket.</td>
+</tr>
+<tr data-section="2. System Scope and Architecture">
+<td class="done"><input data-id="A5" id="req-A5" type="checkbox"/></td>
+<td class="rid">A5</td>
+<td>After upload, automatically tag species, sort/move the file to the corresponding directory, and create a searchable database record.</td>
+<td>Spec p.1 states automatic tagging, automatic sorting/moving to the corresponding directory, and adding a DB record.</td>
+</tr>
+<tr data-section="2. System Scope and Architecture">
+<td class="done"><input data-id="A6" id="req-A6" type="checkbox"/></td>
+<td class="rid">A6</td>
+<td>Use a highly available database for detected tags and storage URLs.</td>
+<td>Spec p.2 says detected tags and file storage URL must be stored in a highly available database.</td>
+</tr></tbody>
+</table>
+</div>
+</section>
+<section class="card">
+<h2>3. Authentication and Authorisation</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Done</th><th>ID</th><th>Requirement</th><th>How this requirement is found from context</th></tr></thead>
+<tbody>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B1" id="req-B1" type="checkbox"/></td>
+<td class="rid">B1</td>
+<td>Use AWS Cognito for authentication and authorisation.</td>
+<td>Spec p.2 states Cognito must be used for user authentication/authorisation; Rubric p.1 awards full marks for Cognito handling auth workflow.</td>
+</tr>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B2" id="req-B2" type="checkbox"/></td>
+<td class="rid">B2</td>
+<td>Register new users with email address, first name, last name, and password.</td>
+<td>Spec p.2-3 and Rubric p.1 list these registration details.</td>
+</tr>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B3" id="req-B3" type="checkbox"/></td>
+<td class="rid">B3</td>
+<td>Support email verification and temporary password/change-password workflow for new users.</td>
+<td>Spec p.3 says Cognito emails new users to verify email and change temporary password; Rubric p.1 includes email verification.</td>
+</tr>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B4" id="req-B4" type="checkbox"/></td>
+<td class="rid">B4</td>
+<td>Provide sign-in/login and secure sign-out.</td>
+<td>Spec p.3 requires a login page and sign-out after authentication; Rubric p.1 marks sign-up/sign-in/sign-out securely.</td>
+</tr>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B5" id="req-B5" type="checkbox"/></td>
+<td class="rid">B5</td>
+<td>Detect unauthenticated users; block all pages and endpoints except sign-up; redirect unauthenticated users to sign-up.</td>
+<td>Spec p.2 says block access to all pages/endpoints except sign-up and redirect; Rubric p.1 awards access control/redirection marks.</td>
+</tr>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B6" id="req-B6" type="checkbox"/></td>
+<td class="rid">B6</td>
+<td>Protect upload, query, results-viewing, and sign-out services against unauthorised access.</td>
+<td>Spec p.3 says after login users can upload, query, view results, and sign out, and all these services must be protected.</td>
+</tr>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B7" id="req-B7" type="checkbox"/></td>
+<td class="rid">B7</td>
+<td>Fine-grained IAM/equivalent policies for file uploads, serverless function invocation, and database access.</td>
+<td>Spec p.3 says uploads, serverless functions, and DB access require fine-grained IAM/equivalent policies; Rubric p.1 marks uploads, DB access, and Lambda invocations.</td>
+</tr>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B8" id="req-B8" type="checkbox"/></td>
+<td class="rid">B8</td>
+<td>Avoid overly permissive IAM policies and handle cross-cloud token authorisation securely.</td>
+<td>Rubric p.1 penalises overly permissive roles and missing cross-cloud token handling; Spec p.2 highlights passing Cognito tokens to secondary cloud endpoints/functions.</td>
+</tr>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B9" id="req-B9" type="checkbox"/></td>
+<td class="rid">B9</td>
+<td>Consider AWS Academy IAM role limitations in the auth/permission design.</td>
+<td>Spec p.3 explicitly notes IAM role limitations in AWS Academy and asks teams to consider them.</td>
+</tr>
+<tr data-section="3. Authentication and Authorisation">
+<td class="done"><input data-id="B10" id="req-B10" type="checkbox"/></td>
+<td class="rid">B10</td>
+<td>Login/sign-up pages may use Cognito Hosted UI or custom pages calling Cognito APIs.</td>
+<td>Spec p.3 allows Hosted UI or custom implementation.</td>
+</tr></tbody>
+</table>
+</div>
+</section>
+<section class="card">
+<h2>4. Core File/Model Handling</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Done</th><th>ID</th><th>Requirement</th><th>How this requirement is found from context</th></tr></thead>
+<tbody>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C1" id="req-C1" type="checkbox"/></td>
+<td class="rid">C1</td>
+<td>Design model loading/versioning so a new pretrained model version can be used without changing source code or Lambda/function code.</td>
+<td>Spec p.3 Model Handling section states model updates should be usable without changing source code/lambda function.</td>
+</tr>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C2" id="req-C2" type="checkbox"/></td>
+<td class="rid">C2</td>
+<td>Support file upload through RESTful API endpoint or cloud SDK.</td>
+<td>Spec p.3 says upload can be through RESTful API or directly using cloud SDKs; Rubric p.2 marks API/SDK upload.</td>
+</tr>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C3" id="req-C3" type="checkbox"/></td>
+<td class="rid">C3</td>
+<td>Every uploaded file must trigger an event and invoke a serverless function automatically.</td>
+<td>Spec p.3 says whenever a file is uploaded, system must trigger an event and invoke a serverless function; Rubric p.2 penalises manual triggers.</td>
+</tr>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C4" id="req-C4" type="checkbox"/></td>
+<td class="rid">C4</td>
+<td>Prevent duplicate uploads using a file checksum, not only file names.</td>
+<td>Spec p.3 requires checksum deduplication; Rubric p.2 says relying on names is partial only.</td>
+</tr>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C5" id="req-C5" type="checkbox"/></td>
+<td class="rid">C5</td>
+<td>For image uploads, generate thumbnails using a serverless function.</td>
+<td>Spec p.3 requires serverless thumbnail generation; Rubric p.2 awards thumbnail creation marks.</td>
+</tr>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C6" id="req-C6" type="checkbox"/></td>
+<td class="rid">C6</td>
+<td>Thumbnail generation must resize while maintaining aspect ratio and compress to reduce file size.</td>
+<td>Spec p.3 describes resizing while maintaining aspect ratio and compression; Rubric p.2 includes aspect ratio/compressed.</td>
+</tr>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C7" id="req-C7" type="checkbox"/></td>
+<td class="rid">C7</td>
+<td>Configure triggers and required execution/resource permissions for thumbnail functions.</td>
+<td>Spec p.3 expects triggers and execution-role permissions for thumbnail function.</td>
+</tr>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C8" id="req-C8" type="checkbox"/></td>
+<td class="rid">C8</td>
+<td>For tagging, a serverless function reads the uploaded file and detects species using the provided ML model.</td>
+<td>Spec p.3 says another serverless function should detect species using the ML model; Rubric p.2 marks serverless ML detection.</td>
+</tr>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C9" id="req-C9" type="checkbox"/></td>
+<td class="rid">C9</td>
+<td>Save file type, detected tag list, original file URL, and thumbnail URL for images in the database.</td>
+<td>Spec p.3 and Rubric p.2 require file type, tags, storage URLs for file and thumbnail.</td>
+</tr>
+<tr data-section="4. Core File/Model Handling">
+<td class="done"><input data-id="C10" id="req-C10" type="checkbox"/></td>
+<td class="rid">C10</td>
+<td>For videos, extract frames as images at exactly 1 image/frame per second; do not extract all frames.</td>
+<td>Spec p.3-4 says extract 1 image per second and do not extract all frames; Rubric p.2 marks 1 frame/sec.</td>
+</tr></tbody>
+</table>
+</div>
+</section>
+<section class="card">
+<h2>5. Queries</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Done</th><th>ID</th><th>Requirement</th><th>How this requirement is found from context</th></tr></thead>
+<tbody>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D1" id="req-D1" type="checkbox"/></td>
+<td class="rid">D1</td>
+<td>Provide protected RESTful APIs for all required queries.</td>
+<td>Spec p.2 and p.4 require RESTful API endpoints for searching tagged files.</td>
+</tr>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D2" id="req-D2" type="checkbox"/></td>
+<td class="rid">D2</td>
+<td>Tag-count query accepts JSON such as {"koala": 3} and returns files containing at least the minimum counts.</td>
+<td>Spec p.4 gives examples with minimum counts; Rubric p.2 marks counts/species query.</td>
+</tr>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D3" id="req-D3" type="checkbox"/></td>
+<td class="rid">D3</td>
+<td>Multi-tag count queries must use logical AND, not OR, across tags.</td>
+<td>Spec p.4 explicitly says logical AND, not OR; Rubric p.2 penalises OR.</td>
+</tr>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D4" id="req-D4" type="checkbox"/></td>
+<td class="rid">D4</td>
+<td>For tag-count query responses, return thumbnail URLs for matching images and full URLs for matching videos.</td>
+<td>Spec p.4 says response includes thumbnails for images and full URLs for videos.</td>
+</tr>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D5" id="req-D5" type="checkbox"/></td>
+<td class="rid">D5</td>
+<td>Support species query without counts, e.g., {"dingo"}, returning images/videos containing at least one instance of that species.</td>
+<td>Spec p.4 requires a species query without count.</td>
+</tr>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D6" id="req-D6" type="checkbox"/></td>
+<td class="rid">D6</td>
+<td>Support thumbnail URL query: input a thumbnail URL and return the corresponding full-size image URL.</td>
+<td>Spec p.4 and Rubric p.2 require thumbnail URL to full-size URL mapping.</td>
+</tr>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D7" id="req-D7" type="checkbox"/></td>
+<td class="rid">D7</td>
+<td>Support file-as-query: accept a file in an API call, detect its tags, and return database files containing that set of tags.</td>
+<td>Spec p.4 and Rubric p.3 require uploaded-file query with tag detection and matching DB URLs.</td>
+</tr>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D8" id="req-D8" type="checkbox"/></td>
+<td class="rid">D8</td>
+<td>Do not add or permanently store the uploaded query file used for file-as-query.</td>
+<td>Spec p.4 and Rubric p.3 explicitly require not permanently storing query file.</td>
+</tr>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D9" id="req-D9" type="checkbox"/></td>
+<td class="rid">D9</td>
+<td>Ensure query responses return correct working URLs, not broken mappings.</td>
+<td>Rubric p.2 emphasises returning correct URLs and penalises broken URLs.</td>
+</tr>
+<tr data-section="5. Queries">
+<td class="done"><input data-id="D10" id="req-D10" type="checkbox"/></td>
+<td class="rid">D10</td>
+<td>Query functions may trigger serverless functions that receive tag lists from the database.</td>
+<td>Spec p.4 states the query may require triggering a function that receives tag lists from the DB.</td>
+</tr></tbody>
+</table>
+</div>
+</section>
+<section class="card">
+<h2>6. Data Management and Notifications</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Done</th><th>ID</th><th>Requirement</th><th>How this requirement is found from context</th></tr></thead>
+<tbody>
+<tr data-section="6. Data Management and Notifications">
+<td class="done"><input data-id="E1" id="req-E1" type="checkbox"/></td>
+<td class="rid">E1</td>
+<td>Provide a POST API for manual bulk addition/removal of tags from files.</td>
+<td>Spec p.4 and Rubric p.3 require POST API and bulk tag editing.</td>
+</tr>
+<tr data-section="6. Data Management and Notifications">
+<td class="done"><input data-id="E2" id="req-E2" type="checkbox"/></td>
+<td class="rid">E2</td>
+<td>Manual tag-edit JSON must include a list of URLs, tags to modify, and operation key.</td>
+<td>Spec p.4 states JSON must include URLs, tags, and operation key.</td>
+</tr>
+<tr data-section="6. Data Management and Notifications">
+<td class="done"><input data-id="E3" id="req-E3" type="checkbox"/></td>
+<td class="rid">E3</td>
+<td>Use operation=1 for adding tags and operation=0 for removing tags.</td>
+<td>Spec p.4 and Rubric p.3 define 1=add and 0=remove.</td>
+</tr>
+<tr data-section="6. Data Management and Notifications">
+<td class="done"><input data-id="E4" id="req-E4" type="checkbox"/></td>
+<td class="rid">E4</td>
+<td>When removing tags, ignore tags not assigned to the file instead of failing.</td>
+<td>Spec p.4 and Rubric p.3 require ignoring tags not in deletion list/assigned tags.</td>
+</tr>
+<tr data-section="6. Data Management and Notifications">
+<td class="done"><input data-id="E5" id="req-E5" type="checkbox"/></td>
+<td class="rid">E5</td>
+<td>Bulk tag editing must work for multiple files, not only a single file.</td>
+<td>Rubric p.3 says partial if API works only for single files but fails on bulk.</td>
+</tr>
+<tr data-section="6. Data Management and Notifications">
+<td class="done"><input data-id="E6" id="req-E6" type="checkbox"/></td>
+<td class="rid">E6</td>
+<td>Delete API accepts a list of URLs and removes full images, thumbnails, videos, and all relevant database entries.</td>
+<td>Spec p.4 and Rubric p.3 require deletion from storage and DB.</td>
+</tr>
+<tr data-section="6. Data Management and Notifications">
+<td class="done"><input data-id="E7" id="req-E7" type="checkbox"/></td>
+<td class="rid">E7</td>
+<td>Bulk deletion must work correctly; do not leave storage or database orphan records.</td>
+<td>Rubric p.3 penalises deletion from DB but not storage or vice versa and bulk failures.</td>
+</tr>
+<tr data-section="6. Data Management and Notifications">
+<td class="done"><input data-id="E8" id="req-E8" type="checkbox"/></td>
+<td class="rid">E8</td>
+<td>Provide tag-based notifications when watched/specific tags are added or updated.</td>
+<td>Spec p.4 says users receive notifications when new images with specific species are added or updated; Rubric p.3 says watched tags added.</td>
+</tr>
+<tr data-section="6. Data Management and Notifications">
+<td class="done"><input data-id="E9" id="req-E9" type="checkbox"/></td>
+<td class="rid">E9</td>
+<td>Use AWS SNS or equivalent serverless messaging service, with specific tag filtering and working email formatting.</td>
+<td>Spec p.4 permits SNS/equivalent; Rubric p.3 penalises inconsistent triggers, weak filtering, or broken email formatting.</td>
+</tr></tbody>
+</table>
+</div>
+</section>
+<section class="card">
+<h2>7. User Interface</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Done</th><th>ID</th><th>Requirement</th><th>How this requirement is found from context</th></tr></thead>
+<tbody>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F1" id="req-F1" type="checkbox"/></td>
+<td class="rid">F1</td>
+<td>Provide a simple web UI supporting all core functionality: upload, query, view results, add/remove tags, deletion/management.</td>
+<td>Spec p.5 says UI must support all core functionalities; Rubric p.4 marks UI categories.</td>
+</tr>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F2" id="req-F2" type="checkbox"/></td>
+<td class="rid">F2</td>
+<td>Auth/upload UI must support sign-in, sign-up, and media uploading.</td>
+<td>Rubric p.4 criterion 3.1.</td>
+</tr>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F3" id="req-F3" type="checkbox"/></td>
+<td class="rid">F3</td>
+<td>UI should give clear feedback on upload success and deduplication status.</td>
+<td>Rubric p.4 requires clear feedback on deduplication/success.</td>
+</tr>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F4" id="req-F4" type="checkbox"/></td>
+<td class="rid">F4</td>
+<td>UI should include error handling and avoid clunky/partial functionality.</td>
+<td>Rubric p.4 penalises clunky UI and lack of error handling.</td>
+</tr>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F5" id="req-F5" type="checkbox"/></td>
+<td class="rid">F5</td>
+<td>Query UI should allow complex queries.</td>
+<td>Rubric p.4 requires complex query UI.</td>
+</tr>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F6" id="req-F6" type="checkbox"/></td>
+<td class="rid">F6</td>
+<td>Query UI should preview thumbnails to save bandwidth.</td>
+<td>Spec p.4 and Rubric p.4 require thumbnail preview.</td>
+</tr>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F7" id="req-F7" type="checkbox"/></td>
+<td class="rid">F7</td>
+<td>Users should be able to click thumbnails to retrieve/view the full-size image.</td>
+<td>Spec p.4 and Rubric p.4 require click thumbnail to full-size image.</td>
+</tr>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F8" id="req-F8" type="checkbox"/></td>
+<td class="rid">F8</td>
+<td>UI should support bulk tag editing and file deletion.</td>
+<td>Rubric p.4 criterion 3.3.</td>
+</tr>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F9" id="req-F9" type="checkbox"/></td>
+<td class="rid">F9</td>
+<td>UI should be professional and user-friendly.</td>
+<td>Rubric p.4 awards full marks for professional, user-friendly design.</td>
+</tr>
+<tr data-section="7. User Interface">
+<td class="done"><input data-id="F10" id="req-F10" type="checkbox"/></td>
+<td class="rid">F10</td>
+<td>If no UI or partial UI is implemented, prepare flawless alternatives such as CLI, scripts, or Postman; without UI the UI section is capped at D/14 marks; with neither UI nor scripts, Section 3 receives 0.</td>
+<td>Spec p.5 and Rubric p.5 additional note state the cap and alternative demo methods.</td>
+</tr></tbody>
+</table>
+</div>
+</section>
+<section class="card">
+<h2>8. Demo, Reports, Submission, Teamwork, AI</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Done</th><th>ID</th><th>Requirement</th><th>How this requirement is found from context</th></tr></thead>
+<tbody>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G1" id="req-G1" type="checkbox"/></td>
+<td class="rid">G1</td>
+<td>Demo is mandatory; no demo means no marks.</td>
+<td>Spec p.6 Demonstration section states demonstration is mandatory and marking happens only during demo.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G2" id="req-G2" type="checkbox"/></td>
+<td class="rid">G2</td>
+<td>Demo is via Zoom; all team members must be present and able to answer questions.</td>
+<td>Spec p.6 requires Zoom demo and all members present; Rubric p.4 says all members present and Q&amp;A answered confidently.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G3" id="req-G3" type="checkbox"/></td>
+<td class="rid">G3</td>
+<td>Start demo with a clear architecture presentation explaining multi-cloud architecture, design choices, and implementation choices.</td>
+<td>Spec p.6 and Rubric p.4 require architecture presentation and design/implementation choices.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G4" id="req-G4" type="checkbox"/></td>
+<td class="rid">G4</td>
+<td>Architecture presentation should be concise, 3-5 minutes; assignment spec says up to 3 minutes, rubric says 3-5 minutes. Prepare for 3 minutes while being able to expand if allowed.</td>
+<td>Spec p.6 says up to 3 minutes; Rubric p.4 says 3-5 minutes.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G5" id="req-G5" type="checkbox"/></td>
+<td class="rid">G5</td>
+<td>Application demo should show all core features smoothly, without crashes, followed by Q&amp;A; spec allocates up to 15 minutes for demo/Q&amp;A.</td>
+<td>Spec p.6 gives up to 15 minutes; Rubric p.4 awards smooth error-free demo and confident Q&amp;A.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G6" id="req-G6" type="checkbox"/></td>
+<td class="rid">G6</td>
+<td>Team report must be PDF, max 1000 words, with readable font such as Arial/Helvetica/Times New Roman at 12 pt.</td>
+<td>Spec p.5-6 gives team report word limit and font guidance; Submission section requires PDF.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G7" id="req-G7" type="checkbox"/></td>
+<td class="rid">G7</td>
+<td>Team report must include a multi-cloud architecture diagram using official architecture icons for all cloud providers.</td>
+<td>Spec p.5 and Rubric p.5 require official cloud provider icons.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G8" id="req-G8" type="checkbox"/></td>
+<td class="rid">G8</td>
+<td>Team report must include a contribution table with student name/ID, percentage contribution, and elements contributed; maximum 100 words per member.</td>
+<td>Spec p.5 and Rubric p.5 require contribution table.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G9" id="req-G9" type="checkbox"/></td>
+<td class="rid">G9</td>
+<td>Team report must include a simple user guide for testing the application.</td>
+<td>Spec p.5 and Rubric p.5 require user guide.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G10" id="req-G10" type="checkbox"/></td>
+<td class="rid">G10</td>
+<td>Team report must include a source-code repository link. Repository should be private/shared with teaching team, not public.</td>
+<td>Spec p.5 requires GitHub/GitLab/Bitbucket link, shared with teaching team, not public.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G11" id="req-G11" type="checkbox"/></td>
+<td class="rid">G11</td>
+<td>All students must commit their own code to the repository; avoid delegating commits to a single member; balanced commits help evidence contribution.</td>
+<td>Spec p.5 says all students must commit rather than delegate; Rubric p.5 mentions commits from all members/unbalanced commits.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G12" id="req-G12" type="checkbox"/></td>
+<td class="rid">G12</td>
+<td>Tables, architecture diagram, UI screenshots, and references are excluded from team-report word count.</td>
+<td>Spec p.5 states exclusions from word count.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G13" id="req-G13" type="checkbox"/></td>
+<td class="rid">G13</td>
+<td>Individual report must be PDF, 500 words, submitted by every team member with name and student ID.</td>
+<td>Spec p.5-6 says individual report is 500 words and every team member submits PDF with name/ID.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G14" id="req-G14" type="checkbox"/></td>
+<td class="rid">G14</td>
+<td>Individual report must describe personal role and contribution to delivering the multi-cloud system in about 150 words.</td>
+<td>Spec p.5 and Rubric p.5 require role/contribution description; rubric allocates individual report marks.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G15" id="req-G15" type="checkbox"/></td>
+<td class="rid">G15</td>
+<td>Individual report must include about 150 words reflecting on teamwork, teammates’ work, team challenges, and team effectiveness.</td>
+<td>Spec p.6 and Rubric p.5 require reflection on teamwork/challenges.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G16" id="req-G16" type="checkbox"/></td>
+<td class="rid">G16</td>
+<td>Individual report should be prepared with little/no consultation; avoid plagiarism and collusion.</td>
+<td>Spec p.6 states individual report should have little/no consultation and warns about plagiarism/collusion.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G17" id="req-G17" type="checkbox"/></td>
+<td class="rid">G17</td>
+<td>Moodle submission: one team member submits the team report; every member submits their individual report.</td>
+<td>Spec p.6 Submission section.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G18" id="req-G18" type="checkbox"/></td>
+<td class="rid">G18</td>
+<td>Peer assessment/confidential contribution reporting occurs at the end; inactive contributors can be penalised up to 50% of group mark.</td>
+<td>Spec p.6-7 and Rubric p.5 additional note state peer assessment and up to 50% penalty.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G19" id="req-G19" type="checkbox"/></td>
+<td class="rid">G19</td>
+<td>If team issues arise, try to resolve them; if unresolvable, inform the teaching team promptly; other members should take over work if someone cannot complete tasks.</td>
+<td>Spec p.2 and p.7 discuss resolving issues, informing teaching team, and taking over tasks.</td>
+</tr>
+<tr data-section="8. Demo, Reports, Submission, Teamwork, AI">
+<td class="done"><input data-id="G20" id="req-G20" type="checkbox"/></td>
+<td class="rid">G20</td>
+<td>Generative AI use must be selective, responsible, documented, acknowledged, and students must understand/modify generated work.</td>
+<td>Spec p.7 Generative AI Statement.</td>
+</tr></tbody>
+</table>
+</div>
+</section>
+<section class="card">
+<h2>Self-review of this checklist against the documents</h2>
+<div class="table-wrap"><table><thead><tr><th>Done</th><th>Review target</th><th>Result</th><th>Source checked</th></tr></thead><tbody><tr><td class="done"><input data-id="review-1" type="checkbox"/></td><td>Rubric categories total 100 marks</td><td>Covered: Auth 10%, Core 50%, UI 20%, Demo/Reports 20% are all represented in sections B-G.</td><td>Rubric pp.1-5</td></tr><tr><td class="done"><input data-id="review-2" type="checkbox"/></td><td>Auth rubric criteria</td><td>Covered by B1-B10, including Cognito registration/sign-in/sign-out, redirect/blocking, IAM/cross-cloud token handling.</td><td>Spec pp.2-3; Rubric p.1</td></tr><tr><td class="done"><input data-id="review-3" type="checkbox"/></td><td>File handling and ML tagging</td><td>Covered by C1-C10, including hidden model-versioning and trigger/execution-role details.</td><td>Spec pp.3-4; Rubric p.2</td></tr><tr><td class="done"><input data-id="review-4" type="checkbox"/></td><td>Queries</td><td>Covered by D1-D10, including tag-count AND query, species query, thumbnail URL query, file-as-query, and non-storage of query file.</td><td>Spec p.4; Rubric pp.2-3</td></tr><tr><td class="done"><input data-id="review-5" type="checkbox"/></td><td>Management/notifications</td><td>Covered by E1-E9, including exact operation key values, bulk handling, deletion consistency, and notification filtering/email quality.</td><td>Spec p.4; Rubric p.3</td></tr><tr><td class="done"><input data-id="review-6" type="checkbox"/></td><td>UI</td><td>Covered by F1-F10, including all UI rubric items and the no-UI cap/alternative-script rule.</td><td>Spec p.5; Rubric pp.4-5</td></tr><tr><td class="done"><input data-id="review-7" type="checkbox"/></td><td>Demo/reports/submission</td><td>Covered by G1-G18, including mandatory demo, timing, Q&amp;A, reports, submission, Git evidence, and peer assessment.</td><td>Spec pp.5-7; Rubric pp.4-5</td></tr><tr><td class="done"><input data-id="review-8" type="checkbox"/></td><td>Hidden/contextual requirements</td><td>Covered by A1-A6, B9, C1, C7, F10, G16-G20. These were drawn from narrative text and additional notes, not only table headings.</td><td>Spec pp.1-7; Rubric p.5</td></tr><tr><td class="done"><input data-id="review-9" type="checkbox"/></td><td>Random.pdf comparison</td><td>Coverage notes are included for every checklist item and a high-level gap summary is provided in Section 1.</td><td>Random.pdf pp.1-3</td></tr></tbody></table></div>
+</section>
+
+<section class="card">
+<h2>Compact final action checklist</h2>
+<div class="table-wrap"><table><thead><tr><th>Done</th><th>Area</th><th>Action checklist</th></tr></thead><tbody><tr><td class="done"><input data-id="compact-1" type="checkbox"/></td><td>Architecture</td><td>Two-cloud serverless architecture; REST API; storage; database; automatic tag/sort/index pipeline; HA DB; official architecture diagram.</td></tr><tr><td class="done"><input data-id="compact-2" type="checkbox"/></td><td>Auth</td><td>Cognito registration with email/first/last/password; email verification/temp password; login/signout; block unauthenticated access; redirect; secure all endpoints/services; precise IAM and cross-cloud token handling.</td></tr><tr><td class="done"><input data-id="compact-3" type="checkbox"/></td><td>Upload/processing</td><td>API/SDK upload; checksum deduplication; automatic triggers; thumbnail resize/aspect/compress; video 1 image/sec; serverless ML tagging; store type/tags/original URL/thumbnail URL; flexible model versioning.</td></tr><tr><td class="done"><input data-id="compact-4" type="checkbox"/></td><td>Queries</td><td>JSON tag/count AND query; species query; thumbnail-to-full-size lookup; file-as-query without permanent storage; correct working URLs; image thumbnails and full video URLs.</td></tr><tr><td class="done"><input data-id="compact-5" type="checkbox"/></td><td>Management</td><td>Bulk tag add/remove POST API with URL list, tag list, operation 1/0; ignore missing tags on removal; delete URL list from storage and DB; no orphan records.</td></tr><tr><td class="done"><input data-id="compact-6" type="checkbox"/></td><td>Notifications</td><td>SNS/equivalent email notifications for watched tags when files are added/updated; tag-specific filtering; consistent trigger; readable email formatting.</td></tr><tr><td class="done"><input data-id="compact-7" type="checkbox"/></td><td>UI</td><td>Auth/upload/query/results/tag-edit/delete UI; success/dedup/error feedback; thumbnail preview; click to full-size; professional usability; or flawless Postman/CLI/scripts with UI cap understood.</td></tr><tr><td class="done"><input data-id="compact-8" type="checkbox"/></td><td>Demo/report</td><td>Mandatory Zoom demo; all members present; 3-minute architecture; smooth 15-minute demo/Q&amp;A; team report PDF &lt;=1000 words; individual report PDF 500 words; user guide; private Git repo with commits from all; peer assessment; GenAI acknowledgement.</td></tr></tbody></table></div>
+</section>
+</main>
+<script>
+(function() {
+  const storageKey = 'fit5225-a2-checklist-v1';
+  const boxes = Array.from(document.querySelectorAll('input[type="checkbox"][data-id], input[type="checkbox"][id^="req-"]'));
+  const search = document.getElementById('search');
+  let mode = 'all';
+  function keyFor(box) { return box.dataset.id || box.id; }
+  function load() {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    boxes.forEach(b => { b.checked = !!saved[keyFor(b)]; markRow(b); });
+    updateProgress();
+  }
+  function save() {
+    const saved = {};
+    boxes.forEach(b => { if (b.checked) saved[keyFor(b)] = true; });
+    localStorage.setItem(storageKey, JSON.stringify(saved));
+  }
+  function markRow(box) {
+    const tr = box.closest('tr');
+    if (tr) tr.classList.toggle('done-row', box.checked);
+  }
+  function updateProgress() {
+    const done = boxes.filter(b => b.checked).length;
+    document.getElementById('progress').textContent = `${done} / ${boxes.length} done`;
+  }
+  function applyFilter() {
+    const q = search.value.trim().toLowerCase();
+    document.querySelectorAll('tbody tr').forEach(tr => {
+      const box = tr.querySelector('input[type="checkbox"]');
+      const isDone = box ? box.checked : false;
+      const matchesMode = mode === 'all' || (mode === 'todo' && !isDone) || (mode === 'done' && isDone);
+      const matchesSearch = !q || tr.textContent.toLowerCase().includes(q);
+      tr.style.display = matchesMode && matchesSearch ? '' : 'none';
+    });
+  }
+  boxes.forEach(b => b.addEventListener('change', () => { markRow(b); save(); updateProgress(); applyFilter(); }));
+  search.addEventListener('input', applyFilter);
+  document.getElementById('showAll').onclick = () => { mode='all'; applyFilter(); };
+  document.getElementById('showTodo').onclick = () => { mode='todo'; applyFilter(); };
+  document.getElementById('showDone').onclick = () => { mode='done'; applyFilter(); };
+  document.getElementById('clearChecks').onclick = () => { if(confirm('Clear all checked items?')) { boxes.forEach(b => { b.checked=false; markRow(b); }); save(); updateProgress(); applyFilter(); } };
+  load();
+})();
+</script>
+</body>
+</html>
