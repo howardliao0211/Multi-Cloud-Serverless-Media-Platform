@@ -23,7 +23,7 @@ BACKEND_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Legacy defaults: backend/file_handle/DockerFile
 DOCKER_CONTEXT="${DOCKER_CONTEXT:-${BACKEND_ROOT}/container_function/upload_to_db}"
-DOCKERFILE="${DOCKERFILE:-${DOCKER_CONTEXT}/DockerFile}"
+DOCKERFILE="${DOCKERFILE:-${DOCKER_CONTEXT}/Dockerfile}"
 LOCAL_IMAGE="${LOCAL_IMAGE:-${REPOSITORY_NAME}:${IMAGE_TAG}}"
 
 case "${ARCHITECTURE}" in

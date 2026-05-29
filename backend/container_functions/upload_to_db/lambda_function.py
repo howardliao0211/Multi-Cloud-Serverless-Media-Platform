@@ -15,10 +15,40 @@ from shared.model import ImageTagger
 s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
 
+BUCKET_NAME = "aussie-eco-len-bucket-12345"
 TABLE_NAME = "aussie-eco-len-media"
 table = dynamodb.Table(TABLE_NAME)
 
-tagger = ImageTagger()
+
+CLASSIFIER_MODEL_KEY = "models/model.pt"
+DETECTOR_MODEL_KEY = "models/mdv5a.pt"
+
+LOCAL_CLASSIFIER_MODEL_PATH = "/tmp/model.pt"
+LOCAL_DETECTOR_MODEL_PATH = "/tmp/mdv5a.pt"
+
+
+def download_model_if_needed(bucket_name: str, s3_key: str, local_path: str):
+    if not os.path.exists(local_path):
+        s3.download_file(bucket_name, s3_key, local_path)
+
+
+download_model_if_needed(
+    BUCKET_NAME,
+    CLASSIFIER_MODEL_KEY,
+    LOCAL_CLASSIFIER_MODEL_PATH
+)
+
+download_model_if_needed(
+    BUCKET_NAME,
+    DETECTOR_MODEL_KEY,
+    LOCAL_DETECTOR_MODEL_PATH
+)
+
+
+tagger = ImageTagger(
+    classifier_model_path=LOCAL_CLASSIFIER_MODEL_PATH,
+    detector_model_path=LOCAL_DETECTOR_MODEL_PATH,
+)
 
 
 def parse_s3_key(s3_key: str) -> tuple[str, str, str]:

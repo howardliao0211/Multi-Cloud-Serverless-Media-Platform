@@ -70,7 +70,9 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
       ],
       "Resource": [
         "arn:aws:s3:::${BUCKET_NAME}/images/*",
-        "arn:aws:s3:::${BUCKET_NAME}/videos/*"
+        "arn:aws:s3:::${BUCKET_NAME}/videos/*",
+        "arn:aws:s3:::${BUCKET_NAME}/thumbnails/*",
+        "arn:aws:s3:::${BUCKET_NAME}/models/*"
       ]
     },
     {
