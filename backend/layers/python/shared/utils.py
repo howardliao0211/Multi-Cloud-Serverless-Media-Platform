@@ -1,0 +1,32 @@
+from http import HTTPMethod, HTTPStatus
+from typing import Iterable
+import json
+
+
+FRONTEND_ORIGIN = "https://dqgriz8bwuql1.cloudfront.net"
+
+
+def build_response_message(
+    status_code: HTTPStatus | int,
+    body: dict, 
+    allow_http_methods: Iterable[HTTPMethod],
+) -> dict:
+
+    return {
+        "statusCode": int(status_code),
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+            "Access-Control-Allow-Methods": ",".join(allow_http_methods),
+        },
+        "body": json.dumps(body),
+    }
+
+
+if __name__ == "__main__":
+    print(
+        build_response_message(
+            HTTPStatus.OK, {"message": "Hello World"}, [HTTPMethod.POST, HTTPMethod.OPTIONS]
+        )
+    )
