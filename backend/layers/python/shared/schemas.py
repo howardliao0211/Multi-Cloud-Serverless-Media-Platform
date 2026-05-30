@@ -1,6 +1,6 @@
 from typing import Dict, Literal
 from pydantic import BaseModel, Field
-
+from typing import Optional
 
 class MediaRecord(BaseModel):
     hash: str
@@ -21,5 +21,11 @@ class MediaRecord(BaseModel):
 
 
 class UploadUrlRequest(BaseModel):
-    hash: str
+    filename: str
     media_type: Literal["image", "video"]
+    checksum: str
+
+class UploadUrlResponse(BaseModel):
+    duplicate: bool
+    upload_url: Optional[str]
+    expires_in: Optional[int]
