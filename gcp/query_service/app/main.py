@@ -6,7 +6,7 @@ from app.auth import verify_internal_api_key
 from app.config import ENVIRONMENT
 from app.firestore_repo import save_media_replica, stream_media
 from app.models import MediaReplicaRequest, TagsQueryRequest
-from app.query_logic import media_matches_tags
+from app.query_logic import media_matches_tags, shape_query_result
 
 app = FastAPI(title="Aussie EcoLens GCP Query Service")
 
@@ -74,7 +74,7 @@ def query_by_tags(payload: TagsQueryRequest) -> Dict[str, Any]:
     # Later, optimise with an index collection if needed.
     for item in stream_media():
         if media_matches_tags(item, payload.tags):
-            matches.append(item)
+            matches.append(shape_query_result(item))
 
     return {
         "count": len(matches),

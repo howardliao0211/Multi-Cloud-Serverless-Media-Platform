@@ -40,6 +40,11 @@ resource "google_cloud_run_v2_service" "query" {
         name  = "AWS_API_ENDPOINT"
         value = data.aws_apigatewayv2_api.main.api_endpoint
       }
+
+      env {
+        name  = "MEDIA_PUBLIC_BASE_URL"
+        value = "https://${data.aws_s3_bucket.media.bucket}.s3.amazonaws.com"
+      }
     }
   }
 
