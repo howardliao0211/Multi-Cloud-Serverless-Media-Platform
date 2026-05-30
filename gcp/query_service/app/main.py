@@ -1,22 +1,19 @@
-import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, Header, HTTPException
-from google.cloud import firestore
+from fastapi import FastAPI, Header
+
+from app.auth import verify_internal_api_key
+from app.config import ENVIRONMENT
+from app.firestore_repo import save_media_replica, stream_media
+from app.models import MediaReplicaRequest, TagsQueryRequest
+from app.query_logic import media_matches_tags
 
 app = FastAPI(title="Aussie EcoLens GCP Query Service")
-
-PROJECT_ID = os.getenv("FIRESTORE_PROJECT_ID")
-DATABASE_ID = os.getenv("FIRESTORE_DATABASE", "(default)")
-ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
-INTERNAL_API_KEY = os.getenv("INTERNAL_REPLICATION_API_KEY", "")
-
-def get_db():
-    return firestore.Client(project=PROJECT_ID, database=DATABASE_ID)
 
 
 @app.get("/")
 def root() -> Dict[str, Any]:
+    # Lightweight service identity endpoint for browser/curl checks.
     return {
         "service": "aussie-ecolens-query",
         "environment": ENVIRONMENT,
@@ -26,12 +23,13 @@ def root() -> Dict[str, Any]:
 
 @app.get("/health")
 def health() -> Dict[str, str]:
+    # Cloud Run/load balancer health checks can use this endpoint.
     return {"status": "healthy"}
 
 
 @app.post("/internal/replicate-media")
 def replicate_media(
-    payload: Dict[str, Any],
+    payload: MediaReplicaRequest,
     x_internal_api_key: Optional[str] = Header(default=None),
 ) -> Dict[str, Any]:
     """
@@ -40,17 +38,12 @@ def replicate_media(
     For now this uses a simple shared API key check if INTERNAL_REPLICATION_API_KEY is set.
     Later we can improve this with signed service-to-service auth.
     """
-    if INTERNAL_API_KEY:
-        if x_internal_api_key != INTERNAL_API_KEY:
-            raise HTTPException(status_code=401, detail="Invalid internal API key")
+    verify_internal_api_key(x_internal_api_key)
 
-    media_hash = payload.get("hash")
-    if not media_hash:
-        raise HTTPException(status_code=400, detail="Missing required field: hash")
+    media_hash = payload.hash
 
-    db = get_db()
-    doc_ref = db.collection("media").document(media_hash)
-    doc_ref.set(payload, merge=True)
+    # Convert the validated request model back to a Firestore-ready dict.
+    save_media_replica(payload.to_firestore_document())
 
     return {
         "status": "replicated",
@@ -59,7 +52,7 @@ def replicate_media(
 
 
 @app.post("/query/tags")
-def query_by_tags(payload: Dict[str, Any]) -> Dict[str, Any]:
+def query_by_tags(payload: TagsQueryRequest) -> Dict[str, Any]:
     """
     Query Firestore media records by tag minimum counts.
 
@@ -75,40 +68,12 @@ def query_by_tags(payload: Dict[str, Any]) -> Dict[str, Any]:
     AND logic between tags.
     Each media record must have count >= requested count for every requested tag.
     """
-    requested_tags = payload.get("tags")
-
-    if not isinstance(requested_tags, dict) or not requested_tags:
-        raise HTTPException(status_code=400, detail="Expected non-empty 'tags' object")
-
     matches: List[Dict[str, Any]] = []
 
     # Simple scan approach for assignment/demo scale.
     # Later, optimise with an index collection if needed.
-    db = get_db()
-    docs = db.collection("media").stream()
-
-    for doc in docs:
-        item = doc.to_dict() or {}
-        tag_counts = item.get("tag_counts", {})
-
-        if not isinstance(tag_counts, dict):
-            continue
-
-        matched = True
-
-        for tag, min_count in requested_tags.items():
-            try:
-                min_count_int = int(min_count)
-            except (TypeError, ValueError):
-                raise HTTPException(status_code=400, detail=f"Invalid count for tag: {tag}")
-
-            actual_count = int(tag_counts.get(tag, 0))
-
-            if actual_count < min_count_int:
-                matched = False
-                break
-
-        if matched:
+    for item in stream_media():
+        if media_matches_tags(item, payload.tags):
             matches.append(item)
 
     return {
