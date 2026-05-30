@@ -56,7 +56,7 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${LAYER_BUILD_DIR}/python" "${FUNCTION_BUILD_DIR}"
 
 echo "Building shared layer..."
-python -m pip install \
+pip install \
   --requirement "${SHARED_SOURCE_DIR}/requirements.txt" \
   --target "${LAYER_BUILD_DIR}/python" \
   --platform "${PIP_PLATFORM}" \
