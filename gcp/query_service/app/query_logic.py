@@ -43,10 +43,18 @@ def build_public_url(s3_key: Optional[str]) -> Optional[str]:
     return f"{MEDIA_PUBLIC_BASE_URL}/{s3_key.lstrip('/')}"
 
 
+def get_original_url(item: Dict[str, Any]) -> Optional[str]:
+    return item.get("original_url") or build_public_url(item.get("s3_key"))
+
+
+def get_thumbnail_url(item: Dict[str, Any]) -> Optional[str]:
+    return item.get("thumbnail_url") or build_public_url(item.get("thumbnail_s3_key"))
+
+
 def shape_query_result(item: Dict[str, Any]) -> Dict[str, Any]:
     media_type = item.get("media_type")
-    original_url = item.get("original_url") or build_public_url(item.get("s3_key"))
-    thumbnail_url = item.get("thumbnail_url") or build_public_url(item.get("thumbnail_s3_key"))
+    original_url = get_original_url(item)
+    thumbnail_url = get_thumbnail_url(item)
 
     if media_type == "video":
         thumbnail_url = None
@@ -58,4 +66,22 @@ def shape_query_result(item: Dict[str, Any]) -> Dict[str, Any]:
         "url": original_url,
         "thumbnail_url": thumbnail_url,
         "tag_counts": get_tag_counts(item),
+    }
+
+
+def thumbnail_url_matches(item: Dict[str, Any], requested_thumbnail_url: str) -> bool:
+    thumbnail_url = get_thumbnail_url(item)
+
+    if not thumbnail_url:
+        return False
+
+    return thumbnail_url == requested_thumbnail_url
+
+
+def shape_thumbnail_lookup_result(item: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "hash": item.get("hash"),
+        "media_type": item.get("media_type"),
+        "thumbnail_url": get_thumbnail_url(item),
+        "url": get_original_url(item),
     }

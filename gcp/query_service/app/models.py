@@ -60,3 +60,47 @@ class TagsQueryRequest(BaseModel):
             normalized_tags[tag] = int(raw_count)
 
         return normalized_tags
+
+
+class SpeciesQueryRequest(BaseModel):
+    """
+    Body for POST /query/species.
+
+    Example:
+    {
+      "species": "dingo"
+    }
+    """
+    species: str
+
+    @field_validator("species")
+    @classmethod
+    def validate_species(cls, species: str) -> str:
+        normalized_species = species.strip().lower()
+
+        if not normalized_species:
+            raise ValueError("species must not be empty")
+
+        return normalized_species
+
+
+class ThumbnailQueryRequest(BaseModel):
+    """
+    Body for POST /query/thumbnail.
+
+    Example:
+    {
+      "thumbnail_url": "https://.../thumbnails/hash.jpg"
+    }
+    """
+    thumbnail_url: str
+
+    @field_validator("thumbnail_url")
+    @classmethod
+    def validate_thumbnail_url(cls, thumbnail_url: str) -> str:
+        normalized_thumbnail_url = thumbnail_url.strip()
+
+        if not normalized_thumbnail_url:
+            raise ValueError("thumbnail_url must not be empty")
+
+        return normalized_thumbnail_url

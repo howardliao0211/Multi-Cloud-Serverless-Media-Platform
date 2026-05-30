@@ -1,14 +1,31 @@
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, HTTPException
 
 from app.auth import verify_internal_api_key
 from app.config import ENVIRONMENT
 from app.firestore_repo import save_media_replica, stream_media
-from app.models import MediaReplicaRequest, TagsQueryRequest
-from app.query_logic import media_matches_tags, shape_query_result
+from app.models import MediaReplicaRequest, SpeciesQueryRequest, TagsQueryRequest, ThumbnailQueryRequest
+from app.query_logic import (
+    media_matches_tags,
+    shape_query_result,
+    shape_thumbnail_lookup_result,
+    thumbnail_url_matches,
+)
 
 app = FastAPI(title="Aussie EcoLens GCP Query Service")
+
+
+def find_matching_media(requested_tags: Dict[str, int]) -> List[Dict[str, Any]]:
+    matches = []
+
+    # Simple scan approach for assignment/demo scale.
+    # Later, optimise with an index collection if needed.
+    for item in stream_media():
+        if media_matches_tags(item, requested_tags):
+            matches.append(shape_query_result(item))
+
+    return matches
 
 
 @app.get("/")
@@ -68,15 +85,47 @@ def query_by_tags(payload: TagsQueryRequest) -> Dict[str, Any]:
     AND logic between tags.
     Each media record must have count >= requested count for every requested tag.
     """
-    matches: List[Dict[str, Any]] = []
-
-    # Simple scan approach for assignment/demo scale.
-    # Later, optimise with an index collection if needed.
-    for item in stream_media():
-        if media_matches_tags(item, payload.tags):
-            matches.append(shape_query_result(item))
+    matches = find_matching_media(payload.tags)
 
     return {
         "count": len(matches),
         "results": matches,
     }
+
+
+@app.post("/query/species")
+def query_by_species(payload: SpeciesQueryRequest) -> Dict[str, Any]:
+    """
+    Query Firestore media records containing at least one detected species.
+
+    Expected request:
+    {
+      "species": "dingo"
+    }
+
+    Behaviour:
+    Equivalent to a tag-count query with { "dingo": 1 }.
+    """
+    matches = find_matching_media({payload.species: 1})
+
+    return {
+        "count": len(matches),
+        "results": matches,
+    }
+
+
+@app.post("/query/thumbnail")
+def query_by_thumbnail_url(payload: ThumbnailQueryRequest) -> Dict[str, Any]:
+    """
+    Resolve a thumbnail URL back to its corresponding full-size image URL.
+
+    Expected request:
+    {
+      "thumbnail_url": "https://.../thumbnails/hash.jpg"
+    }
+    """
+    for item in stream_media():
+        if thumbnail_url_matches(item, payload.thumbnail_url):
+            return shape_thumbnail_lookup_result(item)
+
+    raise HTTPException(status_code=404, detail="Thumbnail URL not found")
