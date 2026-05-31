@@ -8,11 +8,13 @@ IMAGE_TAG="${IMAGE_TAG:-latest}"
 ARCHITECTURE="${ARCHITECTURE:-x86_64}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-900}"
 MEMORY_SIZE_MB="${MEMORY_SIZE_MB:-3000}"
+EPHEMERAL_STORAGE_MB="${EPHEMERAL_STORAGE_MB:-4096}"
+BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-ml_base}"
 
 # For creating the Lambda if it does not exist.
 # Prefer LAMBDA_ROLE_ARN. If it is not set, resolve LAMBDA_ROLE_NAME.
 LAMBDA_ROLE_NAME="${LAMBDA_ROLE_NAME:-aussie-eco-len-lambda-role}"
-LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-}"
+LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-arn:aws:iam::539913718279:role/aussie-eco-len-lambda-role}"
 
 # Optional environment variables passed to the Lambda container.
 BUCKET_NAME="${BUCKET_NAME:-}"
@@ -21,8 +23,12 @@ TABLE_NAME="${TABLE_NAME:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-DOCKER_CONTEXT="${DOCKER_CONTEXT:-${BACKEND_ROOT}/container_functions/${FUNCTION_NAME}}"
-DOCKERFILE="${DOCKERFILE:-${DOCKER_CONTEXT}/Dockerfile}"
+# Important:
+# Use the backend root as Docker context so the Dockerfile can access:
+# - container_functions/${FUNCTION_NAME}/app.py
+# - layers/python/shared
+DOCKER_CONTEXT="${DOCKER_CONTEXT:-${BACKEND_ROOT}}"
+DOCKERFILE="${DOCKERFILE:-${BACKEND_ROOT}/container_functions/${FUNCTION_NAME}/Dockerfile}"
 LOCAL_IMAGE="${LOCAL_IMAGE:-${REPOSITORY_NAME}:${IMAGE_TAG}}"
 
 case "${ARCHITECTURE}" in
@@ -58,6 +64,16 @@ if [[ ! -f "${DOCKERFILE}" ]]; then
   exit 1
 fi
 
+if [[ ! -d "${BACKEND_ROOT}/layers/python/shared" ]]; then
+  echo "Error: shared layer source does not exist: ${BACKEND_ROOT}/layers/python/shared" >&2
+  exit 1
+fi
+
+if [[ ! -f "${BACKEND_ROOT}/container_functions/${FUNCTION_NAME}/app.py" ]]; then
+  echo "Error: container function app.py does not exist: ${BACKEND_ROOT}/container_functions/${FUNCTION_NAME}/app.py" >&2
+  exit 1
+fi
+
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 REMOTE_IMAGE="${ECR_REGISTRY}/${REPOSITORY_NAME}:${IMAGE_TAG}"
@@ -78,15 +94,18 @@ fi
 ENV_VARS=""
 if [[ -n "${BUCKET_NAME}" || -n "${TABLE_NAME}" ]]; then
   ENV_VARS="Variables={"
+
   if [[ -n "${BUCKET_NAME}" ]]; then
     ENV_VARS+="BUCKET_NAME=${BUCKET_NAME}"
   fi
+
   if [[ -n "${TABLE_NAME}" ]]; then
     if [[ "${ENV_VARS}" != "Variables={" ]]; then
       ENV_VARS+=","
     fi
     ENV_VARS+="TABLE_NAME=${TABLE_NAME}"
   fi
+
   ENV_VARS+="}"
 fi
 
@@ -145,12 +164,14 @@ if aws lambda get-function \
       --function-name "${FUNCTION_NAME}" \
       --timeout "${TIMEOUT_SECONDS}" \
       --memory-size "${MEMORY_SIZE_MB}" \
+      --ephemeral-storage "{\"Size\": ${EPHEMERAL_STORAGE_MB}}" \
       --environment "${ENV_VARS}" >/dev/null
   else
     aws lambda update-function-configuration \
       --region "${AWS_REGION}" \
       --function-name "${FUNCTION_NAME}" \
       --timeout "${TIMEOUT_SECONDS}" \
+      --ephemeral-storage "{\"Size\": ${EPHEMERAL_STORAGE_MB}}" \
       --memory-size "${MEMORY_SIZE_MB}" >/dev/null
   fi
 

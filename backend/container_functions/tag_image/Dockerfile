@@ -1,11 +1,22 @@
-FROM ml_base_image:latest
+FROM ml_base:latest
 
 WORKDIR ${LAMBDA_TASK_ROOT}
 
 ENV PYTHONPATH="/opt/python:${LAMBDA_TASK_ROOT}" \
     PYTHONDONTWRITEBYTECODE=1
 
-COPY shared_layer/python /opt/python
-COPY lambda_function.py ${LAMBDA_TASK_ROOT}/
+# Create shared package directory
+RUN mkdir -p /opt/python/shared
 
-CMD ["lambda_function.lambda_handler"]
+# Copy only selected shared files
+COPY layers/python/shared/__init__.py \
+    layers/python/shared/model.py \
+    layers/python/shared/aws_resources.py \
+    layers/python/shared/schemas.py \
+    layers/python/shared/utils.py \
+    /opt/python/shared/
+
+# Copy this Lambda function's app.py
+COPY container_functions/tag_image/app.py ${LAMBDA_TASK_ROOT}/app.py
+
+CMD ["app.lambda_handler"]

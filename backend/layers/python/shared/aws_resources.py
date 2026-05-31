@@ -1,11 +1,15 @@
+from pathlib import Path
+
 import boto3
 from botocore.config import Config
-from typing import Literal
-
+from typing import Literal, Tuple, Any
+from urllib.parse import quote
+from shared.schemas import MediaRecord, MediaRecordStatus
 
 BUCKET_NAME = "aussie-eco-len-bucket-12345"
 TABLE_NAME = "aussie-eco-len-media"
 REGION_NAME = "us-east-1"
+
 
 def get_bucket_and_name():
     s3 = boto3.client(
@@ -15,9 +19,11 @@ def get_bucket_and_name():
     )
     return s3, BUCKET_NAME
 
+
 def get_table():
     dynamodb = boto3.resource("dynamodb")
     return dynamodb.Table(TABLE_NAME)
+
 
 def build_s3_key(
     key_name: str,
@@ -26,7 +32,149 @@ def build_s3_key(
     assert media_type in ("image", "video")
     return f"{media_type}s/{key_name}"
 
+
 def build_thumbnail_s3_key(
     key_name: str
 ) -> str:
     return f"thumbnails/{key_name}"
+
+
+def get_s3_object_head_and_url(s3_key: str) -> Tuple[dict, str]:
+    """
+    Return the S3 object's head and permanent object URL.
+
+    Head = 
+    {
+        "ContentLength": 123456,
+        "ContentType": "image/jpeg",
+        "LastModified": datetime(...),
+        "ETag": '"abc123..."',
+        "Metadata": {
+            "filename": "filename"
+        },
+        "StorageClass": "STANDARD",
+        "ServerSideEncryption": "AES256",
+        "ChecksumSHA256": "...",
+        "VersionId": "...",
+    }
+    """
+
+    s3, bucket_name = get_bucket_and_name()
+
+    head = s3.head_object(
+        Bucket=bucket_name,
+        Key=s3_key,
+    )
+
+    encoded_key = quote(s3_key, safe="/")
+
+    object_url = (
+        f"https://{bucket_name}.s3.{REGION_NAME}.amazonaws.com/{encoded_key}"
+    )
+
+    return head, object_url
+
+
+def update_media_record_in_db(table, file_name: str, checksum: str, updates: dict[str, Any]) -> None:
+    """
+    Dynamically update fields of a MediaRecord in DynamoDB.
+
+    Example:
+        update_media_record(
+            checksum="abc123",
+            updates={
+                "upload_status": "READY",
+                "tags": {"tree": 2, "kangaroo": 1},
+            },
+        )
+    """
+
+    if not updates:
+        return
+
+    allowed_fields = set(MediaRecord.model_fields.keys())
+    non_updatable_fields = {"checksum"}
+
+    invalid_fields = set(updates.keys()) - allowed_fields
+    if invalid_fields:
+        raise ValueError(f"Invalid update fields: {invalid_fields}")
+
+    blocked_fields = set(updates.keys()) & non_updatable_fields
+    if blocked_fields:
+        raise ValueError(f"Cannot update primary key fields: {blocked_fields}")
+
+    update_expression_parts = []
+    expression_attribute_names = {}
+    expression_attribute_values = {}
+
+    for index, (field, value) in enumerate(updates.items()):
+        field_name = f"#field_{index}"
+        field_value = f":value_{index}"
+
+        update_expression_parts.append(f"{field_name} = {field_value}")
+        expression_attribute_names[field_name] = field
+        expression_attribute_values[field_value] = value
+
+    table.update_item(
+        Key={
+            "checksum": checksum,
+            "file_name": file_name
+        },
+        UpdateExpression="SET " + ", ".join(update_expression_parts),
+        ExpressionAttributeNames=expression_attribute_names,
+        ExpressionAttributeValues=expression_attribute_values,
+    )
+
+
+def download_s3_file(s3, bucket: str, s3_key: str, local_path: str) -> None:
+
+    if Path(local_path).exists():
+        return
+
+    s3.download_file(
+        Bucket=bucket,
+        Key=s3_key,
+        Filename=local_path,
+    )
+
+
+def create_new_media_record(table, media: MediaRecord):
+    table.put_item(
+        Item=media.model_dump(mode="json"),
+        ConditionExpression=(
+            "attribute_not_exists(#checksum) "
+            "AND attribute_not_exists(#file_name)"
+        ),
+        ExpressionAttributeNames={
+            "#checksum": "checksum",
+            "#file_name": "file_name",
+        },
+    )
+
+
+def is_media_record_processing(
+    table,
+    file_name: str,
+    checksum: str,
+) -> bool:
+    """
+    Check whether this media record should be processed.
+
+    Returns:
+        True  -> record does not exist, or previous processing failed
+        False -> record exists and is not failed
+    """
+    response = table.get_item(
+        Key={
+            "checksum": checksum,
+            "file_name": file_name,
+        },
+        ConsistentRead=True,
+    )
+
+    item = response.get("Item")
+
+    if item is None:
+        return True
+
+    return item.get("upload_status") == MediaRecordStatus.failed.value

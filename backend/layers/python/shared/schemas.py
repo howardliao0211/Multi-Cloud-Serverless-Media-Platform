@@ -1,23 +1,28 @@
-from typing import Dict, Literal
+from enum import Enum
+from typing import Dict, Optional, Literal
 from pydantic import BaseModel, Field
-from typing import Optional
+
+
+class MediaRecordStatus(str, Enum):
+    pending = "PENDING_UPLOAD"
+    uploaded = "UPLOADED"
+    processing = "PROCESSING"
+    ready = "READY"
+    failed = "FAILED"
+
 
 class MediaRecord(BaseModel):
-    hash: str
-    media_type: Literal["image", "video"]
+    checksum: str
 
-    s3_key: str
-    thumbnail_s3_key: str
+    file_name: str
+    file_type: str
+    full_url: str
+    thumbnail_url: Optional[str] = None
 
     tags: Dict[str, int] = Field(default_factory=dict)
 
-    upload_status: Literal[
-        "PENDING_UPLOAD",
-        "UPLOADED",
-        "PROCESSING",
-        "READY",
-        "FAILED",
-    ] = "PENDING_UPLOAD"
+    upload_status: MediaRecordStatus = MediaRecordStatus.pending
+    error_message: Optional[str] = None
 
 
 class UploadUrlRequest(BaseModel):
@@ -25,7 +30,8 @@ class UploadUrlRequest(BaseModel):
     media_type: Literal["image", "video"]
     checksum: str
 
+
 class UploadUrlResponse(BaseModel):
     duplicate: bool
-    upload_url: Optional[str]
-    expires_in: Optional[int]
+    upload_url: Optional[str] = None
+    expires_in: Optional[int] = None

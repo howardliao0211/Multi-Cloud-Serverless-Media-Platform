@@ -26,18 +26,21 @@ def parse_request(event: dict, ) -> UploadUrlRequest | None:
     body = event.get("body")
     return UploadUrlRequest(**json.loads(body))
 
-def generate_upload_url(s3_key: str, filename: str) -> str:
+
+def generate_upload_url(s3_key: str, file_name: str, checksum: str) -> str:
     return s3.generate_presigned_url(
         ClientMethod="put_object",
         Params={
             "Bucket": bucket_name,
             "Key": s3_key,
             "Metadata": {
-                "filename": filename,
+                "file_name": file_name,
+                "checksum": checksum,
             },
         },
         ExpiresIn=URL_EXPIRES_SECONDS,
     )
+
 
 def is_duplicated(checksum: str) -> bool:
     result = table.query(
@@ -45,6 +48,7 @@ def is_duplicated(checksum: str) -> bool:
         Limit=1,
     )
     return result.get("Count", 0) > 0
+
 
 def lambda_handler(event, context):
 
@@ -74,8 +78,11 @@ def lambda_handler(event, context):
             allow_http_methods=[HTTPMethod.POST]
         )
 
-    s3_key = build_s3_key(request.checksum, request.media_type)
-    upload_url = generate_upload_url(s3_key, request.filename)
+    file_ext = request.filename.split(".")[-1]
+    s3_filename = f"{request.checksum}.{file_ext}"
+    s3_key = build_s3_key(s3_filename, request.media_type)
+    upload_url = generate_upload_url(
+        s3_key, request.filename, request.checksum)
     expires_in = URL_EXPIRES_SECONDS
 
     res = UploadUrlResponse(
