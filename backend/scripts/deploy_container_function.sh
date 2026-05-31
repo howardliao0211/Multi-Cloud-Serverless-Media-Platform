@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-FUNCTION_NAME="${FUNCTION_NAME:-upload_to_db}"
+FUNCTION_NAME="${FUNCTION_NAME:-tag_image}"
 REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-aussie_eco_len}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 ARCHITECTURE="${ARCHITECTURE:-x86_64}"
@@ -21,8 +21,7 @@ TABLE_NAME="${TABLE_NAME:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Legacy defaults: backend/file_handle/DockerFile
-DOCKER_CONTEXT="${DOCKER_CONTEXT:-${BACKEND_ROOT}/container_function/upload_to_db}"
+DOCKER_CONTEXT="${DOCKER_CONTEXT:-${BACKEND_ROOT}/container_functions/${FUNCTION_NAME}}"
 DOCKERFILE="${DOCKERFILE:-${DOCKER_CONTEXT}/Dockerfile}"
 LOCAL_IMAGE="${LOCAL_IMAGE:-${REPOSITORY_NAME}:${IMAGE_TAG}}"
 

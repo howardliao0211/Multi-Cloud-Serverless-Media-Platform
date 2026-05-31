@@ -28,12 +28,12 @@ esac
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${PROJECT_ROOT}/build"
 LAYER_BUILD_DIR="${BUILD_DIR}/shared_layer"
-FUNCTION_BUILD_DIR="${BUILD_DIR}/get_signed_url"
+FUNCTION_BUILD_DIR="${BUILD_DIR}/${FUNCTION_NAME}"
 LAYER_ZIP="${BUILD_DIR}/shared_layer.zip"
-FUNCTION_ZIP="${BUILD_DIR}/get_signed_url.zip"
+FUNCTION_ZIP="${BUILD_DIR}/${FUNCTION_NAME}.zip"
 
 SHARED_SOURCE_DIR="${PROJECT_ROOT}/layers/python/shared"
-FUNCTION_SOURCE_DIR="${PROJECT_ROOT}/functions/get_signed_url"
+FUNCTION_SOURCE_DIR="${PROJECT_ROOT}/functions/${FUNCTION_NAME}"
 
 echo "Deploying ${FUNCTION_NAME} to ${AWS_REGION}"
 
