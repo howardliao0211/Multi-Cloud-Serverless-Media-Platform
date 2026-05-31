@@ -26,12 +26,15 @@ def parse_request(event: dict, ) -> UploadUrlRequest | None:
     body = event.get("body")
     return UploadUrlRequest(**json.loads(body))
 
-def generate_upload_url(s3_key: str) -> str:
+def generate_upload_url(s3_key: str, checksum: str) -> str:
     return s3.generate_presigned_url(
         ClientMethod="put_object",
         Params={
             "Bucket": bucket_name,
             "Key": s3_key,
+            "Metadata": {
+                "checksum": checksum,
+            },
         },
         ExpiresIn=URL_EXPIRES_SECONDS,
     )
@@ -72,7 +75,7 @@ def lambda_handler(event, context):
         )
 
     s3_key = build_s3_key(request.filename, request.media_type)
-    upload_url = generate_upload_url(s3_key)
+    upload_url = generate_upload_url(s3_key, request.checksum)
     expires_in = URL_EXPIRES_SECONDS
 
     res = UploadUrlResponse(
