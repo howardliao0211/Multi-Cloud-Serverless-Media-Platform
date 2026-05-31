@@ -177,4 +177,8 @@ def is_media_record_processing(
     if item is None:
         return True
 
-    return item.get("upload_status") == MediaRecordStatus.failed.value
+    upload_status = item["upload_status"]
+    return upload_status not in (
+        MediaRecordStatus.pending,
+        MediaRecordStatus.failed,
+    )
