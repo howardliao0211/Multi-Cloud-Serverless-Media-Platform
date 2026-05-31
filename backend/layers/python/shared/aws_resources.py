@@ -23,7 +23,7 @@ def build_s3_key(
     key_name: str,
     media_type: Literal["image", "video"]
 ) -> str:
-    assert media_type in ("images"), "video"
+    assert media_type in ("image", "video")
     return f"{media_type}s/{key_name}"
 
 def build_thumbnail_s3_key(
