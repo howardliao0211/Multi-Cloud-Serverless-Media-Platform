@@ -64,7 +64,7 @@ function UploadScreen(){
                 const uploadResponse = await fetch(data.upload_url, {
                     method: "PUT",
                     headers: {
-                        "x-amz-meta-checksum": hash,
+                        "x-amz-meta-filename": file.name,
                     },
                     body: file,
                 });
