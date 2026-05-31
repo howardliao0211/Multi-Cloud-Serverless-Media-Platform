@@ -11,7 +11,7 @@ from shared.aws_resources import (
     get_bucket_and_name,
     get_table,
     build_s3_key,
-    build_thumbnail_s3_key
+    create_new_media_record
 )
 from shared.utils import (
     build_response_message
@@ -84,6 +84,16 @@ def lambda_handler(event, context):
     upload_url = generate_upload_url(
         s3_key, request.filename, request.checksum)
     expires_in = URL_EXPIRES_SECONDS
+
+    media = MediaRecord(
+        checksum=request.checksum,
+        file_name=request.filename,
+        full_key=s3_key,
+    )
+
+    create_new_media_record(
+        table, media
+    )
 
     res = UploadUrlResponse(
         duplicate=duplicate,

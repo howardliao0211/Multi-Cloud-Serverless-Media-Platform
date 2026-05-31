@@ -1,4 +1,5 @@
 from enum import Enum
+from optparse import Option
 from typing import Dict, Optional, Literal
 from pydantic import BaseModel, Field
 
@@ -13,10 +14,12 @@ class MediaRecordStatus(str, Enum):
 
 class MediaRecord(BaseModel):
     checksum: str
-
     file_name: str
-    file_type: str
-    full_url: str
+    full_key: str
+
+    full_url: Optional[str] = None
+    file_type: Optional[str] = None
+    thumbnail_key: Optional[str] = None
     thumbnail_url: Optional[str] = None
 
     tags: Dict[str, int] = Field(default_factory=dict)

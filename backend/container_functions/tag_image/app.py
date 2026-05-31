@@ -19,7 +19,6 @@ from shared.aws_resources import (
     download_s3_file,
     update_media_record_in_db,
     get_s3_object_head_and_url,
-    create_new_media_record,
     is_media_record_processing
 )
 
@@ -77,8 +76,9 @@ def upload_thumbnail_to_s3(
 
 def process_image(bucket: str, s3_key: str):
 
-    head, url = get_s3_object_head_and_url(s3_key)
+    head, full_url = get_s3_object_head_and_url(s3_key)
     file_name = head["Metadata"]["file_name"]
+    file_ext = file_name.split(".")[-1]
     checksum = head["Metadata"]["checksum"]
     file_type = head["ContentType"]
 
@@ -86,16 +86,14 @@ def process_image(bucket: str, s3_key: str):
         print(f"Skipping non-image object: {s3_key}")
         return
 
-    thumbnail_s3_key = build_thumbnail_s3_key(file_name)
+    thumbnail_s3_key = build_thumbnail_s3_key(checksum + f".{file_ext}")
 
-    media = MediaRecord(
-        checksum=checksum,
-        file_name=file_name,
-        file_type=file_type,
-        full_url=url,
-        thumbnail_url=None,
-        tags={},
-        upload_status=MediaRecordStatus.uploaded,
+    update_media_record_in_db(
+        table, file_name, checksum, {
+            "full_url": full_url,
+            "file_type": file_type,
+            "upload_status": MediaRecordStatus.uploaded,
+        }
     )
 
     should_process = is_media_record_processing(
@@ -108,7 +106,6 @@ def process_image(bucket: str, s3_key: str):
         return
 
     try:
-        create_new_media_record(table, media)
         update_media_record_in_db(
             table, file_name, checksum, {
                 "upload_status": MediaRecordStatus.processing,
@@ -135,6 +132,7 @@ def process_image(bucket: str, s3_key: str):
 
         update_media_record_in_db(
             table, file_name, checksum, {
+                "thumbnail_key": thumbnail_s3_key,
                 "thumbnail_url": thumbnail_url,
                 "tags": tagger_result["tags"],
                 "upload_status": MediaRecordStatus.ready,
@@ -143,8 +141,6 @@ def process_image(bucket: str, s3_key: str):
 
         print(f"Finished processing media: {s3_key}")
     except Exception as e:
-        media.upload_status = MediaRecordStatus.failed
-        media.error_message = f"Error: {e}"
         update_media_record_in_db(
             table, file_name, checksum, {
                 "upload_status": MediaRecordStatus.failed,
