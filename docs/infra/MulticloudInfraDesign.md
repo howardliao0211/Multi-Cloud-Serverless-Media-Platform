@@ -8,7 +8,7 @@ The recommended design maximises assignment marks by giving each cloud a meaning
 
 ```text
 AWS = secure ingestion, storage, source-of-truth metadata, notifications, frontend delivery
-GCP = replicated query database, Cloud Run query API, optional serverless GPU ML inference
+GCP = replicated query database, Cloud Run query API, optional serverless GPU ML inference only
 ```
 
 ## Best Target Architecture
@@ -43,7 +43,7 @@ AWS Core
     +-- Lambda: notification subscribe
     +-- S3 media bucket
     +-- S3 event trigger
-    +-- Lambda container: upload_to_db or lightweight processor orchestrator
+    +-- Lambda container: upload_to_db or lightweight preprocessing/orchestration Lambda
     +-- DynamoDB source-of-truth metadata table
     +-- SNS notifications
     +-- CloudWatch logs
@@ -52,7 +52,7 @@ GCP Core
     |
     +-- Cloud Run query service
     +-- Firestore replicated metadata database
-    +-- Cloud Run optional GPU ML processor
+    +-- Optional Cloud Run GPU ML inference service
     +-- Artifact Registry for Cloud Run images
     +-- Service accounts and IAM
 ```
@@ -115,8 +115,9 @@ GCP query service source: gcp/query_service
 | Query metadata replica | GCP | Firestore |
 | Query API | GCP | Cloud Run |
 | Query service image registry | GCP | Artifact Registry |
-| ML processing stable path | AWS | Lambda container |
-| ML processing advanced path | GCP | Cloud Run GPU |
+| Media preprocessing stable path | AWS | Lambda container / Lambda orchestrator |
+| ML inference stable path | AWS | Lambda container CPU fallback |
+| ML inference advanced path | GCP | Cloud Run GPU inference service |
 | Infrastructure as Code | Both | Terraform |
 
 ## Why This Split Is Strong
@@ -124,11 +125,12 @@ GCP query service source: gcp/query_service
 This is stronger than using GCP only as a proxy. GCP owns an important part of the application: metadata replication and query/search APIs. If GPU processing is implemented, GCP also owns the most compute-intensive workload.
 
 ```text
-AWS handles the media lifecycle:
-upload -> store -> trigger -> process -> source-of-truth metadata -> notifications
+AWS handles the media lifecycle and storage outputs:
+upload -> store -> trigger -> thumbnail/frame extraction -> source-of-truth metadata -> notifications
 
-GCP handles query serving:
+GCP handles query serving and optional ML inference:
 replicated metadata -> Cloud Run search APIs -> frontend results
+short-lived S3 image/frame URLs -> Cloud Run GPU inference -> tag counts returned to AWS
 ```
 
 ## Authentication Across Clouds
@@ -189,14 +191,19 @@ Cons:
 - CPU-only.
 - GCP role is mostly query/replica.
 
-### Option B: Stronger GCP Cloud Run GPU Processing
+### Option B: Stronger GCP Cloud Run GPU Inference Only
+
+The preferred advanced split is **not** to move all media processing to GCP. AWS should keep ownership of storage outputs and lightweight preprocessing, while GCP performs only the compute-heavy ML inference.
 
 ```text
 S3 event
-  -> lightweight AWS Lambda orchestrator
-  -> presigned S3 GET URL
+  -> AWS Lambda preprocessing/orchestrator
+  -> generate image thumbnail in AWS
+  -> extract 1 frame/sec for videos in AWS
+  -> generate short-lived presigned S3 GET URLs for image/frame inputs
   -> GCP Cloud Run GPU /process-media
-  -> GCP runs ML inference and thumbnail/frame processing
+  -> GCP runs ML inference only
+  -> GCP returns tags/counts/detections to AWS
   -> AWS writes DynamoDB source-of-truth
   -> Firestore replica updated
 ```
@@ -204,16 +211,19 @@ S3 event
 Pros:
 
 - Stronger multi-cloud architecture.
-- GCP handles compute-intensive ML inference.
-- Still serverless.
-- Better story for video/ML scalability.
+- GCP handles the most compute-intensive workload: ML inference.
+- AWS keeps all media files, thumbnails, extracted frames, and source-of-truth metadata together.
+- Delete workflows remain simpler because user-facing media objects stay in S3.
+- Still fully serverless.
+- Better story for video/ML scalability without moving all storage outputs across clouds.
 
 Cons:
 
-- More complex.
+- More complex than the current AWS-only processing path.
 - Requires GCP GPU region/quota.
-- Requires a separate GPU-compatible container.
-- Higher cost if misconfigured.
+- Requires a separate GPU-compatible inference container.
+- Requires presigned S3 GET URLs for cross-cloud input access.
+- Higher cost if min instances or GPU settings are misconfigured.
 
 Recommended team strategy:
 
@@ -221,6 +231,33 @@ Recommended team strategy:
 Keep Option A working as fallback.
 Implement Option B only after query service and replication are stable.
 ```
+
+## Refined AWS/GCP ML Processing Split
+
+The best advanced architecture is:
+
+```text
+AWS = storage, thumbnails, video frame extraction, source-of-truth writes, notifications
+GCP = ML inference over images and extracted frames
+```
+
+GCP should not be responsible for storing thumbnails or extracting video frames unless there is extra time and a clear need. Thumbnail generation and 1-frame/sec video extraction are mostly CPU/I/O tasks and are easier to keep near S3. GCP Cloud Run GPU is most valuable for the actual species detection model.
+
+For image uploads, AWS sends GCP a short-lived S3 GET URL for the original image. For video uploads, AWS first extracts frames at 1 frame/sec and sends GCP short-lived S3 GET URLs for those extracted frame images. GCP returns tag counts and detections; AWS then writes DynamoDB and updates the Firestore replica.
+
+This keeps media ownership simple:
+
+```text
+Original images/videos: S3
+Thumbnails: S3
+Extracted frames: temporary AWS processing output or S3 internal prefix
+Authoritative metadata: DynamoDB
+Query replica: Firestore
+ML inference: GCP Cloud Run GPU
+```
+
+This split is easier to delete, easier to debug, and still gives GCP a meaningful serverless GPU role.
+
 
 ## Data Model
 
@@ -485,7 +522,7 @@ Optional third image if GPU ML is implemented separately:
 
 | Image | Runtime | Purpose |
 |---|---|---|
-| `ml_processor` | GCP Cloud Run GPU | GPU ML/video processing |
+| `ml_inference` | GCP Cloud Run GPU | GPU species detection over image/frame inputs |
 
 The frontend does not need Docker. It should be built to static files and served by S3/CloudFront.
 
@@ -502,7 +539,7 @@ The frontend does not need Docker. It should be built to static files and served
 9. Replicate tag edits/deletes to Firestore.
 10. Add SNS notifications.
 11. Add frontend tag/delete/notification screens.
-12. Prototype GCP Cloud Run GPU ML processor if time permits.
+12. Prototype GCP Cloud Run GPU ML inference service if time permits.
 13. Add S3 + CloudFront + Route 53 frontend hosting.
 14. Produce official architecture diagram and final report material.
 
@@ -532,7 +569,7 @@ Aussie EcoLens uses AWS Cognito as the single identity provider. Users upload me
 - AWS Cognito is mandatory and is used as the single identity provider.
 - AWS handles secure upload and source-of-truth data.
 - GCP handles serverless query APIs and replicated metadata.
-- Optional GCP Cloud Run GPU provides a high-quality path for serverless ML inference.
+- Optional GCP Cloud Run GPU provides a high-quality path for serverless ML inference, while AWS keeps thumbnails/frame extraction and storage outputs.
 - DynamoDB and Firestore use eventual consistency, not unsafe dual-write assumptions.
 - Terraform supports repeatable deployment and region portability.
 - The US stack is the current demo environment; the Australia config demonstrates production-region portability.

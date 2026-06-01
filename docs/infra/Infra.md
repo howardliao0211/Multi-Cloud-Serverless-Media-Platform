@@ -10,7 +10,7 @@ The current implementation is moving toward this split:
 
 ```text
 AWS = authentication, upload gateway, media storage, source-of-truth metadata, notifications, frontend hosting
-GCP = Cloud Run services, Firestore metadata replica, query APIs, optional GPU ML processing
+GCP = Cloud Run services, Firestore metadata replica, query APIs, optional GPU ML inference only
 Terraform = shared Infrastructure as Code for both clouds
 ```
 
@@ -472,7 +472,7 @@ GCP:
   Cloud Run query API
   Firestore metadata replica
   Artifact Registry for service images
-  optional Cloud Run GPU ML processor
+  optional Cloud Run GPU ML inference service
 ```
 
 Preferred long-term split:
@@ -504,23 +504,26 @@ Cons:
 
 ### Stronger Multi-Cloud Path
 
-Move heavy ML processing to a GCP Cloud Run GPU service and keep AWS Lambda as a lightweight orchestrator.
+Move only the compute-heavy ML inference to a GCP Cloud Run GPU service and keep AWS responsible for S3 storage outputs and lightweight preprocessing.
 
 Suggested flow:
 
 ```text
 S3 ObjectCreated event
-  -> AWS lightweight Lambda
-  -> generate presigned S3 GET URL
-  -> call GCP Cloud Run GPU /process-media
-  -> GCP downloads media temporarily
-  -> GCP runs ML inference / thumbnail / video frame extraction
-  -> GCP returns tags/counts/output metadata
+  -> AWS Lambda preprocessing/orchestrator
+  -> AWS generates image thumbnail or extracts video frames at 1 frame/sec
+  -> AWS generates short-lived presigned S3 GET URLs for image/frame inputs
+  -> AWS calls GCP Cloud Run GPU /process-media
+  -> GCP downloads image/frame inputs temporarily
+  -> GCP runs ML inference only
+  -> GCP returns tags/counts/detections
   -> AWS writes DynamoDB source-of-truth record
   -> AWS replicates metadata to GCP Firestore
 ```
 
 This is the best architecture if GPU quota and implementation time allow. It is still serverless because Cloud Run is managed and can scale to zero.
+
+AWS should keep thumbnail generation, video frame extraction, and media-object ownership because those outputs are tied to S3 URLs, deletion, deduplication, and DynamoDB source-of-truth records. GCP GPU should focus on ML species detection, which is the workload most likely to benefit from GPU acceleration.
 
 Recommended project approach:
 
@@ -528,9 +531,37 @@ Recommended project approach:
 1. Keep AWS CPU Lambda working as fallback.
 2. Build GCP query service first.
 3. Add Artifact Registry and deploy real Cloud Run query service.
-4. If time allows, prototype GCP Cloud Run GPU ML processor.
+4. If time allows, prototype GCP Cloud Run GPU ML inference service.
 5. Switch ML processing only after the GCP GPU path is stable.
 ```
+
+## Refined ML Split: AWS Preprocessing, GCP Inference
+
+Recommended advanced split:
+
+```text
+AWS responsibilities:
+  - keep original uploads in S3
+  - generate thumbnails for images
+  - extract 1 frame/sec for videos
+  - keep thumbnails/frames in S3 or temporary AWS processing storage
+  - write authoritative metadata to DynamoDB
+  - trigger SNS notifications
+
+GCP responsibilities:
+  - receive presigned S3 GET URLs for image/frame inputs
+  - run ML species detection on Cloud Run GPU
+  - return tags/counts/detections to AWS
+  - maintain Firestore replica for query APIs
+```
+
+Advantages of this split:
+
+- All user-facing media URLs remain in S3.
+- Delete APIs are simpler because originals, thumbnails, and video outputs are owned by AWS.
+- GCP still has a meaningful role by running the compute-heavy inference workload.
+- The design remains fully serverless.
+- It avoids sending full videos to GCP when AWS can extract frame images first.
 
 ## Database Synchronisation
 
