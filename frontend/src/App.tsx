@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Route, useNavigate } from "react-router-dom";
 import { getCurrentUser } from "aws-amplify/auth";
 import LoginScreen from "./Screens/LoginScreen.tsx"
 import RegisterScreen from "./Screens/RegisterScreen.tsx";
@@ -37,42 +37,25 @@ function ProtectedRoute({ children }: { children: React.ReactNode}) {
   return children;
 }
 
+function WelcomeScreen(){
+  const navigate = useNavigate();
+  const [showRegisterSuccess, setShowRegisterSuccess] = useState<boolean>(
+    sessionStorage.getItem("showRegisterSuccess") === "true"
+  );
 
-function App(){
-  const [view, setView] = useState<string>("Welcome");
-  const [showRegisterSuccess, setShowRegisterSuccess] = useState<boolean>(false);
-
-
-  function handleSuccess(){
-    console.log("login successfull");
-    setView("dashboard");
-  } 
-
-  if (view === "login"){
-    return <LoginScreen onLoginSuccess={handleSuccess} 
-    onReturn={() => setView("Welcome")}/>;
-  }
-  if (view === "register") {
-    return (
-      <RegisterScreen
-        onRegisterSuccess={() => {
-          setShowRegisterSuccess(true);
-          setView("Welcome");
-        }}
-        onReturn={() => setView("Welcome")}
-      />
-    );
-  }
-  if (view === "dashboard"){
-    return <DashboardScreen onSignOut={() => setView("Welcome")}/>;
-  }
+  useEffect(() => {
+    if (showRegisterSuccess) {
+      sessionStorage.removeItem("registerSuccess");
+    } 
+  }, [showRegisterSuccess]);
 
   return(
     <main className="app-container">
-      <h1>Welcome to Aussie EcoLens</h1><br/>
+      <h1>Welcome to Aussie EcoLens</h1>
+      <br/>
       <img src={koala} alt="Aussie EcoLens logo" className="koala" />
-      <p>A wildlife observation platform</p><br/>
-
+      <p>A wildlife observation platform</p>
+      <br/>
       {showRegisterSuccess && (
         <div className="status-message success">
           <p>Registration successful.</p>
@@ -80,12 +63,30 @@ function App(){
           <p>Then log in using that temporary password.</p>
         </div>
       )}
+    
 
-      <div className="button-row">
-        <button onClick={ ()=> setView("login")}>Login</button>
-        <button onClick={ ()=> setView("register")}>Register</button>
-      </div>
-    </main>
+    <div className="button-row">
+      <button onClick={ ()=> navigate("/login")}>Login</button>
+      <button onClick={ ()=> navigate("/register")}>Register</button>
+    </div>
+  </main>
+  );
+}
+
+function App(){
+  return (
+    <Route>
+      <Route path="/" element={<WelcomeScreen />} />
+      <Route path="/login" element={<LoginScreen onLoginSuccess={() => window.location.href = "/dashboard"} 
+        onReturn={() => window.location.href = "/"} />} />
+      <Route path="/register" element={<RegisterScreen onRegisterSuccess={() => sessionStorage.setItem("registerSuccess", "true");
+         window.location.href = "/"; }} onReturn={() => window.location.href = "/"} }/>} />
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardScreen /> onSignOut={() => {
+        window.location.href = "/";
+      }} /> </ProtectedRoute>} />
+      
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Route>
   );
 }
 export default App
