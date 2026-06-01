@@ -5,7 +5,6 @@ aws_profile = "AussieEcoLense"
 
 gcp_project_id = "hazel-sphinx-490908-u6"
 gcp_region = "us-east4"
-gcp_firestore_location = "nam5"
 
 existing_api_id = "1jpi28kbj7"
 existing_media_bucket_name = "aussie-eco-len-bucket-12345"

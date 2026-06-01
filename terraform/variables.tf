@@ -34,11 +34,6 @@ variable "gcp_region" {
   default     = "us-east4"
 }
 
-variable "gcp_firestore_location" {
-  description = "Firestore database location."
-  type        = string
-  default     = "nam5"
-}
 
 variable "existing_api_id" {
   description = "Currently deployed API Gateway HTTP API ID."
@@ -80,16 +75,4 @@ variable "domain_name" {
   description = "Root domain name for Route 53. Leave empty until DNS is ready."
   type        = string
   default     = ""
-}
-
-variable "gcp_cloud_run_image" {
-  description = "Container image for the GCP Cloud Run query service."
-  type        = string
-  default     = "us-docker.pkg.dev/cloudrun/container/hello"
-}
-
-variable "gcp_cloud_run_allow_public" {
-  description = "Whether to allow unauthenticated access to the Cloud Run service. For the assignment frontend, this is true, and the service validates Cognito JWTs at application level."
-  type        = bool
-  default     = true
 }

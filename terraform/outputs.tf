@@ -45,27 +45,3 @@ VITE_COGNITO_USER_POOL_CLIENT_ID="${var.existing_cognito_user_pool_client_id}"
 VITE_API_URL="${data.aws_apigatewayv2_api.main.api_endpoint}"
 EOT
 }
-
-output "gcp_firestore_database_name" {
-  value = google_firestore_database.metadata_replica.name
-}
-
-output "gcp_firestore_location" {
-  value = google_firestore_database.metadata_replica.location_id
-}
-
-output "gcp_firestore_type" {
-  value = google_firestore_database.metadata_replica.type
-}
-
-output "gcp_query_service_name" {
-  value = google_cloud_run_v2_service.query.name
-}
-
-output "gcp_query_service_location" {
-  value = google_cloud_run_v2_service.query.location
-}
-
-output "gcp_query_service_url" {
-  value = google_cloud_run_v2_service.query.uri
-}

@@ -10,8 +10,6 @@
 # - aws_lambda_functions.tf
 # - aws_frontend_hosting.tf
 # - aws_dns.tf
-# - gcp_firestore.tf
-# - gcp_cloud_run.tf
 # - gcp_iam.tf
 #
 # The first phase intentionally uses data sources only, so Terraform can read
