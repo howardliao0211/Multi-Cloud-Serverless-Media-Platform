@@ -79,3 +79,31 @@ class QueryTagsResult(BaseModel):
 class QueryTagsResponse(BaseModel):
     count: int
     results: List[QueryTagsResult] = Field(default_factory=list)
+
+
+class QuerySpeciesRequest(BaseModel):
+    species: str
+
+    @field_validator("species")
+    @classmethod
+    def validate_species(cls, species: str) -> str:
+        normalized_species = species.strip().lower()
+
+        if not normalized_species:
+            raise ValueError("species must not be empty")
+
+        return normalized_species
+
+
+class QuerySpeciesResult(BaseModel):
+    checksum: str
+    file_name: str
+    media_type: Optional[str] = None
+    url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    tags: Dict[str, int] = Field(default_factory=dict)
+
+
+class QuerySpeciesResponse(BaseModel):
+    count: int
+    results: List[QuerySpeciesResult] = Field(default_factory=list)
