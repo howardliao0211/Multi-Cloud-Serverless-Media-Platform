@@ -45,3 +45,19 @@ VITE_COGNITO_USER_POOL_CLIENT_ID="${var.existing_cognito_user_pool_client_id}"
 VITE_API_URL="${data.aws_apigatewayv2_api.main.api_endpoint}"
 EOT
 }
+
+output "gcp_artifact_registry_repository" {
+  value = google_artifact_registry_repository.containers.name
+}
+
+output "gcp_ml_processor_service_name" {
+  value = google_cloud_run_v2_service.ml_processor.name
+}
+
+output "gcp_ml_processor_service_location" {
+  value = google_cloud_run_v2_service.ml_processor.location
+}
+
+output "gcp_ml_processor_service_url" {
+  value = google_cloud_run_v2_service.ml_processor.uri
+}

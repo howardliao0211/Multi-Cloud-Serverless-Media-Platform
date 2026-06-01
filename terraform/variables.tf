@@ -76,3 +76,27 @@ variable "domain_name" {
   type        = string
   default     = ""
 }
+
+variable "gcp_artifact_registry_repository_id" {
+  description = "Artifact Registry repository ID for GCP container images."
+  type        = string
+  default     = "aussie-ecolens"
+}
+
+variable "gcp_ml_processor_image" {
+  description = "Container image URI for the GCP Cloud Run ML processor."
+  type        = string
+  default     = ""
+}
+
+variable "gcp_ml_processor_allow_public" {
+  description = "Whether to allow unauthenticated invocation of the ML processor. HMAC still protects the endpoint."
+  type        = bool
+  default     = true
+}
+
+variable "internal_hmac_secret" {
+  description = "Shared HMAC secret used by AWS Lambda to call GCP Cloud Run securely."
+  type        = string
+  sensitive   = true
+}
