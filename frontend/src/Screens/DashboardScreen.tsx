@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import koala from "../assets/koala.png";
 import animals from "../assets/animals.jpg";
 
-function DashboardScreen({ onSignOut }: { onSignOut: () => void }){
+function DashboardScreen(){
     return(
         
         <div className="dashboard">
@@ -13,13 +13,13 @@ function DashboardScreen({ onSignOut }: { onSignOut: () => void }){
                 </NavLink>
                 <nav className="dashboard-nav">
                     <NavLink to="/dashboard/upload">Upload</NavLink>
-                    <NavLink to="/dashboard/query">Search</NavLink>
+                    <NavLink to="/dashboard/search">Search</NavLink>
                     <NavLink to="/dashboard/tags">Tags</NavLink>
-                    <NavLink to="/dashboard/notification">Notifications</NavLink>
+                    <NavLink to="/dashboard/notifications">Notifications</NavLink>
                     <NavLink to="/dashboard/account">Account</NavLink>
                 </nav>
             </header>
-            <Outlet context={{ onSignOut }} />
+            <Outlet />
             <footer className="dashboard-footer">
                 <img src={animals} alt="Aussie Ecolens footer illustration" />
             </footer>

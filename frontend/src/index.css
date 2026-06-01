@@ -159,12 +159,48 @@ button:disabled {
   max-width: none;
 }
 
+.dashboard-nav {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.dashboard-nav a {
+  color: #050505;
+  background: var(--quinary);
+  text-decoration: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.dashboard-nav a:hover,
+.dashboard-nav a.active {
+  background: var(--quaternary);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.brand,
+.brand:visited,
+.brand:hover,
+.brand:active {
+  color: var(--text-main);
+  text-decoration: none;
+}
+
 .brand {
   display: flex;
   align-items: center;
   gap:20px;
   cursor: pointer;
 }
+
+.brand h1 {
+  text-decoration: none;
+}
+
 .brand:hover{
   opacity: 0.85;
 }
@@ -384,19 +420,6 @@ button:disabled {
 
 .verified {
   color: #22c55e !important;
-}
-
-.success-message {
-  color: var(--quinary);
-  font-weight: 700;
-  text-align: center;
-  max-width: 640px;
-  margin: 24px 0;
-}
-
-.success-message p {
-  margin: 8px 0;
-  color: var(--quinary);
 }
 
 .form-label {

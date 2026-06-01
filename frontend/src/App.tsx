@@ -21,7 +21,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       try {
         await getCurrentUser();
         setIsAuthenticated(true);
-      } catch (error) {
+      } catch {
         setIsAuthenticated(false);
       } finally {
         setCheckingAuth(false);

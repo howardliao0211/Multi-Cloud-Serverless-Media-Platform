@@ -1,6 +1,6 @@
 import { createStatus, getErrorMessage, type StatusMessage } from "../utils";
 import { useState } from "react";
-import { signIn } from "aws-amplify/auth";
+import { signIn, signOut } from "aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 import NewPasswordScreen from "./NewPasswordScreen";
 
@@ -15,6 +15,7 @@ function LoginScreen(){
         event.preventDefault();
         setStatus(createStatus("idle", ""));
         try {
+            await signOut(); // Ensure any existing session is cleared before signing in
             const result = await signIn({
                 username: email,
                 password,
