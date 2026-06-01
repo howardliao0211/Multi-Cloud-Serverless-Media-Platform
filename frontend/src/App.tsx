@@ -80,33 +80,12 @@ function WelcomeScreen() {
   );
 }
 
-function LoginRoute() {
-  const navigate = useNavigate();
-  return (<LoginScreen
-    onLoginSuccess={() => navigate("/dashboard")}
-    onReturn={() => navigate("/")}
-  />
-  );
-}
-
-function RegisterRoute() {
-  const navigate = useNavigate();
-  return (<RegisterScreen
-    onRegisterSuccess={() => {
-      sessionStorage.setItem("showRegisterSuccess", "true");
-      navigate("/");
-    }}
-    onReturn={() => navigate("/")}
-  />
-  );
-}
-
 function App() {
   return (
     <Routes>
       <Route path="/" element={<WelcomeScreen />} />
-      <Route path="/login" element={<LoginRoute />} />
-      <Route path="/register" element={<RegisterRoute />} />
+      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/register" element={<RegisterScreen />} />
 
       <Route
         path="/dashboard"

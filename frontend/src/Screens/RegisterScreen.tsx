@@ -1,9 +1,9 @@
 import { createStatus, getErrorMessage, type StatusMessage } from "../utils";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-function RegisterScreen({ onRegisterSuccess, onReturn, }: 
-    {onRegisterSuccess: () => void; onReturn: () => void;}){
-    
+function RegisterScreen(){
+    const navigate = useNavigate();
     const [email, setEmail] = useState<string>("");
     const [firstName, setFirstName] = useState<string>("");
     const [lastName, setLastName] = useState<string>("");
@@ -29,7 +29,7 @@ function RegisterScreen({ onRegisterSuccess, onReturn, }:
                 throw new Error(data.message || "Registration failed.");
             }
 
-            onRegisterSuccess();
+            navigate("/login");
         } catch (error) {
             setStatus(createStatus("error", getErrorMessage(error)));
         }
@@ -61,7 +61,9 @@ function RegisterScreen({ onRegisterSuccess, onReturn, }:
                 )}
 
                 <div className="button-row">
-                    <button type="button" onClick={ onReturn }>Return</button>
+                    <button type="button" onClick={() => navigate("/")}>
+                        Return
+                    </button>
                     <button type="submit">Create Account</button>
                 </div>
             </form>

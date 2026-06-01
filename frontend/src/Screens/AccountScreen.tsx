@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchUserAttributes, signOut } from "aws-amplify/auth";
+import { useNavigate } from "react-router-dom";
 
-function AccountScreen({ onSignOut }: { onSignOut: () => void }){
+function AccountScreen(){
+    const navigate = useNavigate();
     const [email, setEmail] = useState<string>(""); 
     const [firstName, setFirstName] = useState<string>(""); 
     const [lastName, setLastName] = useState<string>("");
@@ -19,7 +21,7 @@ function AccountScreen({ onSignOut }: { onSignOut: () => void }){
 
     async function handleSignOut() {
         await signOut();
-        onSignOut();
+        navigate("/");
     }
 
     return(
