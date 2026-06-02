@@ -33,17 +33,6 @@ def parse_request(event: dict, ) -> GetPrivateMediaRequest:
     return GetPrivateMediaRequest(**json.loads(body))
 
 
-def generate_preview_url(s3_key: str) -> str:
-    return s3.generate_presigned_url(
-        ClientMethod="put_object",
-        Params={
-            "Bucket": bucket_name,
-            "Key": s3_key,
-        },
-        ExpiresIn=URL_EXPIRES_SECONDS,
-    )
-
-
 def get_private_media(
     owner_id: str,
 ) -> List[MediaRecord]:
