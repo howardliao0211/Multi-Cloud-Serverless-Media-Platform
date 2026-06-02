@@ -1,4 +1,8 @@
+import hashlib
+import hmac
+import json
 import os
+import time
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote_plus
 from typing import Dict, Tuple
@@ -7,6 +11,7 @@ from http import HTTPStatus, HTTPMethod
 import boto3
 import cv2
 import numpy as np
+import requests
 
 from botocore.exceptions import ClientError
 
@@ -32,6 +37,13 @@ DETECTOR_MODEL_KEY = "models/mdv5a.pt"
 LOCAL_CLASSIFIER_MODEL_PATH = "/tmp/model.pt"
 LOCAL_DETECTOR_MODEL_PATH = "/tmp/mdv5a.pt"
 
+GCP_ML_ENABLED = os.getenv("GCP_ML_ENABLED", "false").lower() == "true"
+GCP_ML_PROCESSOR_URL = os.getenv("GCP_ML_PROCESSOR_URL", "").rstrip("/")
+GCP_ML_HMAC_SECRET = os.getenv("GCP_ML_HMAC_SECRET", "")
+GCP_ML_PRESIGNED_URL_EXPIRY_SECONDS = int(
+    os.getenv("GCP_ML_PRESIGNED_URL_EXPIRY_SECONDS", "600")
+)
+
 download_s3_file(
     s3, bucket_name, CLASSIFIER_MODEL_KEY, LOCAL_CLASSIFIER_MODEL_PATH
 )
@@ -45,6 +57,131 @@ tagger = ImageTagger(
     classifier_model_path=LOCAL_CLASSIFIER_MODEL_PATH,
     detector_model_path=LOCAL_DETECTOR_MODEL_PATH,
 )
+
+
+def sign_gcp_ml_request(body: bytes, timestamp: str) -> str:
+    message = timestamp.encode("utf-8") + b"." + body
+
+    return hmac.new(
+        GCP_ML_HMAC_SECRET.encode("utf-8"),
+        message,
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def call_gcp_ml_processor(
+    *,
+    bucket: str,
+    s3_key: str,
+    checksum: str,
+    file_type: str,
+    request_id: str,
+) -> dict:
+    if not GCP_ML_PROCESSOR_URL:
+        raise ValueError("GCP_ML_PROCESSOR_URL is not configured")
+
+    if not GCP_ML_HMAC_SECRET:
+        raise ValueError("GCP_ML_HMAC_SECRET is not configured")
+
+    media_type = file_type.split("/")[0]
+
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": bucket,
+            "Key": s3_key,
+        },
+        ExpiresIn=GCP_ML_PRESIGNED_URL_EXPIRY_SECONDS,
+    )
+
+    payload = {
+        "request_id": request_id,
+        "hash": checksum,
+        "media_type": media_type,
+        "inputs": [
+            {
+                "source": "original",
+                "url": presigned_url,
+                "timestamp_sec": None,
+            }
+        ],
+    }
+
+    body = json.dumps(
+        payload,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+    timestamp = str(int(time.time()))
+    signature = sign_gcp_ml_request(body, timestamp)
+
+    response = requests.post(
+        f"{GCP_ML_PROCESSOR_URL}/process-media",
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Timestamp": timestamp,
+            "X-Signature": signature,
+        },
+        timeout=60,
+    )
+
+    response.raise_for_status()
+
+    result = response.json()
+
+    if result.get("hash") != checksum:
+        raise ValueError(
+            f"GCP ML response hash mismatch: expected {checksum}, got {result.get('hash')}"
+        )
+
+    if result.get("status") != "success":
+        raise ValueError(f"GCP ML returned non-success status: {result}")
+
+    return result
+
+
+def tag_image_with_fallback(
+    *,
+    local_path: Path,
+    bucket: str,
+    s3_key: str,
+    checksum: str,
+    file_type: str,
+    request_id: str,
+) -> dict:
+    if GCP_ML_ENABLED:
+        try:
+            print("Calling GCP ML processor")
+            gcp_result = call_gcp_ml_processor(
+                bucket=bucket,
+                s3_key=s3_key,
+                checksum=checksum,
+                file_type=file_type,
+                request_id=request_id,
+            )
+
+            return {
+                "tags": gcp_result.get("tag_counts", {}),
+                "ml_provider": "gcp_cloud_run",
+                "ml_detections": gcp_result.get("detections", []),
+                "ml_model_name": gcp_result.get("model_name"),
+                "ml_model_version": gcp_result.get("model_version"),
+            }
+
+        except Exception as exc:
+            print(f"GCP ML failed, falling back to local AWS model: {exc}")
+
+    local_result = tagger.tag_image(local_path)
+
+    return {
+        "tags": local_result["tags"],
+        "ml_provider": "aws_lambda_local",
+        "ml_detections": local_result.get("detections", []),
+        "ml_model_name": "local_image_tagger",
+        "ml_model_version": "current",
+    }
 
 
 def create_thumbnail(image_path: Path, fx: float = 0.5, fy: float = 0.5):
@@ -74,7 +211,7 @@ def upload_thumbnail_to_s3(
     )
 
 
-def process_image(bucket: str, s3_key: str):
+def process_image(bucket: str, s3_key: str, request_id: str):
 
     head, full_url = get_s3_object_head_and_url(s3_key)
     file_name = head["Metadata"]["file_name"]
@@ -128,13 +265,24 @@ def process_image(bucket: str, s3_key: str):
         upload_thumbnail_to_s3(thumbnail, thumbnail_s3_key, bucket)
         _, thumbnail_url = get_s3_object_head_and_url(thumbnail_s3_key)
 
-        tagger_result = tagger.tag_image(Path(local_path))
+        tagger_result = tag_image_with_fallback(
+            local_path=Path(local_path),
+            bucket=bucket,
+            s3_key=s3_key,
+            checksum=checksum,
+            file_type=file_type,
+            request_id=request_id,
+        )
 
         update_media_record_in_db(
             table, file_name, checksum, {
                 "thumbnail_key": thumbnail_s3_key,
                 "thumbnail_url": thumbnail_url,
                 "tags": tagger_result["tags"],
+                "ml_provider": tagger_result["ml_provider"],
+                "ml_detections": tagger_result["ml_detections"],
+                "ml_model_name": tagger_result["ml_model_name"],
+                "ml_model_version": tagger_result["ml_model_version"],
                 "upload_status": MediaRecordStatus.ready,
             }
         )
@@ -168,4 +316,5 @@ def lambda_handler(event, context):
         process_image(
             bucket=bucket,
             s3_key=s3_key,
+            request_id=context.aws_request_id,
         )
