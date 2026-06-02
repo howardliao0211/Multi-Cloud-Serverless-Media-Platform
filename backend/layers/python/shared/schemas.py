@@ -51,7 +51,6 @@ class MediaRecordResponse(BaseModel):
 
 
 class UploadUrlRequest(BaseModel):
-    owner_id: str
     filename: str
     checksum: str
     media_type: MediaType
