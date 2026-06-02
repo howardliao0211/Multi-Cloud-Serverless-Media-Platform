@@ -14,3 +14,5 @@ existing_cognito_user_pool_client_id = "7umv70h1q682h6pogi6hhc1lpc"
 
 frontend_local_origin = "http://localhost:5173"
 domain_name = ""
+
+gcp_ml_processor_allow_public = false

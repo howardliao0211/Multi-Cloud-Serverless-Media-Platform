@@ -14,6 +14,15 @@ import cv2
 import numpy as np
 import requests
 
+try:
+    import google.auth
+    from google.auth import impersonated_credentials
+    from google.auth.transport.requests import Request as GoogleAuthRequest
+except ImportError:
+    google = None
+    impersonated_credentials = None
+    GoogleAuthRequest = None
+
 from botocore.exceptions import ClientError
 
 from shared.schemas import MediaRecord, MediaRecordStatus
@@ -42,7 +51,15 @@ LOCAL_DETECTOR_MODEL_PATH = "/tmp/mdv5a.pt"
 GCP_ML_ENABLED = os.getenv("GCP_ML_ENABLED", "false").lower() == "true"
 GCP_ML_PROCESSOR_URL = os.getenv("GCP_ML_PROCESSOR_URL", "").rstrip("/")
 GCP_ML_HMAC_SECRET = os.getenv("GCP_ML_HMAC_SECRET", "")
+GCP_WIF_CREDENTIALS_FILE = os.getenv(
+    "GCP_WIF_CREDENTIALS_FILE",
+    "/var/task/auth/gcp_wif_credentials.json",
+)
+GCP_INVOKER_SERVICE_ACCOUNT = os.getenv("GCP_INVOKER_SERVICE_ACCOUNT", "")
+GCP_CLOUD_RUN_AUDIENCE = os.getenv("GCP_CLOUD_RUN_AUDIENCE", GCP_ML_PROCESSOR_URL)
 GCP_ML_HMAC_SECRET_ARN = os.getenv("GCP_ML_HMAC_SECRET_ARN", "")
+_cached_gcp_ml_hmac_secret = None
+
 GCP_ML_PRESIGNED_URL_EXPIRY_SECONDS = int(
     os.getenv("GCP_ML_PRESIGNED_URL_EXPIRY_SECONDS", "600")
 )
@@ -62,18 +79,79 @@ tagger = ImageTagger(
 )
 
 
-def get_gcp_ml_hmac_secret() -> str:
-    """
-    Prefer AWS Secrets Manager for the shared HMAC secret.
-    Fall back to GCP_ML_HMAC_SECRET only for local/dev usage.
-    """
-    if GCP_ML_HMAC_SECRET_ARN:
-        response = secretsmanager.get_secret_value(
-            SecretId=GCP_ML_HMAC_SECRET_ARN,
-        )
-        return response["SecretString"]
+_cached_gcp_id_token = None
+_cached_gcp_id_token_expiry = 0
 
-    return GCP_ML_HMAC_SECRET
+
+
+def get_gcp_ml_hmac_secret() -> str:
+    global _cached_gcp_ml_hmac_secret
+
+    if _cached_gcp_ml_hmac_secret:
+        return _cached_gcp_ml_hmac_secret
+
+    if GCP_ML_HMAC_SECRET:
+        _cached_gcp_ml_hmac_secret = GCP_ML_HMAC_SECRET
+        return _cached_gcp_ml_hmac_secret
+
+    if not GCP_ML_HMAC_SECRET_ARN:
+        raise ValueError("GCP_ML_HMAC_SECRET_ARN is not configured")
+
+    response = secretsmanager.get_secret_value(
+        SecretId=GCP_ML_HMAC_SECRET_ARN,
+    )
+
+    secret = response.get("SecretString")
+    if not secret:
+        raise ValueError("GCP ML HMAC secret is empty")
+
+    _cached_gcp_ml_hmac_secret = secret
+    return _cached_gcp_ml_hmac_secret
+
+
+def get_gcp_cloud_run_id_token() -> str | None:
+    global _cached_gcp_id_token
+    global _cached_gcp_id_token_expiry
+
+    if not GCP_INVOKER_SERVICE_ACCOUNT:
+        return None
+
+    if google is None or impersonated_credentials is None or GoogleAuthRequest is None:
+        print("google-auth is not installed; calling Cloud Run without Google ID token")
+        return None
+
+    if not Path(GCP_WIF_CREDENTIALS_FILE).exists():
+        print(f"GCP WIF credentials file not found: {GCP_WIF_CREDENTIALS_FILE}; calling Cloud Run without Google ID token")
+        return None
+
+    now = int(time.time())
+    if _cached_gcp_id_token and now < (_cached_gcp_id_token_expiry - 60):
+        return _cached_gcp_id_token
+
+    source_credentials, _ = google.auth.load_credentials_from_file(
+        GCP_WIF_CREDENTIALS_FILE,
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+
+    impersonated = impersonated_credentials.Credentials(
+        source_credentials=source_credentials,
+        target_principal=GCP_INVOKER_SERVICE_ACCOUNT,
+        target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        lifetime=3600,
+    )
+
+    id_token_credentials = impersonated_credentials.IDTokenCredentials(
+        target_credentials=impersonated,
+        target_audience=GCP_CLOUD_RUN_AUDIENCE,
+        include_email=True,
+    )
+
+    id_token_credentials.refresh(GoogleAuthRequest())
+
+    _cached_gcp_id_token = id_token_credentials.token
+    _cached_gcp_id_token_expiry = int(id_token_credentials.expiry.timestamp())
+
+    return _cached_gcp_id_token
 
 
 def convert_floats_for_dynamodb(value):
@@ -153,14 +231,20 @@ def call_gcp_ml_processor(
     timestamp = str(int(time.time()))
     signature = sign_gcp_ml_request(body, timestamp)
 
+    headers = {
+        "Content-Type": "application/json",
+        "X-Timestamp": timestamp,
+        "X-Signature": signature,
+    }
+
+    google_id_token = get_gcp_cloud_run_id_token()
+    if google_id_token:
+        headers["Authorization"] = f"Bearer {google_id_token}"
+
     response = requests.post(
         f"{GCP_ML_PROCESSOR_URL}/process-media",
         data=body,
-        headers={
-            "Content-Type": "application/json",
-            "X-Timestamp": timestamp,
-            "X-Signature": signature,
-        },
+        headers=headers,
         timeout=60,
     )
 

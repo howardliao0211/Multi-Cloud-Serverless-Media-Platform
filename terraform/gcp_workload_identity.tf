@@ -44,3 +44,15 @@ resource "google_cloud_run_v2_service_iam_member" "ml_processor_aws_invoker" {
   role     = "roles/run.invoker"
   member   = google_service_account.aws_lambda_invoker.member
 }
+
+resource "google_service_account_iam_member" "aws_lambda_invoker_token_creator" {
+  service_account_id = google_service_account.aws_lambda_invoker.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = google_service_account_iam_member.aws_lambda_can_impersonate_invoker.member
+}
+
+resource "google_service_account_iam_member" "aws_lambda_invoker_self_token_creator" {
+  service_account_id = google_service_account.aws_lambda_invoker.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = google_service_account.aws_lambda_invoker.member
+}

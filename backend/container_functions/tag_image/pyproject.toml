@@ -12,6 +12,7 @@ dependencies = [
     "torchvision==0.20.1",
     "boto3>=1.43.9",
     "requests>=2.32.3",
+    "google-auth>=2.40.0",
 ]
 
 [tool.uv.sources]
