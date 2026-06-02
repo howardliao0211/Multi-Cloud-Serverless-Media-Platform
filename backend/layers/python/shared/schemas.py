@@ -4,18 +4,29 @@ from typing import Dict, Optional, Literal
 from pydantic import BaseModel, Field
 
 
+class MediaType(str, Enum):
+    image = "image"
+    video = "video"
+
+
+class MediaVisibility(str, Enum):
+    private = "private"
+    public = "public"
+
+
 class MediaRecordStatus(str, Enum):
-    pending = "PENDING_UPLOAD"
-    uploaded = "UPLOADED"
-    processing = "PROCESSING"
-    ready = "READY"
-    failed = "FAILED"
+    pending = "pending"
+    uploaded = "uploaded"
+    processing = "processing"
+    ready = "ready"
+    failed = "failed"
 
 
 class MediaRecord(BaseModel):
-    checksum: str
     file_name: str
+    checksum: str
     full_key: str
+    visibility: MediaVisibility
 
     full_url: Optional[str] = None
     file_type: Optional[str] = None
@@ -30,8 +41,9 @@ class MediaRecord(BaseModel):
 
 class UploadUrlRequest(BaseModel):
     filename: str
-    media_type: Literal["image", "video"]
     checksum: str
+    media_type: MediaType
+    visibility: MediaVisibility
 
 
 class UploadUrlResponse(BaseModel):

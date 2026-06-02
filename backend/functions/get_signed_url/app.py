@@ -6,7 +6,11 @@ from http import HTTPMethod, HTTPStatus
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from shared.schemas import MediaRecord, UploadUrlRequest, UploadUrlResponse
+from shared.schemas import (
+    MediaRecord,
+    UploadUrlRequest,
+    UploadUrlResponse
+)
 from shared.aws_resources import (
     get_bucket_and_name,
     get_table,
@@ -80,7 +84,7 @@ def lambda_handler(event, context):
 
     file_ext = request.filename.split(".")[-1]
     s3_filename = f"{request.checksum}.{file_ext}"
-    s3_key = build_s3_key(s3_filename, request.media_type)
+    s3_key = build_s3_key(s3_filename, request.media_type.value)
     upload_url = generate_upload_url(
         s3_key, request.filename, request.checksum)
     expires_in = URL_EXPIRES_SECONDS
@@ -89,6 +93,7 @@ def lambda_handler(event, context):
         checksum=request.checksum,
         file_name=request.filename,
         full_key=s3_key,
+        visibility=request.visibility.value
     )
 
     create_new_media_record(
