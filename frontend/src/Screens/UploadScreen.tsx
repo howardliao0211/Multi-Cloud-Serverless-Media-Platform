@@ -216,6 +216,32 @@ function UploadScreen(){
                     </div>
                 )}
             </div>
+            
+            {fileStatuses.length > 0 && (
+                <div className="media-status-list">
+                    <div className="upload-progress-header">
+                    <span>Overall Progress</span>
+                    <span>{overallProgress}%</span>
+                    </div>
+
+                    <div className="upload-progress-track">
+                    <div
+                        className="upload-progress-bar"
+                        style={{ width: `${overallProgress}%` }}
+                    />
+                </div>
+
+                {fileStatuses.map((item) => (
+                    <div key={item.name} className="media-status-card">
+                        <div className="media-status-header">
+                        <span>{item.name}</span>
+                        <span>{item.status}</span>
+                        </div>
+                    </div>
+                    ))}
+                </div>
+            )}
+            
             {mediaRecords.length > 0 && (
                 <div className="media-status-list" >
                     {mediaRecords.map((record) => (
@@ -226,7 +252,7 @@ function UploadScreen(){
                             </div>
 
                             <div className="media-status-track">
-                                <div className="upload-progress-bar" style={{width: `${getProgress(record.upload_status)}%`}} />
+                                <div className={`upload-status-bar ${record.upload_status}`} style={{width: `${getProgress(record.upload_status)}%`}} />
                             </div>
                         </div>
                     ))}
