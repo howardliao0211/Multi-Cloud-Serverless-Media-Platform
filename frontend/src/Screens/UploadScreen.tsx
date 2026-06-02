@@ -32,6 +32,21 @@ function UploadScreen(){
         status: FileUploadStatus;
     };
 
+    type MediaRecordResponse = {
+        owner_id: string;
+        file_name: string;
+        visibility: "private" | "public";
+        full_file_path: string;
+        thumbnail_path: string;
+        tags: Record<string, string>;
+        upload_status: "pending" | "uploaded" | "processing" | "ready" | "failed";
+        error_message?: string;
+    };
+
+    type GetMediaResponse = {
+        media_records: MediaRecordResponse[];
+    };
+    
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
         if (event.target.files){
             const newFiles = Array.from(event.target.files);
@@ -53,10 +68,21 @@ function UploadScreen(){
         setOverallProgress(Math.round((doneCount / totalCount) * 100));
     }
 
+    function getProgress(status: string): number {
+        switch (status) {
+            case "pending": return 20;
+            case "uploaded": return 40;
+            case "processing": return 70;
+            case "ready": return 100;
+            case "failed": return 100;
+            default: return 0;
+        }
+    }
+
     async function fetchMediaStatus() {
         try {
             const endpoint = visibility === "private" ? "/get-private-media" : "/get-public-media";
-            const response = await authFetch<MediaRecordResponse>(endpoint, {
+            const response = await authFetch<GetMediaResponse>(endpoint, {
                 method: "GET",
             });
 
@@ -96,6 +122,7 @@ function UploadScreen(){
                 console.log(file.name, data);
 
                 if (data.duplicate) {
+                    duplicatedFiles.push(file.name);
                     updateFileStatus(file.name, "duplicate");
                     finishedCount++;
                     updateOverallProgress(finishedCount, files.length);
@@ -121,16 +148,16 @@ function UploadScreen(){
                 }
 
                 uploadedCount++;
+                updateFileStatus(file.name, "uploaded");
+
+                finishedCount++;
+                updateOverallProgress(finishedCount, files.length);
             }
 
             if (duplicatedFiles.length > 0){
                 setStatus(createStatus("success", `Upload complete. ${uploadedCount} uploaded. Duplicate skipped: ${duplicatedFiles.join(", ")}`));
             } else {
                 setStatus(createStatus("success", `Upload complete. ${uploadedCount} uploaded.`));
-                updateFileStatus(files[0].name, "uploaded");
-
-                finishedCount++;
-                updateOverallProgress(finishedCount, files.length);
                 
                 fetchMediaStatus();
                 const intervalId = setInterval(fetchMediaStatus, 3000);
@@ -189,6 +216,22 @@ function UploadScreen(){
                     </div>
                 )}
             </div>
+            {mediaRecords.length > 0 && (
+                <div className="media-status-list" >
+                    {mediaRecords.map((record) => (
+                        <div key={record.file_name} className="media-status-card">
+                            <div className="media-status-header">
+                                <span>{ record.file_name }</span>
+                                <span>{ record.upload_status }</span>
+                            </div>
+
+                            <div className="media-status-track">
+                                <div className="upload-progress-bar" style={{width: `${getProgress(record.upload_status)}%`}} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </main>
     );
 }
