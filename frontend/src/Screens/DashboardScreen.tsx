@@ -1,8 +1,14 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import koala from "../assets/koala.png";
 import animals from "../assets/animals.jpg";
+import { useEffect, useState } from "react";
+import { createStatus, getErrorMessage, type StatusMessage, type GetMediaResponse, type MediaRecordResponse } from "../utils/api";
+import { authFetch } from "../utils/authFetch";
+
 
 function DashboardScreen(){
+    const location = useLocation();
+    const isDahboardHome = location.pathname === "/dashboard";
     return(
         
         <div className="dashboard">

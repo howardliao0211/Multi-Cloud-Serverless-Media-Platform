@@ -25,6 +25,30 @@ export function createStatus(type: StatusType, text: string): StatusMessage {
   return {type, text};
 }
 
+export type MediaVisibility = "private" | "public";
+
+export type MediaRecordStatus =
+  | "pending"
+  | "uploaded"
+  | "processing"
+  | "ready"
+  | "failed";
+
+export type MediaRecordResponse = {
+  owner_id: string;
+  file_name: string;
+  visibility: MediaVisibility;
+  full_presigned_url: string;
+  thumbnail_presigned_url: string;
+  tags: Record<string, number>;
+  upload_status: MediaRecordStatus;
+  error_message?: string | null;
+};
+
+export type GetMediaResponse = {
+  media_records: MediaRecordResponse[];
+};
+
 export async function calculateFileHash(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);

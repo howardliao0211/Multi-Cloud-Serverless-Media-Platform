@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { calculateFileHash, createStatus, getMediaType, type StatusMessage } from "../utils";
+import { calculateFileHash, createStatus, getMediaType, 
+    type StatusMessage, type GetMediaResponse, type MediaRecordResponse} from "../utils";
 import { authFetch } from "../services/api";
 
 function UploadScreen(){
@@ -30,21 +31,6 @@ function UploadScreen(){
     type FileUploadItem = {
         name: string;
         status: FileUploadStatus;
-    };
-
-    type MediaRecordResponse = {
-        owner_id: string;
-        file_name: string;
-        visibility: "private" | "public";
-        full_file_path: string;
-        thumbnail_path: string;
-        tags: Record<string, string>;
-        upload_status: "pending" | "uploaded" | "processing" | "ready" | "failed";
-        error_message?: string;
-    };
-
-    type GetMediaResponse = {
-        media_records: MediaRecordResponse[];
     };
     
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
