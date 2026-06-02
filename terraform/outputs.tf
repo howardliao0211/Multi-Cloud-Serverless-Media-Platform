@@ -61,3 +61,11 @@ output "gcp_ml_processor_service_location" {
 output "gcp_ml_processor_service_url" {
   value = google_cloud_run_v2_service.ml_processor.uri
 }
+
+output "gcp_aws_lambda_invoker_service_account_email" {
+  value = google_service_account.aws_lambda_invoker.email
+}
+
+output "gcp_workload_identity_provider_name" {
+  value = google_iam_workload_identity_pool_provider.aws_lambda.name
+}
