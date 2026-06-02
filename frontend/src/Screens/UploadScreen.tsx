@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { calculateFileHash, createStatus, getCurrentUserId, getMediaType, type StatusMessage } from "../utils";
+import { calculateFileHash, createStatus, getMediaType, type StatusMessage } from "../utils";
 import { authFetch } from "../services/api";
 
 function UploadScreen(){
@@ -9,12 +9,7 @@ function UploadScreen(){
     const [visibility, setVisibility] = useState<"private" | "public">("private");
     const [fileStatuses, setFileStatuses] = useState<FileUploadItem[]>([]);
     const [overallProgress, setOverallProgress] = useState<number>(0);
-
-    function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
-        if (event.target.files){
-            setFiles(Array.from(event.target.files));
-        }
-    }
+    const [mediaRecords, setMediaRecords] = useState<MediaRecordResponse[]>([]);
 
     function handleDrop(event: React.DragEvent<HTMLLabelElement>){
         event.preventDefault();
@@ -58,6 +53,19 @@ function UploadScreen(){
         setOverallProgress(Math.round((doneCount / totalCount) * 100));
     }
 
+    async function fetchMediaStatus() {
+        try {
+            const endpoint = visibility === "private" ? "/get-private-media" : "/get-public-media";
+            const response = await authFetch<MediaRecordResponse>(endpoint, {
+                method: "GET",
+            });
+
+            setMediaRecords(response.media_records);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
     async function handleUpload() {
         if (files.length === 0) return;
 
@@ -66,11 +74,15 @@ function UploadScreen(){
         try{
             let uploadedCount = 0;
             let duplicatedFiles: string[] = [];
+            let finishedCount = 0;
 
             for (const file of files){
+                updateFileStatus(file.name, "uploading");
+
                 // call upload API for each file
                 const hash = await calculateFileHash(file);
                 const mediaType = getMediaType(file);
+                
                 const data = await authFetch<UploadResponse>("/get-signed-url", {
                     method: "POST",
                     body: JSON.stringify({
@@ -84,11 +96,14 @@ function UploadScreen(){
                 console.log(file.name, data);
 
                 if (data.duplicate) {
-                    duplicatedFiles.push(file.name);
+                    updateFileStatus(file.name, "duplicate");
+                    finishedCount++;
+                    updateOverallProgress(finishedCount, files.length);
                     continue;
                 }
             
                 if (!data.upload_url){
+                    updateFileStatus(file.name, "failed");
                     throw new Error("Upload URL was not returned.");
                 }
 
@@ -112,6 +127,17 @@ function UploadScreen(){
                 setStatus(createStatus("success", `Upload complete. ${uploadedCount} uploaded. Duplicate skipped: ${duplicatedFiles.join(", ")}`));
             } else {
                 setStatus(createStatus("success", `Upload complete. ${uploadedCount} uploaded.`));
+                updateFileStatus(files[0].name, "uploaded");
+
+                finishedCount++;
+                updateOverallProgress(finishedCount, files.length);
+                
+                fetchMediaStatus();
+                const intervalId = setInterval(fetchMediaStatus, 3000);
+                
+                setTimeout(() => {
+                    clearInterval(intervalId);
+                }, 60000);
             }
         } catch (error) {
             setStatus(createStatus("error", "Upload failed."));
@@ -119,6 +145,8 @@ function UploadScreen(){
             }
         }
     
+
+
     return(
         <main className="dashboard-content"> 
             <h1>Upload Media</h1>
