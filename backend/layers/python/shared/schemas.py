@@ -170,3 +170,8 @@ class GetMediaResponse(BaseModel):
 class GetMediaUploadStatus(BaseModel):
     file_name: str
     checksum: str
+
+
+class MediaUploadStatusResponse(BaseModel):
+    upload_status: MediaRecordStatus
+    error_message: Optional[str]
