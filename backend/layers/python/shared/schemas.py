@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import Dict, Optional, List
+from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -34,6 +35,11 @@ class MediaRecord(BaseModel):
     thumbnail_url: Optional[str] = None
 
     tags: Dict[str, int] = Field(default_factory=dict)
+
+    ml_provider: Optional[str] = None
+    ml_detections: list[dict[str, Any]] = Field(default_factory=list)
+    ml_model_name: Optional[str] = None
+    ml_model_version: Optional[str] = None
 
     upload_status: MediaRecordStatus = MediaRecordStatus.pending
     error_message: Optional[str] = None

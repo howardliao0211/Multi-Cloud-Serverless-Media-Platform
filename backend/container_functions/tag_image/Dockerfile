@@ -16,7 +16,8 @@ COPY layers/python/shared/__init__.py \
     layers/python/shared/utils.py \
     /opt/python/shared/
 
-# Copy this Lambda function's app.py
+# Copy this Lambda function's app.py and Workload Identity Federation config
 COPY container_functions/tag_image/app.py ${LAMBDA_TASK_ROOT}/app.py
+COPY container_functions/tag_image/auth/gcp_wif_credentials.json ${LAMBDA_TASK_ROOT}/auth/gcp_wif_credentials.json
 
 CMD ["app.lambda_handler"]
