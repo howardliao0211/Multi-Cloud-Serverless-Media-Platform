@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import boto3
+from boto3.dynamodb.conditions import Attr
 from botocore.config import Config
-from typing import Literal, Tuple, Any
+from typing import Literal, Tuple, Any, Optional, List
+from enum import Enum
 from urllib.parse import quote
 from shared.schemas import MediaRecord, MediaRecordStatus
 
@@ -182,3 +184,73 @@ def is_media_record_processing(
         MediaRecordStatus.pending,
         MediaRecordStatus.failed,
     )
+
+
+def scan_media_record(
+    table,
+    filters: Optional[dict[str, Any]] = None,
+) -> List[MediaRecord]:
+    """
+    Scan media records using optional equality filters.
+
+    Example:
+        scan_media_record({
+            "owner_id": "user123",
+            "visibility": MediaVisibility.private,
+        })
+
+    Returns:
+        List[MediaRecord]
+    """
+
+    def to_filter_value(value: Any) -> Any:
+        """
+        Convert Python values to DynamoDB filter-compatible values.
+        """
+        if isinstance(value, Enum):
+            return value.value
+
+        return value
+
+    filters = filters or {}
+
+    allowed_fields = set(MediaRecord.model_fields.keys())
+
+    invalid_fields = set(filters.keys()) - allowed_fields
+    if invalid_fields:
+        raise ValueError(f"Invalid filter fields: {invalid_fields}")
+
+    filter_expression = None
+
+    for field, value in filters.items():
+        condition = Attr(field).eq(to_filter_value(value))
+
+        if filter_expression is None:
+            filter_expression = condition
+        else:
+            filter_expression = filter_expression & condition
+
+    items = []
+    last_evaluated_key = None
+
+    while True:
+        scan_kwargs = {}
+
+        if filter_expression is not None:
+            scan_kwargs["FilterExpression"] = filter_expression
+
+        if last_evaluated_key:
+            scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
+
+        response = table.scan(**scan_kwargs)
+
+        items.extend(response.get("Items", []))
+
+        last_evaluated_key = response.get("LastEvaluatedKey")
+        if not last_evaluated_key:
+            break
+
+    return [
+        MediaRecord.model_validate(item)
+        for item in items
+    ]

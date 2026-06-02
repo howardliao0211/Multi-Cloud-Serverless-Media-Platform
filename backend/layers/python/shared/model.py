@@ -1,15 +1,16 @@
 import base64
 import tempfile
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
 import torch
-from pathlib import Path
 from torchvision import transforms
 
-from megadetector.detection import run_detector_batch
+from megadetector.detection import run_detector
+from megadetector.visualization import visualization_utils as vis_utils
 
 
 LAYER_DIR = Path(__file__).resolve().parent
@@ -70,6 +71,14 @@ class ImageTagger:
             "Uromys_caudimaculatus"
         ]
 
+        print("Loading MegaDetector once...")
+        self.detector_model = run_detector.load_detector(
+            self.detector_model_path,
+            force_cpu=(self.device == "cpu"),
+        )
+        print("MegaDetector loaded.")
+
+        print("Loading classifier model...")
         self.classifier_model = torch.load(
             str(classifier_model_path),
             map_location=self.device,
@@ -78,6 +87,7 @@ class ImageTagger:
 
         self.classifier_model.eval()
         self.classifier_model.to(self.device)
+        print("Classifier model loaded.")
 
         self.transform = transforms.Compose([
             transforms.Resize((480, 480)),
@@ -110,8 +120,6 @@ class ImageTagger:
         """
         image_array = self._load_image(image)
 
-        # If image is an existing file path, run MegaDetector directly on file.
-        # This avoids writing a temporary image file.
         if isinstance(image, Path):
             detections = self._run_detector_from_file(str(image), image_array)
         else:
@@ -145,37 +153,35 @@ class ImageTagger:
         image_array: np.ndarray,
     ) -> list[dict[str, Any]]:
         """
-        Run MegaDetector directly on an existing image file.
+        Run MegaDetector on an existing image file using the already-loaded
+        detector model.
         """
-        results = run_detector_batch.load_and_run_detector_batch(
-            image_file_names=[image_path],
-            model_file=self.detector_model_path,
-            quiet=True,
-            verbose_output=False,
+        image_for_detector = vis_utils.load_image(image_path)
+
+        detector_result = self.detector_model.generate_detections_one_image(
+            image_for_detector,
+            image_id=image_path,
+            detection_threshold=self.detector_conf_thres,
         )
 
-        return self._parse_detector_results(results, image_array)
+        return self._parse_detector_results([detector_result], image_array)
 
     def _run_detector_from_array(
         self,
         image_array: np.ndarray,
     ) -> list[dict[str, Any]]:
         """
-        MegaDetector expects file paths, so ndarray/base64 input still needs
-        a temporary file.
+        Run MegaDetector on an OpenCV ndarray using the already-loaded detector.
 
-        Important:
-            On Windows, NamedTemporaryFile can cause permission issues because
-            the file remains open while cv2.imwrite tries to write to it.
-
-            Therefore, this uses mkstemp, closes the file descriptor first,
-            writes the image, runs the detector, then manually deletes the file.
+        MegaDetector expects a PIL image-style input. To keep compatibility with
+        MegaDetector utilities, we temporarily write the frame to /tmp and load
+        it with vis_utils.load_image(...). This does NOT reload the model.
         """
         tmp_path = None
 
         try:
             fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
-            # Close the file descriptor so OpenCV can write to it on Windows.
+
             import os
             os.close(fd)
 
@@ -183,16 +189,18 @@ class ImageTagger:
 
             if not success:
                 raise ValueError(
-                    f"Failed to write temporary image for detector: {tmp_path}")
+                    f"Failed to write temporary image for detector: {tmp_path}"
+                )
 
-            results = run_detector_batch.load_and_run_detector_batch(
-                image_file_names=[tmp_path],
-                model_file=self.detector_model_path,
-                quiet=True,
-                verbose_output=False
+            image_for_detector = vis_utils.load_image(tmp_path)
+
+            detector_result = self.detector_model.generate_detections_one_image(
+                image_for_detector,
+                image_id=tmp_path,
+                detection_threshold=self.detector_conf_thres,
             )
 
-            return self._parse_detector_results(results, image_array)
+            return self._parse_detector_results([detector_result], image_array)
 
         finally:
             if tmp_path is not None:
@@ -203,7 +211,7 @@ class ImageTagger:
 
     def _parse_detector_results(
         self,
-        detector_results: dict[str, Any],
+        detector_results: list[dict[str, Any]],
         image_array: np.ndarray,
     ) -> list[dict[str, Any]]:
         image_result = detector_results[0]
@@ -252,16 +260,13 @@ class ImageTagger:
         # OpenCV crop is BGR; convert to RGB.
         crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
 
-        # Your working sample uses PIL.Image.open(...).convert("RGB"),
-        # so we should convert the NumPy crop to a PIL image too.
         from PIL import Image
         img_pil = Image.fromarray(crop_rgb).convert("RGB")
 
         img = self.transform(img_pil)      # -> C,H,W
         img = img.unsqueeze(0)             # -> B,C,H,W
 
-        # Important: your working sample does this.
-        # The fine-tuned model expects channel-last input: B,H,W,C.
+        # Your fine-tuned classifier expects channel-last input: B,H,W,C.
         img = img.permute(0, 2, 3, 1)      # -> B,H,W,C
 
         img = img.to(self.device)
@@ -327,9 +332,16 @@ class ImageTagger:
             image_array = cv2.imread(str(image))
 
         elif isinstance(image, str):
-            img_bytes = base64.b64decode(image)
-            np_arr = np.frombuffer(img_bytes, np.uint8)
-            image_array = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            # If the string is an existing file path, load it as a file.
+            # Otherwise, treat it as base64.
+            possible_path = Path(image)
+
+            if possible_path.exists():
+                image_array = cv2.imread(str(possible_path))
+            else:
+                img_bytes = base64.b64decode(image)
+                np_arr = np.frombuffer(img_bytes, np.uint8)
+                image_array = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
         elif isinstance(image, np.ndarray):
             image_array = image
@@ -365,5 +377,6 @@ if __name__ == "__main__":
 
     image_base64 = encode(image_path)
     result = tagger.tag_image(image_base64)
+
     print(result["tags"])
     print(result["detections"])

@@ -1,13 +1,18 @@
 
 import { useEffect, useState } from "react";
-import { Navigate, Route, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { getCurrentUser } from "aws-amplify/auth";
 import LoginScreen from "./Screens/LoginScreen.tsx"
 import RegisterScreen from "./Screens/RegisterScreen.tsx";
 import DashboardScreen from "./Screens/DashboardScreen.tsx";
 import koala from "./assets/koala.png";
+import AccountScreen from "./Screens/AccountScreen.tsx";
+import UploadScreen from "./Screens/UploadScreen.tsx";
+import QueryScreen from "./Screens/QueryScreen.tsx";
+import TagsScreen from "./Screens/TagsScreen.tsx";
+import NotificationScreen from "./Screens/NotificationScreen.tsx";
 
-function ProtectedRoute({ children }: { children: React.ReactNode}) {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
 
@@ -16,12 +21,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode}) {
       try {
         await getCurrentUser();
         setIsAuthenticated(true);
-      } catch (error) {
+      } catch {
         setIsAuthenticated(false);
       } finally {
         setCheckingAuth(false);
       }
     }
+
+    checkAuth();
   }, []);
 
   if (checkingAuth) {
@@ -37,25 +44,25 @@ function ProtectedRoute({ children }: { children: React.ReactNode}) {
   return children;
 }
 
-function WelcomeScreen(){
+function WelcomeScreen() {
   const navigate = useNavigate();
-  const [showRegisterSuccess, setShowRegisterSuccess] = useState<boolean>(
+  const [showRegisterSuccess] = useState<boolean>(
     sessionStorage.getItem("showRegisterSuccess") === "true"
   );
 
   useEffect(() => {
     if (showRegisterSuccess) {
       sessionStorage.removeItem("registerSuccess");
-    } 
+    }
   }, [showRegisterSuccess]);
 
-  return(
+  return (
     <main className="app-container">
       <h1>Welcome to Aussie EcoLens</h1>
-      <br/>
+      <br />
       <img src={koala} alt="Aussie EcoLens logo" className="koala" />
       <p>A wildlife observation platform</p>
-      <br/>
+      <br />
       {showRegisterSuccess && (
         <div className="status-message success">
           <p>Registration successful.</p>
@@ -63,30 +70,41 @@ function WelcomeScreen(){
           <p>Then log in using that temporary password.</p>
         </div>
       )}
-    
 
-    <div className="button-row">
-      <button onClick={ ()=> navigate("/login")}>Login</button>
-      <button onClick={ ()=> navigate("/register")}>Register</button>
-    </div>
-  </main>
+
+      <div className="button-row">
+        <button onClick={() => navigate("/login")}>Login</button>
+        <button onClick={() => navigate("/register")}>Register</button>
+      </div>
+    </main>
   );
 }
 
-function App(){
+function App() {
   return (
-    <Route>
+    <Routes>
       <Route path="/" element={<WelcomeScreen />} />
-      <Route path="/login" element={<LoginScreen onLoginSuccess={() => window.location.href = "/dashboard"} 
-        onReturn={() => window.location.href = "/"} />} />
-      <Route path="/register" element={<RegisterScreen onRegisterSuccess={() => sessionStorage.setItem("registerSuccess", "true");
-         window.location.href = "/"; }} onReturn={() => window.location.href = "/"} }/>} />
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardScreen /> onSignOut={() => {
-        window.location.href = "/";
-      }} /> </ProtectedRoute>} />
-      
+      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/register" element={<RegisterScreen />} />
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardScreen />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="upload" replace />} />
+        <Route path="upload" element={<UploadScreen />} />
+        <Route path="search" element={<QueryScreen />} />
+        <Route path="tags" element={<TagsScreen />} />
+        <Route path="notifications" element={<NotificationScreen />} />
+        <Route path="account" element={<AccountScreen />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Route>
+    </Routes>
   );
 }
 export default App

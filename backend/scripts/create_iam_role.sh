@@ -59,7 +59,8 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
         "dynamodb:GetItem",
         "dynamodb:PutItem",
         "dynamodb:UpdateItem",
-        "dynamodb:Query"
+        "dynamodb:Query",
+        "dynamodb:Scan"
       ],
       "Resource": "arn:aws:dynamodb:${AWS_REGION}:${ACCOUNT_ID}:table/${MEDIA_TABLE_NAME}"
     },

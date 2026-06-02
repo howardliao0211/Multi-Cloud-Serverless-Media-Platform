@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-FUNCTION_NAME="${FUNCTION_NAME:-get_signed_url}"
+FUNCTION_NAME="${FUNCTION_NAME:-get_public_media}"
 LAYER_NAME="${LAYER_NAME:-aussie-eco-len-shared}"
 RUNTIME="${RUNTIME:-python3.12}"
 HANDLER="${HANDLER:-app.lambda_handler}"
@@ -42,8 +42,8 @@ command -v aws >/dev/null 2>&1 || {
   exit 1
 }
 
-command -v python >/dev/null 2>&1 || {
-  echo "Error: python is not installed or not on PATH." >&2
+command -v python3 >/dev/null 2>&1 || {
+  echo "Error: python3 is not installed or not on PATH." >&2
   exit 1
 }
 
@@ -56,7 +56,7 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${LAYER_BUILD_DIR}/python" "${FUNCTION_BUILD_DIR}"
 
 echo "Building shared layer..."
-python -m pip install \
+python3 -m pip install \
   --requirement "${SHARED_SOURCE_DIR}/requirements.txt" \
   --target "${LAYER_BUILD_DIR}/python" \
   --platform "${PIP_PLATFORM}" \

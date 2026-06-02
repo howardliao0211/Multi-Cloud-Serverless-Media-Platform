@@ -1,11 +1,12 @@
 import { useRef, useState } from "react";
-import { calculateFileHash, createStatus, getMediaType, type StatusMessage } from "../utils";
+import { calculateFileHash, createStatus, getCurrentUserId, getMediaType, type StatusMessage } from "../utils";
 import { authFetch } from "../services/api";
 
 function UploadScreen(){
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
+    const [visibility, setVisibility] = useState<"private" | "public">("private");
 
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
         if (event.target.files){
@@ -24,13 +25,13 @@ function UploadScreen(){
     type UploadResponse = {
         duplicate: boolean;
         upload_url?: string;
-        expires?: number;
+        expires_in?: number;
     };
 
     async function handleUpload() {
         if (files.length === 0) return;
 
-        setStatus(createStatus("idle", "Uploading..."));
+        setStatus(createStatus("loading", "Uploading..."));
 
         try{
             let uploadedCount = 0;
@@ -40,13 +41,15 @@ function UploadScreen(){
                 // call upload API for each file
                 const hash = await calculateFileHash(file);
                 const mediaType = getMediaType(file);
-                
-                const data = await authFetch<UploadResponse>("/get_signed_url", {
+                const userId = await getCurrentUserId();
+                const data = await authFetch<UploadResponse>("/get-signed-url", {
                     method: "POST",
                     body: JSON.stringify({
+                        owner_id: userId,
                         filename: file.name,
                         checksum: hash,
                         media_type: mediaType,
+                        visibility
                     }),
                 });
 
@@ -65,7 +68,7 @@ function UploadScreen(){
                     method: "PUT",
                     headers: {
                         "x-amz-meta-file_name": file.name,
-                        "x-amz-meta-checksum": hash
+                        "x-amz-meta-checksum": hash,
                     },
                     body: file,
                 });
@@ -110,7 +113,16 @@ function UploadScreen(){
                     </div>
                 )}
             </label>
-            
+            <div className="visibility-options">
+                <label>
+                    <input type="radio" name="visibility" value="private" checked={visibility === "private"} onChange={() => setVisibility("private")} />
+                    Private
+                </label>
+                <label>
+                    <input type="radio" value="public" checked={visibility === "public"} onChange={() => setVisibility("public")} />
+                    Public
+                </label>
+            </div>
             <div className="button-row">
                 <button type="button" onClick={handleUpload} disabled={files.length === 0}>
                     Upload

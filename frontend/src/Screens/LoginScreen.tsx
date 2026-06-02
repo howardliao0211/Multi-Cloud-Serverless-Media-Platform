@@ -1,11 +1,11 @@
 import { createStatus, getErrorMessage, type StatusMessage } from "../utils";
 import { useState } from "react";
 import { signIn, signOut } from "aws-amplify/auth";
+import { useNavigate } from "react-router-dom";
 import NewPasswordScreen from "./NewPasswordScreen";
 
-function LoginScreen({ onLoginSuccess, onReturn, }: 
-    {onLoginSuccess: () => void; onReturn: () => void;}){
-    
+function LoginScreen(){
+    const navigate = useNavigate();
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [needNewPassword, setNeedNewPassword] = useState<boolean>(false);
@@ -15,7 +15,7 @@ function LoginScreen({ onLoginSuccess, onReturn, }:
         event.preventDefault();
         setStatus(createStatus("idle", ""));
         try {
-            await signOut();
+            await signOut(); // Ensure any existing session is cleared before signing in
             const result = await signIn({
                 username: email,
                 password,
@@ -25,14 +25,14 @@ function LoginScreen({ onLoginSuccess, onReturn, }:
                 setNeedNewPassword(true);
                 return;
             }
-            onLoginSuccess();
+            navigate("/dashboard");
         } catch (error) {
             setStatus(createStatus("error", getErrorMessage(error)));
         }
     }
 
     if (needNewPassword){
-        return <NewPasswordScreen onNewPassSuccess={onLoginSuccess}/>;
+        return <NewPasswordScreen onNewPassSuccess={() => navigate("/dashboard")}/>;
     }
 
     return (
@@ -55,7 +55,9 @@ function LoginScreen({ onLoginSuccess, onReturn, }:
                 )}
 
                 <div className="button-row">
-                    <button type="button" onClick={ onReturn }>Return</button>
+                    <button type="button" onClick={() => navigate("/")}>
+                        Return
+                    </button>
                     <button type="submit">Log in</button>
                 </div>
             </form>

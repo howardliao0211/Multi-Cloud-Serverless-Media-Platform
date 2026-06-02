@@ -1,21 +1,38 @@
 from enum import Enum
+<<<<<<< HEAD
 from typing import Dict, List, Optional, Literal
 
 from pydantic import BaseModel, Field, field_validator
+=======
+from typing import Dict, Optional, List
+from pydantic import BaseModel, Field
+>>>>>>> origin/main
+
+
+class MediaType(str, Enum):
+    image = "image"
+    video = "video"
+
+
+class MediaVisibility(str, Enum):
+    private = "private"
+    public = "public"
 
 
 class MediaRecordStatus(str, Enum):
-    pending = "PENDING_UPLOAD"
-    uploaded = "UPLOADED"
-    processing = "PROCESSING"
-    ready = "READY"
-    failed = "FAILED"
+    pending = "pending"
+    uploaded = "uploaded"
+    processing = "processing"
+    ready = "ready"
+    failed = "failed"
 
 
 class MediaRecord(BaseModel):
-    checksum: str
+    owner_id: str
     file_name: str
+    checksum: str
     full_key: str
+    visibility: MediaVisibility
 
     full_url: Optional[str] = None
     file_type: Optional[str] = None
@@ -28,10 +45,23 @@ class MediaRecord(BaseModel):
     error_message: Optional[str] = None
 
 
+class MediaRecordResponse(BaseModel):
+    owner_id: str
+    file_name: str
+    visibility: MediaVisibility
+    full_presigned_url: str
+    thumbnail_presigned_url: str
+    tags: Dict[str, int]
+    upload_status: MediaRecordStatus
+    error_message: Optional[str]
+
+
 class UploadUrlRequest(BaseModel):
+    owner_id: str
     filename: str
-    media_type: Literal["image", "video"]
     checksum: str
+    media_type: MediaType
+    visibility: MediaVisibility
 
 
 class UploadUrlResponse(BaseModel):
@@ -40,6 +70,7 @@ class UploadUrlResponse(BaseModel):
     expires_in: Optional[int] = None
 
 
+<<<<<<< HEAD
 class QueryTagsRequest(BaseModel):
     tags: Dict[str, int]
 
@@ -128,3 +159,11 @@ class QueryThumbnailUrlResponse(BaseModel):
     file_name: str
     url: str
     thumbnail_url: str
+=======
+class GetPrivateMediaRequest(BaseModel):
+    owner_id: str
+
+
+class GetMediaResponse(BaseModel):
+    media_records: List[MediaRecordResponse]
+>>>>>>> origin/main
