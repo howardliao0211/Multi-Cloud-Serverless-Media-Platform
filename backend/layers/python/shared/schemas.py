@@ -51,7 +51,6 @@ class MediaRecordResponse(BaseModel):
 
 
 class UploadUrlRequest(BaseModel):
-    owner_id: str
     filename: str
     checksum: str
     media_type: MediaType
@@ -62,10 +61,6 @@ class UploadUrlResponse(BaseModel):
     duplicate: bool
     upload_url: Optional[str] = None
     expires_in: Optional[int] = None
-
-
-class GetPrivateMediaRequest(BaseModel):
-    owner_id: str
 
 
 class GetMediaResponse(BaseModel):

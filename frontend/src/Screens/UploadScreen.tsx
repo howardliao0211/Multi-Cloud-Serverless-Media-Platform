@@ -108,8 +108,7 @@ function UploadScreen(){
                 // call upload API for each file
                 const hash = await calculateFileHash(file);
                 const mediaType = getMediaType(file);
-                
-                const data = await authFetch<UploadResponse>("/get-signed-url", {
+                const data = await authFetch<UploadResponse>("/get_signed_url", {
                     method: "POST",
                     body: JSON.stringify({
                         filename: file.name,

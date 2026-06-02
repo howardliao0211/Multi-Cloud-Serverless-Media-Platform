@@ -20,7 +20,8 @@ from shared.aws_resources import (
 )
 from shared.utils import (
     build_response_message,
-    build_media_record_response
+    build_media_record_response,
+    get_current_user
 )
 
 s3, bucket_name = get_bucket_and_name()
@@ -62,8 +63,8 @@ def lambda_handler(event, context):
             allow_http_methods=allow_methods
         )
 
-    request = parse_request(event)
-    media = get_private_media(request.owner_id)
+    owner_id = get_current_user()
+    media = get_private_media(owner_id)
     media_response = [
         build_media_record_response(
             item,

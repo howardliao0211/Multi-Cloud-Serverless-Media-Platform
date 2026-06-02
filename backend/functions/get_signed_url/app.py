@@ -15,10 +15,11 @@ from shared.aws_resources import (
     get_bucket_and_name,
     get_table,
     build_s3_key,
-    create_new_media_record
+    create_new_media_record,
 )
 from shared.utils import (
-    build_response_message
+    build_response_message,
+    get_current_user
 )
 
 s3, bucket_name = get_bucket_and_name()
@@ -89,8 +90,10 @@ def lambda_handler(event, context):
         s3_key, request.filename, request.checksum)
     expires_in = URL_EXPIRES_SECONDS
 
+    owner_id = get_current_user(event)
+
     media = MediaRecord(
-        owner_id=request.owner_id,
+        owner_id=owner_id,
         checksum=request.checksum,
         file_name=request.filename,
         full_key=s3_key,
