@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class MediaType(str, Enum):
@@ -170,3 +170,51 @@ class GetMediaResponse(BaseModel):
 class GetMediaUploadStatus(BaseModel):
     file_name: str
     checksum: str
+
+
+class EditTagsRequest(BaseModel):
+    urls: List[str]
+    tags: List[str]
+    operation: Literal[0, 1]
+
+    @field_validator("urls")
+    @classmethod
+    def validate_urls(cls, urls: List[str]) -> List[str]:
+        normalized_urls = [
+            url.strip()
+            for url in urls
+            if url.strip()
+        ]
+
+        if not normalized_urls:
+            raise ValueError("urls must not be empty")
+
+        return normalized_urls
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, tags: List[str]) -> List[str]:
+        normalized_tags = [
+            tag.strip().lower()
+            for tag in tags
+            if tag.strip()
+        ]
+
+        if not normalized_tags:
+            raise ValueError("tags must not be empty")
+
+        return list(dict.fromkeys(normalized_tags))
+
+
+class EditTagsResult(BaseModel):
+    url: str
+    updated: bool
+    checksum: Optional[str] = None
+    file_name: Optional[str] = None
+    tags: Dict[str, int] = Field(default_factory=dict)
+    message: Optional[str] = None
+
+
+class EditTagsResponse(BaseModel):
+    updated_count: int
+    results: List[EditTagsResult] = Field(default_factory=list)
