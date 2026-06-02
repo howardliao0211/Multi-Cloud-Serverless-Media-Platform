@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -218,3 +218,8 @@ class EditTagsResult(BaseModel):
 class EditTagsResponse(BaseModel):
     updated_count: int
     results: List[EditTagsResult] = Field(default_factory=list)
+
+    
+class MediaUploadStatusResponse(BaseModel):
+    upload_status: MediaRecordStatus
+    error_message: Optional[str]

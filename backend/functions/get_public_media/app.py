@@ -10,7 +10,6 @@ from boto3.dynamodb.conditions import Key
 from shared.schemas import (
     MediaRecord,
     MediaVisibility,
-    GetPrivateMediaRequest,
     GetMediaResponse,
 )
 from shared.aws_resources import (
@@ -27,9 +26,10 @@ s3, bucket_name = get_bucket_and_name()
 table = get_table()
 URL_EXPIRES_SECONDS = 300
 
+
 def get_public_media() -> List[MediaRecord]:
     filters = {
-        "visibility": MediaVisibility.private
+        "visibility": MediaVisibility.public
     }
 
     return scan_media_record(table, filters)
@@ -43,13 +43,6 @@ def lambda_handler(event, context):
         return build_response_message(
             status_code=HTTPStatus.OK,
             body={"message": "OK"},
-            allow_http_methods=allow_methods
-        )
-
-    if event.get("httpMethod") != "GET":
-        return build_response_message(
-            status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "Unsupported HTTP Method"},
             allow_http_methods=allow_methods
         )
 

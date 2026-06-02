@@ -50,13 +50,6 @@ def lambda_handler(event, context):
             allow_http_methods=allow_methods
         )
 
-    if event.get("httpMethod") != "GET":
-        return build_response_message(
-            status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "Unsupported HTTP Method"},
-            allow_http_methods=allow_methods
-        )
-
     owner_id = get_current_user(event)
     media = get_private_media(owner_id)
     media_response = [
