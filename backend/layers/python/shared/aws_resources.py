@@ -85,7 +85,7 @@ def update_media_record_in_db(table, file_name: str, checksum: str, updates: dic
         update_media_record(
             checksum="abc123",
             updates={
-                "upload_status": "READY",
+                "upload_status": "ready",
                 "tags": {"tree": 2, "kangaroo": 1},
             },
         )
