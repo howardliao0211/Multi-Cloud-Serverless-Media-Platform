@@ -366,17 +366,18 @@ button:disabled {
 }
 
 .upload-progress-track {
+  width: 100%;
+  background-color: #333;
+  border-radius: 4px;
   height: 8px;
-  background: var(--border);
-  border-radius: 999px;
   overflow: hidden;
   margin: 8px 0;
 }
 
 .upload-progress-bar {
   height: 100%;
-  background: var(--quinary);
-  border-radius: 999px;
+  background-color: #f5a623;
+  border-radius: 4px;
   transition: width 0.3s ease;
 }
 

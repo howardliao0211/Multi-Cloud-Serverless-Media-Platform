@@ -121,30 +121,39 @@ function UploadScreen(){
              file_name: fileName, 
              checksum ,
         });
-        const url = `/get_upload_status?${query.toString()}`;
-        console.log("Polling upload status:", url);
+        
         return authFetch<MediaUploadStatusResponse>(`/get_upload_status?${query.toString()}`, {
             method: "GET",
         });
     }
 
     async function pollUploadStatus(fileName: string, checksum: string) {
+        let pollCount = 0;
+        const maxPolls = 20; // Stop polling after 20 attempts (1 minute)
+
         const intervalId = window.setInterval(async () => {
-            try {
-            const data = await fetchUploadStatus(fileName, checksum);
-
-            updateFileStatus(fileName, data.upload_status);
-
-            if (data.upload_status === "ready" || data.upload_status === "failed") {
+            pollCount++;
+            if (pollCount > maxPolls) {
+                updateFileStatus(fileName, "failed");
                 window.clearInterval(intervalId);
+                return;
             }
-            } catch (error) {
-            console.error(error);
-            updateFileStatus(fileName, "failed");
-            window.clearInterval(intervalId);
-            }
-        }, 3000);
-    }
+            
+            try {
+                const data = await fetchUploadStatus(fileName, checksum);
+
+                updateFileStatus(fileName, data.upload_status);
+
+                if (data.upload_status === "ready" || data.upload_status === "failed") {
+                    window.clearInterval(intervalId);
+                }
+                } catch (error) {
+                    console.error(error);
+                    updateFileStatus(fileName, "failed");
+                    window.clearInterval(intervalId);
+                }
+            }, 3000);
+        }
 
     async function handleUpload() {
         if (files.length === 0) return;
