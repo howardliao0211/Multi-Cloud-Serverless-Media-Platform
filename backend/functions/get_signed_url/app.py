@@ -83,11 +83,11 @@ def lambda_handler(event, context):
             allow_http_methods=[HTTPMethod.POST]
         )
 
-    file_ext = request.filename.split(".")[-1]
+    file_ext = request.file_name.split(".")[-1]
     s3_filename = f"{request.checksum}.{file_ext}"
     s3_key = build_s3_key(s3_filename, request.media_type.value)
     upload_url = generate_upload_url(
-        s3_key, request.filename, request.checksum)
+        s3_key, request.file_name, request.checksum)
     expires_in = URL_EXPIRES_SECONDS
 
     owner_id = get_current_user(event)
@@ -95,7 +95,7 @@ def lambda_handler(event, context):
     media = MediaRecord(
         owner_id=owner_id,
         checksum=request.checksum,
-        file_name=request.filename,
+        file_name=request.file_name,
         full_key=s3_key,
         visibility=request.visibility.value
     )
