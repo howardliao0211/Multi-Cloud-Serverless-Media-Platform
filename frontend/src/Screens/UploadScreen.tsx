@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { calculateFileHash, createStatus, getMediaType, type StatusMessage} from "../utils";
+import { calculateFileHash, createStatus, getMediaType, type StatusMessage } from "../utils";
 import { authFetch } from "../services/api";
 
-function UploadScreen(){
+function UploadScreen() {
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
@@ -10,10 +10,10 @@ function UploadScreen(){
     const [fileStatuses, setFileStatuses] = useState<FileUploadItem[]>([]);
     const [overallProgress, setOverallProgress] = useState<number>(0);
 
-    function handleDrop(event: React.DragEvent<HTMLLabelElement>){
+    function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
         event.preventDefault();
 
-        if (event.dataTransfer.files){
+        if (event.dataTransfer.files) {
             setFiles(Array.from(event.dataTransfer.files));
         }
     }
@@ -44,9 +44,9 @@ function UploadScreen(){
         upload_status: MediaUploadStatus;
         error_message?: string | null;
     };
-    
-    function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
-        if (event.target.files){
+
+    function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+        if (event.target.files) {
             const newFiles = Array.from(event.target.files);
             setFiles(newFiles);
             setFileStatuses(newFiles.map((file) => ({ name: file.name, status: "waiting" })));
@@ -57,32 +57,32 @@ function UploadScreen(){
     function updateFileStatus(fileName: string, status: FileUploadStatus) {
         setFileStatuses((current) => {
             const updated = current.map((item) =>
-            item.name === fileName ? { ...item, status } : item
+                item.name === fileName ? { ...item, status } : item
             );
 
             const finishedCount = updated.filter(
-            (item) => item.status === "ready" || 
-                      item.status === "failed" || 
-                      item.status === "duplicate"
+                (item) => item.status === "ready" ||
+                    item.status === "failed" ||
+                    item.status === "duplicate"
             ).length;
 
             updateOverallProgress(finishedCount, updated.length);
 
             if (finishedCount === updated.length) {
-            const readyCount = updated.filter((item) => item.status === "ready").length;
-            const failedCount = updated.filter((item) => item.status === "failed").length;
-            const duplicateCount = updated.filter((item) => item.status === "duplicate").length;
+                const readyCount = updated.filter((item) => item.status === "ready").length;
+                const failedCount = updated.filter((item) => item.status === "failed").length;
+                const duplicateCount = updated.filter((item) => item.status === "duplicate").length;
 
-            if (failedCount > 0) {
-                setStatus(createStatus("error", `Finished with ${failedCount} failed file(s).`));
-            } else {
-                setStatus(
-                createStatus(
-                    "success",
-                    `Complete. ${readyCount} ready, ${duplicateCount} duplicate skipped.`
-                )
-                );
-            }
+                if (failedCount > 0) {
+                    setStatus(createStatus("error", `Finished with ${failedCount} failed file(s).`));
+                } else {
+                    setStatus(
+                        createStatus(
+                            "success",
+                            `Complete. ${readyCount} ready, ${duplicateCount} duplicate skipped.`
+                        )
+                    );
+                }
             }
 
             return updated;
@@ -96,32 +96,32 @@ function UploadScreen(){
     function getProgress(status: string): number {
         switch (status) {
             case "waiting":
-            return 0;
+                return 0;
             case "pending":
-            return 10;
+                return 10;
             case "uploading":
-            return 20;
+                return 20;
             case "uploaded":
-            return 40;
+                return 40;
             case "processing":
-            return 70;
+                return 70;
             case "ready":
-            return 100;
+                return 100;
             case "duplicate":
-            return 100;
+                return 100;
             case "failed":
-            return 70;
+                return 70;
             default:
-            return 0;
+                return 0;
         }
     }
 
     async function fetchUploadStatus(fileName: string, checksum: string) {
         const query = new URLSearchParams({
-             file_name: fileName, 
-             checksum ,
+            file_name: fileName,
+            checksum,
         });
-        
+
         return authFetch<MediaUploadStatusResponse>(`/get_upload_status?${query.toString()}`, {
             method: "GET",
         });
@@ -138,7 +138,7 @@ function UploadScreen(){
                 window.clearInterval(intervalId);
                 return;
             }
-            
+
             try {
                 const data = await fetchUploadStatus(fileName, checksum);
 
@@ -147,25 +147,25 @@ function UploadScreen(){
                 if (data.upload_status === "ready" || data.upload_status === "failed") {
                     window.clearInterval(intervalId);
                 }
-                } catch (error) {
-                    console.error(error);
-                    updateFileStatus(fileName, "failed");
-                    window.clearInterval(intervalId);
-                }
-            }, 3000);
-        }
+            } catch (error) {
+                console.error(error);
+                updateFileStatus(fileName, "failed");
+                window.clearInterval(intervalId);
+            }
+        }, 3000);
+    }
 
     async function handleUpload() {
         if (files.length === 0) return;
 
         setStatus(createStatus("loading", ""));
 
-        try{
+        try {
             let uploadedCount = 0;
             let duplicatedFiles: string[] = [];
             let finishedCount = 0;
 
-            for (const file of files){
+            for (const file of files) {
                 updateFileStatus(file.name, "uploading");
 
                 // call upload API for each file
@@ -190,8 +190,8 @@ function UploadScreen(){
                     updateOverallProgress(finishedCount, files.length);
                     continue;
                 }
-            
-                if (!data.upload_url){
+
+                if (!data.upload_url) {
                     updateFileStatus(file.name, "failed");
                     throw new Error("Upload URL was not returned.");
                 }
@@ -204,7 +204,7 @@ function UploadScreen(){
                     },
                     body: file,
                 });
-            
+
                 if (!uploadResponse.ok) {
                     throw new Error(`S3 upload failed: ${uploadResponse.status}`);
                 }
@@ -217,18 +217,18 @@ function UploadScreen(){
         } catch (error) {
             setStatus(createStatus("error", "Upload failed."));
             console.error(error);
-            }
         }
-    
+    }
 
 
-    return(
-        <main className="dashboard-content"> 
+
+    return (
+        <main className="dashboard-content">
             <h1>Upload Media</h1>
             <p>Upload images or videos for wildlife species detection.</p>
-            
+
             <label className="upload-dropzone" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
-                <input ref={fileInputRef} className="file-input-hidden" type="file" 
+                <input ref={fileInputRef} className="file-input-hidden" type="file"
                     accept="image/*,video/*" multiple onChange={handleFileChange} />
                 <div className="upload-icon">📁</div>
 
@@ -265,36 +265,36 @@ function UploadScreen(){
                     <p>{status.text}</p>
                 </div>
             )}
-            
+
             {fileStatuses.length > 0 && (
                 <div className="media-status-list">
                     <div className="upload-progress-header">
-                    <span>Overall Progress</span>
-                    <span> {overallProgress}%</span>
+                        <span>Overall Progress</span>
+                        <span> {overallProgress}%</span>
                     </div>
 
                     <div className="upload-progress-track">
-                    <div
-                        className="upload-progress-bar"
-                        style={{ width: `${overallProgress}%` }}
-                    />
-                </div>
-
-                {fileStatuses.map((item) => (
-                    <div key={item.name} className="media-status-card">
-                        <div className="media-status-header">
-                        <span>{item.name}</span>
-                        <span>{item.status}</span>
-                        </div>
-                        <div className="media-status-track">
-                            <div
-                                className={`upload-progress-bar ${item.status}`}
-                                style={{
-                                    width: `${getProgress(item.status)}%`,
-                                }}
-                            />
-                        </div>
+                        <div
+                            className="upload-progress-bar"
+                            style={{ width: `${overallProgress}%` }}
+                        />
                     </div>
+
+                    {fileStatuses.map((item) => (
+                        <div key={item.name} className="media-status-card">
+                            <div className="media-status-header">
+                                <span>{item.name}</span>
+                                <span>{item.status}</span>
+                            </div>
+                            <div className="media-status-track">
+                                <div
+                                    className={`upload-progress-bar ${item.status}`}
+                                    style={{
+                                        width: `${getProgress(item.status)}%`,
+                                    }}
+                                />
+                            </div>
+                        </div>
                     ))}
                 </div>
             )}
