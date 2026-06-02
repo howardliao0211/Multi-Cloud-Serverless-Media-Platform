@@ -3,8 +3,8 @@ import koala from "../assets/koala.png";
 import animals from "../assets/animals.jpg";
 import { useEffect, useState } from "react";
 import { createStatus, getErrorMessage, 
-    type StatusMessage, type GetMediaResponse, type MediaRecordResponse } from "../utils/api";
-import { authFetch } from "../utils/authFetch";
+    type StatusMessage, type GetMediaResponse, type MediaRecordResponse } from "../utils";
+import { authFetch } from "../services/api";
 
 
 function DashboardScreen(){
@@ -49,7 +49,7 @@ function DashboardScreen(){
             </header>
 
             { isDashboardHome ? (
-                <main className="dashboard-container">
+                <main className="dashboard-content">
                     <h1>My Uploads</h1>
                     <p>Welcome to your media dashboard!</p>
 
@@ -83,7 +83,7 @@ function DashboardScreen(){
             ) : (
                 <Outlet />
             )}
-            
+
             <footer className="dashboard-footer">
                 <img src={animals} alt="Aussie Ecolens footer illustration" />
             </footer>

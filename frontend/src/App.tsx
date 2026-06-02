@@ -95,7 +95,6 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<DashboardHome />} />
         <Route path="upload" element={<UploadScreen />} />
         <Route path="search" element={<QueryScreen />} />
         <Route path="tags" element={<TagsScreen />} />
