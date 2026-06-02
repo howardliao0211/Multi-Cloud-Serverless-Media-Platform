@@ -1,18 +1,18 @@
 import json
 from http import HTTPMethod, HTTPStatus
-from typing import Any, Dict, List
+from typing import List
 
 from pydantic import ValidationError
 
-from shared.aws_resources import get_table
+from shared.aws_resources import get_table, scan_media_record
 from shared.query_utils import (
     infer_media_type,
-    is_ready_media,
     normalize_tag_counts,
     parse_json_request,
-    scan_media,
 )
 from shared.schemas import (
+    MediaRecord,
+    MediaRecordStatus,
     QuerySpeciesRequest,
     QuerySpeciesResponse,
     QuerySpeciesResult,
@@ -27,34 +27,33 @@ def parse_request(event: dict) -> QuerySpeciesRequest:
     return parse_json_request(event, QuerySpeciesRequest)
 
 
-def media_contains_species(item: Dict[str, Any], species: str) -> bool:
-    tag_counts = normalize_tag_counts(item.get("tags"))
+def media_contains_species(media_record: MediaRecord, species: str) -> bool:
+    tag_counts = normalize_tag_counts(media_record.tags)
     return tag_counts.get(species, 0) >= 1
 
 
-def shape_query_result(item: Dict[str, Any]) -> QuerySpeciesResult:
-    media_type = infer_media_type(item)
-    thumbnail_url = item.get("thumbnail_url") if media_type == "image" else None
+def shape_query_result(media_record: MediaRecord) -> QuerySpeciesResult:
+    media_type = infer_media_type(media_record)
+    thumbnail_url = media_record.thumbnail_url if media_type == "image" else None
 
     return QuerySpeciesResult(
-        checksum=item["checksum"],
-        file_name=item["file_name"],
+        checksum=media_record.checksum,
+        file_name=media_record.file_name,
         media_type=media_type,
-        url=item.get("full_url"),
+        url=media_record.full_url,
         thumbnail_url=thumbnail_url,
-        tags=normalize_tag_counts(item.get("tags")),
+        tags=normalize_tag_counts(media_record.tags),
     )
 
 
 def query_species(request: QuerySpeciesRequest) -> QuerySpeciesResponse:
     results: List[QuerySpeciesResult] = []
 
-    for item in scan_media(table):
-        if not is_ready_media(item):
-            continue
+    filters = {"upload_status": MediaRecordStatus.ready}
 
-        if media_contains_species(item, request.species):
-            results.append(shape_query_result(item))
+    for media_record in scan_media_record(table, filters):
+        if media_contains_species(media_record, request.species):
+            results.append(shape_query_result(media_record))
 
     return QuerySpeciesResponse(
         count=len(results),

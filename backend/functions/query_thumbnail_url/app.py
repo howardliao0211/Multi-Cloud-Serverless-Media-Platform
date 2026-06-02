@@ -1,17 +1,20 @@
 import json
 from http import HTTPMethod, HTTPStatus
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from pydantic import ValidationError
 
-from shared.aws_resources import get_table
+from shared.aws_resources import get_table, scan_media_record
 from shared.query_utils import (
     infer_media_type,
-    is_ready_media,
     parse_json_request,
-    scan_media,
 )
-from shared.schemas import QueryThumbnailUrlRequest, QueryThumbnailUrlResponse
+from shared.schemas import (
+    MediaRecord,
+    MediaRecordStatus,
+    QueryThumbnailUrlRequest,
+    QueryThumbnailUrlResponse,
+)
 from shared.utils import build_response_message
 
 
@@ -22,29 +25,31 @@ def parse_request(event: dict) -> QueryThumbnailUrlRequest:
     return parse_json_request(event, QueryThumbnailUrlRequest)
 
 
-def is_matching_thumbnail(item: Dict[str, Any], thumbnail_url: str) -> bool:
-    if not is_ready_media(item):
+def is_matching_thumbnail(media_record: MediaRecord, thumbnail_url: str) -> bool:
+    if infer_media_type(media_record) != "image":
         return False
 
-    if infer_media_type(item) != "image":
-        return False
-
-    return item.get("thumbnail_url") == thumbnail_url
+    return media_record.thumbnail_url == thumbnail_url
 
 
-def shape_query_response(item: Dict[str, Any]) -> QueryThumbnailUrlResponse:
+def shape_query_response(media_record: MediaRecord) -> QueryThumbnailUrlResponse:
     return QueryThumbnailUrlResponse(
-        checksum=item["checksum"],
-        file_name=item["file_name"],
-        url=item["full_url"],
-        thumbnail_url=item["thumbnail_url"],
+        checksum=media_record.checksum,
+        file_name=media_record.file_name,
+        url=media_record.full_url,
+        thumbnail_url=media_record.thumbnail_url,
     )
 
 
 def find_by_thumbnail_url(request: QueryThumbnailUrlRequest) -> Optional[QueryThumbnailUrlResponse]:
-    for item in scan_media(table):
-        if is_matching_thumbnail(item, request.thumbnail_url):
-            return shape_query_response(item)
+    filters = {
+        "upload_status": MediaRecordStatus.ready,
+        "thumbnail_url": request.thumbnail_url,
+    }
+
+    for media_record in scan_media_record(table, filters):
+        if is_matching_thumbnail(media_record, request.thumbnail_url):
+            return shape_query_response(media_record)
 
     return None
 

@@ -1,18 +1,18 @@
 import json
 from http import HTTPMethod, HTTPStatus
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from pydantic import ValidationError
 
-from shared.aws_resources import get_table
+from shared.aws_resources import get_table, scan_media_record
 from shared.query_utils import (
     infer_media_type,
-    is_ready_media,
     normalize_tag_counts,
     parse_json_request,
-    scan_media,
 )
 from shared.schemas import (
+    MediaRecord,
+    MediaRecordStatus,
     QueryTagsRequest,
     QueryTagsResponse,
     QueryTagsResult,
@@ -27,8 +27,8 @@ def parse_request(event: dict) -> QueryTagsRequest:
     return parse_json_request(event, QueryTagsRequest)
 
 
-def media_matches_tags(item: Dict[str, Any], requested_tags: Dict[str, int]) -> bool:
-    tag_counts = normalize_tag_counts(item.get("tags"))
+def media_matches_tags(media_record: MediaRecord, requested_tags: Dict[str, int]) -> bool:
+    tag_counts = normalize_tag_counts(media_record.tags)
 
     for tag, min_count in requested_tags.items():
         if tag_counts.get(tag, 0) < min_count:
@@ -37,29 +37,28 @@ def media_matches_tags(item: Dict[str, Any], requested_tags: Dict[str, int]) -> 
     return True
 
 
-def shape_query_result(item: Dict[str, Any]) -> QueryTagsResult:
-    media_type = infer_media_type(item)
-    thumbnail_url = item.get("thumbnail_url") if media_type == "image" else None
+def shape_query_result(media_record: MediaRecord) -> QueryTagsResult:
+    media_type = infer_media_type(media_record)
+    thumbnail_url = media_record.thumbnail_url if media_type == "image" else None
 
     return QueryTagsResult(
-        checksum=item["checksum"],
-        file_name=item["file_name"],
+        checksum=media_record.checksum,
+        file_name=media_record.file_name,
         media_type=media_type,
-        url=item.get("full_url"),
+        url=media_record.full_url,
         thumbnail_url=thumbnail_url,
-        tags=normalize_tag_counts(item.get("tags")),
+        tags=normalize_tag_counts(media_record.tags),
     )
 
 
 def query_tags(request: QueryTagsRequest) -> QueryTagsResponse:
     results: List[QueryTagsResult] = []
 
-    for item in scan_media(table):
-        if not is_ready_media(item):
-            continue
+    filters = {"upload_status": MediaRecordStatus.ready}
 
-        if media_matches_tags(item, request.tags):
-            results.append(shape_query_result(item))
+    for media_record in scan_media_record(table, filters):
+        if media_matches_tags(media_record, request.tags):
+            results.append(shape_query_result(media_record))
 
     return QueryTagsResponse(
         count=len(results),
