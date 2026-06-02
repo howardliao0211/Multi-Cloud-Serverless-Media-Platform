@@ -97,7 +97,7 @@ function UploadScreen(){
                 const data = await authFetch<UploadResponse>("/get-signed-url", {
                     method: "POST",
                     body: JSON.stringify({
-                        filename: file.name,
+                        file_name: file.name,
                         checksum: hash,
                         media_type: mediaType,
                         visibility

@@ -57,7 +57,7 @@ class MediaRecordResponse(BaseModel):
 
 
 class UploadUrlRequest(BaseModel):
-    filename: str
+    file_name: str
     checksum: str
     media_type: MediaType
     visibility: MediaVisibility
@@ -71,3 +71,8 @@ class UploadUrlResponse(BaseModel):
 
 class GetMediaResponse(BaseModel):
     media_records: List[MediaRecordResponse]
+
+
+class GetMediaUploadStatus(BaseModel):
+    file_name: str
+    checksum: str
