@@ -214,6 +214,58 @@ button:disabled {
   object-fit: cover;
 }
 
+.media-card-body {
+  padding: 20px;
+}
+
+.media-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.media-card-header h2 {
+  font-size: 22px;
+  margin: 0;
+  word-break: break-word;
+}
+
+.media-status-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--border);
+}
+
+.media-status-pill.ready {
+  background: #22c55e;
+  color: #050505;
+}
+
+.media-status-pill.processing {
+  background: var(--primary);
+  color: #050505;
+}
+
+.media-status-pill.failed {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.media-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.empty-tags {
+  color: var(--text-muted);
+}
+
 .brand,
 .brand:visited,
 .brand:hover,

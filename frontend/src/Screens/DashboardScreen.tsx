@@ -76,6 +76,19 @@ function DashboardScreen(){
                                 <p>
                                     Visibility: <strong>{record.visibility}</strong>
                                 </p>
+
+                                <div className="media-tags">
+                                    {Object.entries(record.tags).length > 0 ? (
+                                        Object.entries(record.tags).map(([tag, count]) => (
+                                            <span className="tag-pill" key={tag}>
+                                                {tag}: ({count})
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="empty-tags">No tags yet</span>
+                                    )}
+                                </div>
+
                             </article>
                         ))}
                     </section>
