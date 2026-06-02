@@ -1,12 +1,7 @@
 from enum import Enum
-<<<<<<< HEAD
 from typing import Dict, List, Optional, Literal
 
 from pydantic import BaseModel, Field, field_validator
-=======
-from typing import Dict, Optional, List
-from pydantic import BaseModel, Field
->>>>>>> origin/main
 
 
 class MediaType(str, Enum):
@@ -70,7 +65,6 @@ class UploadUrlResponse(BaseModel):
     expires_in: Optional[int] = None
 
 
-<<<<<<< HEAD
 class QueryTagsRequest(BaseModel):
     tags: Dict[str, int]
 
@@ -159,11 +153,11 @@ class QueryThumbnailUrlResponse(BaseModel):
     file_name: str
     url: str
     thumbnail_url: str
-=======
+
+    
 class GetPrivateMediaRequest(BaseModel):
     owner_id: str
 
 
 class GetMediaResponse(BaseModel):
     media_records: List[MediaRecordResponse]
->>>>>>> origin/main

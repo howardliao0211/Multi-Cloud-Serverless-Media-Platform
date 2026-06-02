@@ -1,10 +1,10 @@
 import base64
 import json
-from typing import Any, Dict, Iterable, Type, TypeVar
+from typing import Any, Dict, Type, TypeVar
 
 from pydantic import BaseModel
 
-from shared.schemas import MediaRecordStatus
+from shared.schemas import MediaRecord
 
 
 RequestModel = TypeVar("RequestModel", bound=BaseModel)
@@ -39,29 +39,10 @@ def normalize_tag_counts(raw_tags: Any) -> Dict[str, int]:
     return tag_counts
 
 
-def is_ready_media(item: Dict[str, Any]) -> bool:
-    return item.get("upload_status") == MediaRecordStatus.ready.value
-
-
-def infer_media_type(item: Dict[str, Any]) -> str | None:
-    file_type = item.get("file_type")
+def infer_media_type(media_record: MediaRecord) -> str | None:
+    file_type = media_record.file_type
 
     if not isinstance(file_type, str) or "/" not in file_type:
         return None
 
     return file_type.split("/", 1)[0]
-
-
-def scan_media(table) -> Iterable[Dict[str, Any]]:
-    response = table.scan()
-
-    while True:
-        for item in response.get("Items", []):
-            yield item
-
-        last_key = response.get("LastEvaluatedKey")
-
-        if not last_key:
-            break
-
-        response = table.scan(ExclusiveStartKey=last_key)
