@@ -107,3 +107,24 @@ class QuerySpeciesResult(BaseModel):
 class QuerySpeciesResponse(BaseModel):
     count: int
     results: List[QuerySpeciesResult] = Field(default_factory=list)
+
+
+class QueryThumbnailUrlRequest(BaseModel):
+    thumbnail_url: str
+
+    @field_validator("thumbnail_url")
+    @classmethod
+    def validate_thumbnail_url(cls, thumbnail_url: str) -> str:
+        normalized_thumbnail_url = thumbnail_url.strip()
+
+        if not normalized_thumbnail_url:
+            raise ValueError("thumbnail_url must not be empty")
+
+        return normalized_thumbnail_url
+
+
+class QueryThumbnailUrlResponse(BaseModel):
+    checksum: str
+    file_name: str
+    url: str
+    thumbnail_url: str
