@@ -10,6 +10,7 @@ FRONTEND_ORIGIN = "https://dqgriz8bwuql1.cloudfront.net"
 def get_current_user(event):
     return event["requestContext"]["authorizer"]["jwt"]["claims"]["sub"]
 
+
 def build_response_message(
     status_code: HTTPStatus | int,
     body: dict,
@@ -62,6 +63,7 @@ def build_media_record_response(
         upload_status=media_record.upload_status,
         error_message=media_record.error_message,
     )
+
 
 if __name__ == "__main__":
     print(
