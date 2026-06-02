@@ -63,9 +63,5 @@ class UploadUrlResponse(BaseModel):
     expires_in: Optional[int] = None
 
 
-class GetPrivateMediaRequest(BaseModel):
-    owner_id: str
-
-
 class GetMediaResponse(BaseModel):
     media_records: List[MediaRecordResponse]
