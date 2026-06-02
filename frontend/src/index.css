@@ -266,6 +266,23 @@ button:disabled {
   color: var(--text-muted);
 }
 
+.media-url-list label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: white;
+  font-size: 13px;
+}
+
+.media-url-list input {
+  background: #1c1c1c;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px;
+  color: white;
+  font-size: 12px;
+}
+
 .brand,
 .brand:visited,
 .brand:hover,

@@ -89,6 +89,15 @@ function DashboardScreen(){
                                     )}
                                 </div>
 
+                                <div className="media-url-list">
+                                    <label>
+                                        Full URL: <input readOnly value={record.full_presigned_url || ""} />
+                                    </label>
+                                    <label>
+                                        Thumbnail URL: <input readOnly value={record.thumbnail_presigned_url || ""} />
+                                    </label>
+                                </div>
+                                    
                             </article>
                         ))}
                     </section>
