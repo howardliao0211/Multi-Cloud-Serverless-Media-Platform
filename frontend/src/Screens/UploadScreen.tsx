@@ -210,18 +210,19 @@ function UploadScreen(){
                 <button type="button" onClick={handleUpload} disabled={files.length === 0}>
                     Upload
                 </button>
-                {status.text && (
-                    <div className={`status-message ${status.type}`}>
-                        <p>{status.text}</p>
-                    </div>
-                )}
             </div>
+
+            {status.text && (
+                <div className={`status-message ${status.type}`}>
+                    <p>{status.text}</p>
+                </div>
+            )}
             
             {fileStatuses.length > 0 && (
                 <div className="media-status-list">
                     <div className="upload-progress-header">
                     <span>Overall Progress</span>
-                    <span>{overallProgress}%</span>
+                    <span> {overallProgress}%</span>
                     </div>
 
                     <div className="upload-progress-track">

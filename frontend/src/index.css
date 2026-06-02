@@ -92,7 +92,7 @@ button:disabled {
   display: flex;
   gap: 40px;
   justify-content: center;
-  margin-top: 24px;
+  margin-top: 20px;
 }
 
 .button-operator {
@@ -266,10 +266,11 @@ button:disabled {
 }
 
 .media-status-card {
-  padding: 16px;
+  padding: 8px 16px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--surface-light);
+  color: var(--text-main);
 }
 
 .media-status-header {
@@ -281,17 +282,15 @@ button:disabled {
 }
 
 .upload-status-track {
-  width: 100%;
-  height: 14px;
+  height: 8px;
   background: var(--border);
   border-radius: 999px;
   overflow: hidden;
+  margin: 8px 0;
 }
 
 .upload-status-bar {
   height: 100%;
-  border-radius: 999px;
-  transition: width 0.3s ease;
   background: var(--quinary);
 }
 
@@ -494,7 +493,7 @@ button:disabled {
   font-weight: 700;
   text-align: center;
   max-width: 640px;
-  margin: 24px 0;
+  margin: 24px auto;
 }
 
 .status-message.success {
