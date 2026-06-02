@@ -197,10 +197,6 @@ button:disabled {
   cursor: pointer;
 }
 
-.brand h1 {
-  text-decoration: none;
-}
-
 .brand:hover{
   opacity: 0.85;
 }

@@ -46,7 +46,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function WelcomeScreen() {
   const navigate = useNavigate();
-  const [showRegisterSuccess, setShowRegisterSuccess] = useState<boolean>(
+  const [showRegisterSuccess] = useState<boolean>(
     sessionStorage.getItem("showRegisterSuccess") === "true"
   );
 

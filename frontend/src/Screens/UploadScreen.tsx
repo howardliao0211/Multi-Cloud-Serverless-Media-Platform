@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
 import { calculateFileHash, createStatus, getMediaType, type StatusMessage } from "../utils";
 import { authFetch } from "../services/api";
+import { getCurrentUser } from "aws-amplify/auth";
+const user = await getCurrentUser();
 
-function UploadScreen(){
+async function UploadScreen(){
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
-
+    
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
         if (event.target.files){
             setFiles(Array.from(event.target.files));
@@ -65,7 +67,8 @@ function UploadScreen(){
                     method: "PUT",
                     headers: {
                         "x-amz-meta-file_name": file.name,
-                        "x-amz-meta-checksum": hash
+                        "x-amz-meta-checksum": hash,
+                        "x-amz-meta-user_id": user.userId,
                     },
                     body: file,
                 });
