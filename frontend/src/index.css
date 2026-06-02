@@ -241,6 +241,22 @@ button:disabled {
   font-size: 64px;
 }
 
+.visibility-options {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin: 24px 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.visibility-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-main);
+}
+
 .selected-file {
   margin-top: 20px;
   color: var(--text-muted);

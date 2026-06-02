@@ -6,7 +6,8 @@ function UploadScreen(){
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
-    
+    const [visibility, setVisibility] = useState<"private" | "public">("private");
+
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
         if (event.target.files){
             setFiles(Array.from(event.target.files));
@@ -24,7 +25,7 @@ function UploadScreen(){
     type UploadResponse = {
         duplicate: boolean;
         upload_url?: string;
-        expires?: number;
+        expires_in?: number;
     };
 
     async function handleUpload() {
@@ -41,14 +42,14 @@ function UploadScreen(){
                 const hash = await calculateFileHash(file);
                 const mediaType = getMediaType(file);
                 const userId = await getCurrentUserId();
-                const data = await authFetch<UploadResponse>("/get_signed_url", {
+                const data = await authFetch<UploadResponse>("/get-signed-url", {
                     method: "POST",
                     body: JSON.stringify({
+                        owner_id: userId,
                         filename: file.name,
                         checksum: hash,
                         media_type: mediaType,
-                        owner_id: userId,
-                        visibility: "private"
+                        visibility
                     }),
                 });
 
@@ -112,7 +113,16 @@ function UploadScreen(){
                     </div>
                 )}
             </label>
-            
+            <div className="visibility-options">
+                <label>
+                    <input type="radio" name="visibility" value="private" checked={visibility === "private"} onChange={() => setVisibility("private")} />
+                    Private
+                </label>
+                <label>
+                    <input type="radio" value="public" checked={visibility === "public"} onChange={() => setVisibility("public")} />
+                    Public
+                </label>
+            </div>
             <div className="button-row">
                 <button type="button" onClick={handleUpload} disabled={files.length === 0}>
                     Upload
