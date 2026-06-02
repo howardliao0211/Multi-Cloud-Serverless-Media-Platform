@@ -365,7 +365,7 @@ button:disabled {
   font-weight: 700;
 }
 
-.upload-status-track {
+.upload-progress-track {
   height: 8px;
   background: var(--border);
   border-radius: 999px;
@@ -373,9 +373,15 @@ button:disabled {
   margin: 8px 0;
 }
 
-.upload-status-bar {
+.upload-progress-bar {
   height: 100%;
   background: var(--quinary);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.upload-progress-bar.failed {
+  background: var(--danger);
 }
 
 .selected-file {

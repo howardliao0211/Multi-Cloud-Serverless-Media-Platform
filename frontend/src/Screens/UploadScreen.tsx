@@ -55,11 +55,38 @@ function UploadScreen(){
     }
 
     function updateFileStatus(fileName: string, status: FileUploadStatus) {
-        setFileStatuses((current) =>
-            current.map((item) =>
-                item.name === fileName ? { ...item, status } : item
-            )
-        );
+        setFileStatuses((current) => {
+            const updated = current.map((item) =>
+            item.name === fileName ? { ...item, status } : item
+            );
+
+            const finishedCount = updated.filter(
+            (item) => item.status === "ready" || 
+                      item.status === "failed" || 
+                      item.status === "duplicate"
+            ).length;
+
+            updateOverallProgress(finishedCount, updated.length);
+
+            if (finishedCount === updated.length) {
+            const readyCount = updated.filter((item) => item.status === "ready").length;
+            const failedCount = updated.filter((item) => item.status === "failed").length;
+            const duplicateCount = updated.filter((item) => item.status === "duplicate").length;
+
+            if (failedCount > 0) {
+                setStatus(createStatus("error", `Finished with ${failedCount} failed file(s).`));
+            } else {
+                setStatus(
+                createStatus(
+                    "success",
+                    `Complete. ${readyCount} ready, ${duplicateCount} duplicate skipped.`
+                )
+                );
+            }
+            }
+
+            return updated;
+        });
     }
 
     function updateOverallProgress(doneCount: number, totalCount: number) {
@@ -89,26 +116,15 @@ function UploadScreen(){
         }
     }
 
-    // async function fetchMediaStatus() {
-    //     try {
-    //         const endpoint = visibility === "private" ? "/get-private-media" : "/get-public-media";
-    //         const response = await authFetch<GetMediaResponse>(endpoint, {
-    //             method: "GET",
-    //         });
-
-    //         setMediaRecords(response.media_records);
-    //     } catch (error) {
-    //         console.error(error);
-    //     }
-    // }
-
     async function fetchUploadStatus(fileName: string, checksum: string) {
-        return authFetch<MediaUploadStatusResponse>("/get_upload_status", {
+        const query = new URLSearchParams({
+             file_name: fileName, 
+             checksum ,
+        });
+        const url = `/get_upload_status?${query.toString()}`;
+        console.log("Polling upload status:", url);
+        return authFetch<MediaUploadStatusResponse>(`/get_upload_status?${query.toString()}`, {
             method: "GET",
-            body: JSON.stringify({
-            file_name: fileName,
-            checksum,
-            }),
         });
     }
 
@@ -133,7 +149,7 @@ function UploadScreen(){
     async function handleUpload() {
         if (files.length === 0) return;
 
-        setStatus(createStatus("loading", "Uploading..."));
+        setStatus(createStatus("loading", ""));
 
         try{
             let uploadedCount = 0;
@@ -187,15 +203,8 @@ function UploadScreen(){
                 uploadedCount++;
                 updateFileStatus(file.name, "uploaded");
                 pollUploadStatus(file.name, hash);
-                finishedCount++;
-                updateOverallProgress(finishedCount, files.length);
             }
 
-            if (duplicatedFiles.length > 0){
-                setStatus(createStatus("success", `Upload complete. ${uploadedCount} uploaded. Duplicate skipped: ${duplicatedFiles.join(", ")}`));
-            } else {
-                setStatus(createStatus("success", `Upload complete. ${uploadedCount} uploaded.`));
-            }
         } catch (error) {
             setStatus(createStatus("error", "Upload failed."));
             console.error(error);
@@ -272,7 +281,7 @@ function UploadScreen(){
                             <div
                                 className={`upload-progress-bar ${item.status}`}
                                 style={{
-                                width: `${getProgress(item.status)}%`,
+                                    width: `${getProgress(item.status)}%`,
                                 }}
                             />
                         </div>
