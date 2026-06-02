@@ -8,7 +8,7 @@ FRONTEND_ORIGIN = "https://dqgriz8bwuql1.cloudfront.net"
 
 def build_response_message(
     status_code: HTTPStatus | int,
-    body: dict, 
+    body: dict,
     allow_http_methods: Iterable[HTTPMethod],
 ) -> dict:
 
@@ -27,6 +27,7 @@ def build_response_message(
 if __name__ == "__main__":
     print(
         build_response_message(
-            HTTPStatus.OK, {"message": "Hello World"}, [HTTPMethod.POST, HTTPMethod.OPTIONS]
+            HTTPStatus.OK, {"message": "Hello World"}, [
+                HTTPMethod.POST, HTTPMethod.OPTIONS]
         )
     )
