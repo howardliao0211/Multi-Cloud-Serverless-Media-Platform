@@ -3,6 +3,7 @@ import hmac
 import json
 import os
 import time
+from decimal import Decimal
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote_plus
 from typing import Dict, Tuple
@@ -57,6 +58,26 @@ tagger = ImageTagger(
     classifier_model_path=LOCAL_CLASSIFIER_MODEL_PATH,
     detector_model_path=LOCAL_DETECTOR_MODEL_PATH,
 )
+
+
+def convert_floats_for_dynamodb(value):
+    """
+    DynamoDB does not accept Python float values through boto3 resources.
+    Convert nested float values to Decimal before update_item.
+    """
+    if isinstance(value, float):
+        return Decimal(str(value))
+
+    if isinstance(value, list):
+        return [convert_floats_for_dynamodb(item) for item in value]
+
+    if isinstance(value, dict):
+        return {
+            key: convert_floats_for_dynamodb(item)
+            for key, item in value.items()
+        }
+
+    return value
 
 
 def sign_gcp_ml_request(body: bytes, timestamp: str) -> str:
@@ -165,7 +186,7 @@ def tag_image_with_fallback(
             return {
                 "tags": gcp_result.get("tag_counts", {}),
                 "ml_provider": "gcp_cloud_run",
-                "ml_detections": gcp_result.get("detections", []),
+                "ml_detections": convert_floats_for_dynamodb(gcp_result.get("detections", [])),
                 "ml_model_name": gcp_result.get("model_name"),
                 "ml_model_version": gcp_result.get("model_version"),
             }
@@ -178,7 +199,7 @@ def tag_image_with_fallback(
     return {
         "tags": local_result["tags"],
         "ml_provider": "aws_lambda_local",
-        "ml_detections": local_result.get("detections", []),
+        "ml_detections": convert_floats_for_dynamodb(local_result.get("detections", [])),
         "ml_model_name": "local_image_tagger",
         "ml_model_version": "current",
     }
@@ -283,6 +304,7 @@ def process_image(bucket: str, s3_key: str, request_id: str):
                 "ml_detections": tagger_result["ml_detections"],
                 "ml_model_name": tagger_result["ml_model_name"],
                 "ml_model_version": tagger_result["ml_model_version"],
+                "error_message": None,
                 "upload_status": MediaRecordStatus.ready,
             }
         )
