@@ -90,6 +90,7 @@ def lambda_handler(event, context):
     expires_in = URL_EXPIRES_SECONDS
 
     media = MediaRecord(
+        owner_id=request.owner_id,
         checksum=request.checksum,
         file_name=request.filename,
         full_key=s3_key,

@@ -1,6 +1,5 @@
 from enum import Enum
-from optparse import Option
-from typing import Dict, Optional, Literal
+from typing import Dict, Optional, List
 from pydantic import BaseModel, Field
 
 
@@ -23,6 +22,7 @@ class MediaRecordStatus(str, Enum):
 
 
 class MediaRecord(BaseModel):
+    owner_id: str
     file_name: str
     checksum: str
     full_key: str
@@ -39,7 +39,19 @@ class MediaRecord(BaseModel):
     error_message: Optional[str] = None
 
 
+class MediaRecordResponse(BaseModel):
+    owner_id: str
+    file_name: str
+    visibility: MediaVisibility
+    full_presigned_url: str
+    thumbnail_presigned_url: str
+    tags: Dict[str, int]
+    upload_status: MediaRecordStatus
+    error_message: Optional[str]
+
+
 class UploadUrlRequest(BaseModel):
+    owner_id: str
     filename: str
     checksum: str
     media_type: MediaType
@@ -50,3 +62,11 @@ class UploadUrlResponse(BaseModel):
     duplicate: bool
     upload_url: Optional[str] = None
     expires_in: Optional[int] = None
+
+
+class GetPrivateMediaRequest(BaseModel):
+    owner_id: str
+
+
+class GetMediaResponse(BaseModel):
+    media_records: List[MediaRecordResponse]

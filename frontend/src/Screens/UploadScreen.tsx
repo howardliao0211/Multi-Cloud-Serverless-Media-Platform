@@ -40,13 +40,15 @@ function UploadScreen(){
                 // call upload API for each file
                 const hash = await calculateFileHash(file);
                 const mediaType = getMediaType(file);
-                
+                const userId = await getCurrentUserId();
                 const data = await authFetch<UploadResponse>("/get_signed_url", {
                     method: "POST",
                     body: JSON.stringify({
                         filename: file.name,
                         checksum: hash,
                         media_type: mediaType,
+                        owner_id: userId,
+                        visibility: "private"
                     }),
                 });
 
@@ -61,13 +63,11 @@ function UploadScreen(){
                     throw new Error("Upload URL was not returned.");
                 }
 
-                const userId = await getCurrentUserId();
                 const uploadResponse = await fetch(data.upload_url, {
                     method: "PUT",
                     headers: {
                         "x-amz-meta-file_name": file.name,
                         "x-amz-meta-checksum": hash,
-                        "x-amz-meta-user_id": userId,
                     },
                     body: file,
                 });
