@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 import torch
 from torchvision import transforms
+from PIL import Image
+
 
 from megadetector.detection import run_detector
 from megadetector.visualization import visualization_utils as vis_utils
@@ -260,7 +262,6 @@ class ImageTagger:
         # OpenCV crop is BGR; convert to RGB.
         crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
 
-        from PIL import Image
         img_pil = Image.fromarray(crop_rgb).convert("RGB")
 
         img = self.transform(img_pil)      # -> C,H,W
