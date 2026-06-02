@@ -10,7 +10,6 @@ from boto3.dynamodb.conditions import Key
 from shared.schemas import (
     MediaRecord,
     MediaVisibility,
-    GetPrivateMediaRequest,
     GetMediaResponse,
 )
 from shared.aws_resources import (
@@ -27,11 +26,6 @@ from shared.utils import (
 s3, bucket_name = get_bucket_and_name()
 table = get_table()
 URL_EXPIRES_SECONDS = 300
-
-
-def parse_request(event: dict, ) -> GetPrivateMediaRequest:
-    body = event.get("body")
-    return GetPrivateMediaRequest(**json.loads(body))
 
 
 def get_private_media(
@@ -63,7 +57,7 @@ def lambda_handler(event, context):
             allow_http_methods=allow_methods
         )
 
-    owner_id = get_current_user()
+    owner_id = get_current_user(event)
     media = get_private_media(owner_id)
     media_response = [
         build_media_record_response(
