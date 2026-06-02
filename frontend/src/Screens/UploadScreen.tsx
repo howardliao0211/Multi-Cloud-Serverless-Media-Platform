@@ -7,6 +7,8 @@ function UploadScreen(){
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
     const [visibility, setVisibility] = useState<"private" | "public">("private");
+    const [fileStatuses, setFileStatuses] = useState<FileUploadItem[]>([]);
+    const [overallProgress, setOverallProgress] = useState<number>(0);
 
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
         if (event.target.files){
@@ -28,6 +30,34 @@ function UploadScreen(){
         expires_in?: number;
     };
 
+    type FileUploadStatus = "waiting" | "uploading" | "uploaded" | "processing" | "processed" | "ready" | "failed" | "duplicate";
+
+    type FileUploadItem = {
+        name: string;
+        status: FileUploadStatus;
+    };
+
+    function handleFileChange(event: React.ChangeEvent<HTMLInputElement>){
+        if (event.target.files){
+            const newFiles = Array.from(event.target.files);
+            setFiles(newFiles);
+            setFileStatuses(newFiles.map((file) => ({ name: file.name, status: "waiting" })));
+            setOverallProgress(0);
+        }
+    }
+
+    function updateFileStatus(fileName: string, status: FileUploadStatus) {
+        setFileStatuses((current) =>
+            current.map((item) =>
+                item.name === fileName ? { ...item, status } : item
+            )
+        );
+    }
+
+    function updateOverallProgress(doneCount: number, totalCount: number) {
+        setOverallProgress(Math.round((doneCount / totalCount) * 100));
+    }
+
     async function handleUpload() {
         if (files.length === 0) return;
 
@@ -41,11 +71,9 @@ function UploadScreen(){
                 // call upload API for each file
                 const hash = await calculateFileHash(file);
                 const mediaType = getMediaType(file);
-                const userId = await getCurrentUserId();
                 const data = await authFetch<UploadResponse>("/get-signed-url", {
                     method: "POST",
                     body: JSON.stringify({
-                        owner_id: userId,
                         filename: file.name,
                         checksum: hash,
                         media_type: mediaType,
@@ -119,7 +147,7 @@ function UploadScreen(){
                     Private
                 </label>
                 <label>
-                    <input type="radio" value="public" checked={visibility === "public"} onChange={() => setVisibility("public")} />
+                    <input type="radio" name="visibility" value="public" checked={visibility === "public"} onChange={() => setVisibility("public")} />
                     Public
                 </label>
             </div>
