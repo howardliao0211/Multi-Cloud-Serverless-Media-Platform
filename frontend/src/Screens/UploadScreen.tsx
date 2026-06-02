@@ -1,10 +1,8 @@
 import { useRef, useState } from "react";
-import { calculateFileHash, createStatus, getMediaType, type StatusMessage } from "../utils";
+import { calculateFileHash, createStatus, getCurrentUserId, getMediaType, type StatusMessage } from "../utils";
 import { authFetch } from "../services/api";
-import { getCurrentUser } from "aws-amplify/auth";
-const user = await getCurrentUser();
 
-async function UploadScreen(){
+function UploadScreen(){
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
@@ -32,7 +30,7 @@ async function UploadScreen(){
     async function handleUpload() {
         if (files.length === 0) return;
 
-        setStatus(createStatus("idle", "Uploading..."));
+        setStatus(createStatus("loading", "Uploading..."));
 
         try{
             let uploadedCount = 0;
@@ -63,12 +61,13 @@ async function UploadScreen(){
                     throw new Error("Upload URL was not returned.");
                 }
 
+                const userId = await getCurrentUserId();
                 const uploadResponse = await fetch(data.upload_url, {
                     method: "PUT",
                     headers: {
                         "x-amz-meta-file_name": file.name,
                         "x-amz-meta-checksum": hash,
-                        "x-amz-meta-user_id": user.userId,
+                        "x-amz-meta-user_id": userId,
                     },
                     body: file,
                 });
