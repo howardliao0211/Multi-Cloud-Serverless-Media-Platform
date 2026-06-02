@@ -9,7 +9,7 @@ resource "google_cloud_run_v2_service" "ml_processor" {
   name     = "${local.name_prefix}-ml-processor"
   location = var.gcp_region
 
-  deletion_protection = false
+  deletion_protection = true
 
   template {
     service_account = google_service_account.ml_processor.email

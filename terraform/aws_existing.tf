@@ -13,3 +13,5 @@ data "aws_cognito_user_pool" "main" {
 data "aws_apigatewayv2_api" "main" {
   api_id = var.existing_api_id
 }
+
+data "aws_caller_identity" "current" {}
