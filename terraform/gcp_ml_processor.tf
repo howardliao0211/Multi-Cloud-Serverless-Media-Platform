@@ -28,8 +28,14 @@ resource "google_cloud_run_v2_service" "ml_processor" {
       }
 
       env {
-        name  = "INTERNAL_HMAC_SECRET"
-        value = var.internal_hmac_secret
+        name = "INTERNAL_HMAC_SECRET"
+
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.gcp_ml_hmac.id
+            version = "latest"
+          }
+        }
       }
 
       env {

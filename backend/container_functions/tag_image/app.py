@@ -31,6 +31,7 @@ from shared.aws_resources import (
 
 s3, bucket_name = get_bucket_and_name()
 table = get_table()
+secretsmanager = boto3.client("secretsmanager")
 
 CLASSIFIER_MODEL_KEY = "models/model.pt"
 DETECTOR_MODEL_KEY = "models/mdv5a.pt"
@@ -41,6 +42,7 @@ LOCAL_DETECTOR_MODEL_PATH = "/tmp/mdv5a.pt"
 GCP_ML_ENABLED = os.getenv("GCP_ML_ENABLED", "false").lower() == "true"
 GCP_ML_PROCESSOR_URL = os.getenv("GCP_ML_PROCESSOR_URL", "").rstrip("/")
 GCP_ML_HMAC_SECRET = os.getenv("GCP_ML_HMAC_SECRET", "")
+GCP_ML_HMAC_SECRET_ARN = os.getenv("GCP_ML_HMAC_SECRET_ARN", "")
 GCP_ML_PRESIGNED_URL_EXPIRY_SECONDS = int(
     os.getenv("GCP_ML_PRESIGNED_URL_EXPIRY_SECONDS", "600")
 )
@@ -58,6 +60,20 @@ tagger = ImageTagger(
     classifier_model_path=LOCAL_CLASSIFIER_MODEL_PATH,
     detector_model_path=LOCAL_DETECTOR_MODEL_PATH,
 )
+
+
+def get_gcp_ml_hmac_secret() -> str:
+    """
+    Prefer AWS Secrets Manager for the shared HMAC secret.
+    Fall back to GCP_ML_HMAC_SECRET only for local/dev usage.
+    """
+    if GCP_ML_HMAC_SECRET_ARN:
+        response = secretsmanager.get_secret_value(
+            SecretId=GCP_ML_HMAC_SECRET_ARN,
+        )
+        return response["SecretString"]
+
+    return GCP_ML_HMAC_SECRET
 
 
 def convert_floats_for_dynamodb(value):
@@ -84,7 +100,7 @@ def sign_gcp_ml_request(body: bytes, timestamp: str) -> str:
     message = timestamp.encode("utf-8") + b"." + body
 
     return hmac.new(
-        GCP_ML_HMAC_SECRET.encode("utf-8"),
+        get_gcp_ml_hmac_secret().encode("utf-8"),
         message,
         hashlib.sha256,
     ).hexdigest()
@@ -101,8 +117,8 @@ def call_gcp_ml_processor(
     if not GCP_ML_PROCESSOR_URL:
         raise ValueError("GCP_ML_PROCESSOR_URL is not configured")
 
-    if not GCP_ML_HMAC_SECRET:
-        raise ValueError("GCP_ML_HMAC_SECRET is not configured")
+    if not get_gcp_ml_hmac_secret():
+        raise ValueError("GCP ML HMAC secret is not configured")
 
     media_type = file_type.split("/")[0]
 
