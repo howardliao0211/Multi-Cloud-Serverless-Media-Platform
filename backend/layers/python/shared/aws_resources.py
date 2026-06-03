@@ -113,6 +113,26 @@ def update_media_record_in_db(table, key: str, updates: dict[str, Any]) -> None:
     )
 
 
+def delete_media_record_from_db(table, key: str) -> None:
+    table.delete_item(
+        Key={
+            "key": key,
+        },
+    )
+
+
+def delete_s3_object_if_exists(s3, bucket: str, s3_key: Optional[str]) -> bool:
+    if not s3_key:
+        return False
+
+    s3.delete_object(
+        Bucket=bucket,
+        Key=s3_key,
+    )
+
+    return True
+
+
 def download_s3_file(s3, bucket: str, s3_key: str, local_path: str) -> None:
 
     if Path(local_path).exists():

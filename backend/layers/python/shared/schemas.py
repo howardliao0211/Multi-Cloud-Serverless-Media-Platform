@@ -292,6 +292,40 @@ class EditTagsResponse(BaseModel):
     results: List[EditTagsResult] = Field(default_factory=list)
 
 
+class DeleteFileRequest(BaseModel):
+    urls: List[str]
+
+    @field_validator("urls")
+    @classmethod
+    def validate_urls(cls, urls: List[str]) -> List[str]:
+        normalized_urls = [
+            url.strip()
+            for url in urls
+            if url.strip()
+        ]
+
+        if not normalized_urls:
+            raise ValueError("urls must not be empty")
+
+        return list(dict.fromkeys(normalized_urls))
+
+
+class DeleteFileResult(BaseModel):
+    url: str
+    deleted: bool
+    checksum: Optional[str] = None
+    file_name: Optional[str] = None
+    removed_db_entry: bool = False
+    removed_full_object: bool = False
+    removed_thumbnail_object: bool = False
+    message: Optional[str] = None
+
+
+class DeleteFileResponse(BaseModel):
+    deleted_count: int
+    results: List[DeleteFileResult] = Field(default_factory=list)
+
+
 class MediaUploadStatusResponse(BaseModel):
     upload_status: MediaRecordStatus
     error_message: Optional[str]
