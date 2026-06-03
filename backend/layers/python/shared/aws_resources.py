@@ -81,7 +81,7 @@ def update_media_record_in_db(table, key: str, updates: dict[str, Any]) -> None:
         return
 
     allowed_fields = set(MediaRecord.model_fields.keys())
-    non_updatable_fields = {"checksum"}
+    non_updatable_fields = {"key", "owner_id", "full_key", "checksum"}
 
     invalid_fields = set(updates.keys()) - allowed_fields
     if invalid_fields:
