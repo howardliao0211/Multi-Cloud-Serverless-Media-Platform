@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { calculateFileHash, createStatus, getMediaType, getCurrentUserId, type StatusMessage } from "../utils";
 import { authFetch } from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 function UploadScreen() {
     const [files, setFiles] = useState<File[]>([]);
@@ -9,6 +10,7 @@ function UploadScreen() {
     const [visibility, setVisibility] = useState<"private" | "public">("private");
     const [fileStatuses, setFileStatuses] = useState<FileUploadItem[]>([]);
     const [overallProgress, setOverallProgress] = useState<number>(0);
+    const navigate = useNavigate();
 
     function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
         event.preventDefault();
@@ -82,6 +84,7 @@ function UploadScreen() {
                             `Complete. ${readyCount} ready, ${duplicateCount} duplicate skipped.`
                         )
                     );
+                    navigate("/dashboard", { state: { refresh: Date.now() }})
                 }
             }
 

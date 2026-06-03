@@ -4,7 +4,8 @@ import animals from "../assets/animals.jpg";
 import { useEffect, useState } from "react";
 import {
     createStatus, getErrorMessage,
-    type StatusMessage, type GetMediaResponse, type MediaRecordResponse
+    type StatusMessage, type GetMediaResponse, type MediaRecordResponse,
+    getCurrentUserId
 } from "../utils";
 import { authFetch } from "../services/api";
 
@@ -17,14 +18,27 @@ function DashboardScreen() {
 
     useEffect(() => {
         async function loadMyMedia() {
+            const currentUserId = await getCurrentUserId();
+
             setStatus(createStatus("loading", "Loading your uploads..."));
 
             try {
-                const response = await authFetch<GetMediaResponse>("/get_private_media", {
+                const privateData = await authFetch<GetMediaResponse>("/get_private_media", {
                     method: "GET",
                 });
 
-                setMediaRecords(response.media_records);
+                const publicData = await authFetch<GetMediaResponse>("/get_public_media", {
+                    method: "GET",
+                });
+
+                const myPublicRecords = publicData.media_records.filter(
+                    (record) => record.owner_id === currentUserId
+                );
+
+                setMediaRecords([
+                    ...privateData.media_records,
+                    ...myPublicRecords,
+                ]);
                 setStatus(createStatus("success", ""));
             } catch (error) {
                 setStatus(createStatus("error", getErrorMessage(error)));
@@ -32,13 +46,7 @@ function DashboardScreen() {
         }
 
         loadMyMedia();
-
-        const intervalId = window.setInterval(loadMyMedia, 3000);
-
-        return () => {
-            window.clearInterval(intervalId);
-        };
-    }, []);
+    }, [location.state]);
 
     return (
         <div className="dashboard">
