@@ -1,0 +1,512 @@
+import hashlib
+import json
+import urllib.request
+import zlib
+from pathlib import Path
+from struct import pack
+
+import pytest
+from boto3.dynamodb.conditions import Key
+
+
+pytestmark = pytest.mark.integration
+
+
+def _png_chunk(chunk_type, data):
+    return (
+        pack(">I", len(data))
+        + chunk_type
+        + data
+        + pack(">I", zlib.crc32(chunk_type + data) & 0xFFFFFFFF)
+    )
+
+
+def _solid_png_bytes(width=32, height=32):
+    row = b"\x00" + (b"\x35\x8f\xcf" * width)
+    raw = row * height
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + _png_chunk(b"IDAT", zlib.compress(raw))
+        + _png_chunk(b"IEND", b"")
+    )
+
+
+def _checksum(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def _api_event(method, body=None, user_id="integration-test-user"):
+    return {
+        "httpMethod": method,
+        "body": json.dumps(body or {}),
+        "requestContext": {
+            "authorizer": {
+                "jwt": {
+                    "claims": {
+                        "sub": user_id,
+                    }
+                }
+            }
+        },
+    }
+
+
+def _s3_event(bucket, key):
+    return {
+        "Records": [
+            {
+                "s3": {
+                    "bucket": {"name": bucket},
+                    "object": {"key": key},
+                },
+            }
+        ]
+    }
+
+
+def _invoke_lambda(lambda_client, function_name, event):
+    response = lambda_client.invoke(
+        FunctionName=function_name,
+        InvocationType="RequestResponse",
+        Payload=json.dumps(event).encode("utf-8"),
+    )
+
+    payload = json.loads(response["Payload"].read().decode("utf-8"))
+
+    if response.get("FunctionError"):
+        pytest.fail(f"{function_name} failed: {payload}")
+
+    return payload
+
+
+def _body(handler_response):
+    return json.loads(handler_response["body"])
+
+
+def _get_media_record(table, checksum, file_name):
+    response = table.get_item(
+        Key={
+            "checksum": checksum,
+            "file_name": file_name,
+        },
+        ConsistentRead=True,
+    )
+    return response.get("Item")
+
+
+def _upload_to_presigned_url(upload_url, data, content_type, file_name, checksum):
+    request = urllib.request.Request(
+        upload_url,
+        data=data,
+        method="PUT",
+        headers={
+            "Content-Type": content_type,
+            "x-amz-meta-file_name": file_name,
+            "x-amz-meta-checksum": checksum,
+        },
+    )
+
+    with urllib.request.urlopen(request, timeout=60) as response:
+        assert response.status == 200
+
+
+def _put_media_record(table, **overrides):
+    item = {
+        "owner_id": "integration-test-user",
+        "file_name": "integration-test.png",
+        "checksum": "integration-test-checksum",
+        "full_key": "integration-tests/integration-test.png",
+        "visibility": "private",
+        "full_url": "https://example.invalid/full",
+        "file_type": "image/png",
+        "thumbnail_key": "integration-tests/integration-test-thumb.jpg",
+        "thumbnail_url": "https://example.invalid/thumb",
+        "tags": {},
+        "ml_detections": [],
+        "upload_status": "pending",
+        "error_message": None,
+    }
+    item.update(overrides)
+    table.put_item(Item=item)
+    return item
+
+
+def _delete_media_record(table, item):
+    """
+    Delete one DynamoDB media record.
+
+    ReturnValues='ALL_OLD' helps us detect whether the key actually matched
+    an existing item. DynamoDB delete_item succeeds even when no item matches.
+    """
+    key = {
+        "checksum": item["checksum"],
+        "file_name": item["file_name"],
+    }
+
+    response = table.delete_item(
+        Key=key,
+        ReturnValues="ALL_OLD",
+    )
+
+    deleted_item = response.get("Attributes")
+
+    if deleted_item is None:
+        print(f"No DynamoDB item deleted. Key may not exist: {key}")
+    else:
+        print(f"Deleted DynamoDB item: {key}")
+
+    return deleted_item
+
+
+def _delete_records_by_checksum(table, checksum):
+    """
+    Clean stale records with the same checksum.
+
+    This is useful for video tests because the test video content is usually
+    the same across runs, so checksum may repeat while file_name changes.
+    """
+    response = table.query(
+        KeyConditionExpression=Key("checksum").eq(checksum),
+        ConsistentRead=True,
+    )
+
+    items = response.get("Items", [])
+
+    while "LastEvaluatedKey" in response:
+        response = table.query(
+            KeyConditionExpression=Key("checksum").eq(checksum),
+            ConsistentRead=True,
+            ExclusiveStartKey=response["LastEvaluatedKey"],
+        )
+        items.extend(response.get("Items", []))
+
+    for item in items:
+        _delete_media_record(table, item)
+
+    print(f"Deleted {len(items)} DynamoDB record(s) for checksum={checksum}")
+
+
+def _delete_s3_objects(s3, bucket, *keys):
+    objects = [{"Key": key} for key in keys if key]
+
+    if not objects:
+        return
+
+    response = s3.delete_objects(
+        Bucket=bucket,
+        Delete={
+            "Objects": objects,
+            "Quiet": False,
+        },
+    )
+
+    deleted = response.get("Deleted", [])
+    errors = response.get("Errors", [])
+
+    print(f"Deleted S3 objects: {deleted}")
+
+    if errors:
+        raise RuntimeError(f"Failed to delete S3 objects: {errors}")
+
+
+def _cleanup_media(table, s3, bucket, checksum=None, record=None, s3_keys=None):
+    """
+    Cleanup helper that tries DynamoDB and S3 independently.
+
+    This prevents a DynamoDB cleanup failure from stopping S3 cleanup.
+    """
+    cleanup_errors = []
+
+    try:
+        if checksum:
+            _delete_records_by_checksum(table, checksum)
+        elif record:
+            _delete_media_record(table, record)
+    except Exception as e:
+        cleanup_errors.append(f"DynamoDB cleanup failed: {e}")
+
+    try:
+        _delete_s3_objects(s3, bucket, *(s3_keys or []))
+    except Exception as e:
+        cleanup_errors.append(f"S3 cleanup failed: {e}")
+
+    if cleanup_errors:
+        print("\n".join(cleanup_errors))
+
+
+def test_tag_image(aws_clients, integration_config, unique_id):
+    s3 = aws_clients["s3"]
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    bucket = integration_config["bucket"]
+
+    image = _solid_png_bytes()
+    checksum = "integration_test_" + _checksum(image)
+    file_name = f"{unique_id}.png"
+
+    # Fixed: do not add integration_test_ twice.
+    full_key = f"images/{checksum}.png"
+
+    # Include multiple likely thumbnail extensions for safer cleanup.
+    thumbnail_keys = [
+        f"thumbnails/{checksum}.png",
+        f"thumbnails/{checksum}.jpg",
+        f"thumbnails/{checksum}.jpeg",
+    ]
+
+    record = _put_media_record(
+        table,
+        owner_id=integration_config["test_user_id"],
+        file_name=file_name,
+        checksum=checksum,
+        full_key=full_key,
+        visibility="private",
+        file_type="image/png",
+    )
+
+    try:
+        s3.put_object(
+            Bucket=bucket,
+            Key=full_key,
+            Body=image,
+            ContentType="image/png",
+            Metadata={
+                "file_name": file_name,
+                "checksum": checksum,
+            },
+        )
+
+        _invoke_lambda(
+            lambda_client,
+            integration_config["tag_image_function"],
+            _s3_event(bucket, full_key),
+        )
+
+        item = _get_media_record(table, checksum, file_name)
+
+        assert item is not None
+        assert item["upload_status"] == "ready", item.get("error_message")
+        assert item["file_type"] == "image/png"
+
+    finally:
+        _cleanup_media(
+            table=table,
+            s3=s3,
+            bucket=bucket,
+            checksum=checksum,
+            s3_keys=[
+                full_key,
+                *thumbnail_keys,
+            ],
+        )
+
+
+def test_tag_video(aws_clients, integration_config, unique_id):
+    video_path = integration_config["test_video_path"]
+    if not video_path:
+        pytest.skip("Set AUSSIE_ECOLENS_TEST_VIDEO_PATH to test video tagging.")
+
+    s3 = aws_clients["s3"]
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    bucket = integration_config["bucket"]
+
+    video = Path(video_path).read_bytes()
+    checksum = "integration_test_" + _checksum(video)
+    file_name = f"{unique_id}.mp4"
+
+    # Fixed: do not add integration_test_ twice.
+    full_key = f"videos/{checksum}.mp4"
+
+    # Video thumbnail is usually an image, not mp4.
+    # Keep mp4 as a fallback cleanup key in case your backend uses it.
+    thumbnail_keys = [
+        f"thumbnails/{checksum}.jpg",
+        f"thumbnails/{checksum}.jpeg",
+        f"thumbnails/{checksum}.png",
+        f"thumbnails/{checksum}.mp4",
+    ]
+
+    record = _put_media_record(
+        table,
+        owner_id=integration_config["test_user_id"],
+        file_name=file_name,
+        checksum=checksum,
+        full_key=full_key,
+        visibility="private",
+        file_type="video/mp4",
+    )
+
+    try:
+        s3.put_object(
+            Bucket=bucket,
+            Key=full_key,
+            Body=video,
+            ContentType="video/mp4",
+            Metadata={
+                "file_name": file_name,
+                "checksum": checksum,
+            },
+        )
+
+        _invoke_lambda(
+            lambda_client,
+            integration_config["tag_video_function"],
+            _s3_event(bucket, full_key),
+        )
+
+        item = _get_media_record(table, checksum, file_name)
+
+        assert item is not None
+        assert item["upload_status"] == "ready", item.get("error_message")
+        assert item["file_type"] == "video/mp4"
+
+    finally:
+        _cleanup_media(
+            table=table,
+            s3=s3,
+            bucket=bucket,
+            checksum=checksum,
+            s3_keys=[
+                full_key,
+                *thumbnail_keys,
+            ],
+        )
+
+
+def test_deduplicate_media_in_s3(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    user_id = integration_config["test_user_id"]
+
+    checksum = f"{unique_id}-dedupe"
+    file_name = f"{unique_id}.png"
+
+    created_record = {
+        "checksum": checksum,
+        "file_name": file_name,
+    }
+
+    try:
+        first = _invoke_lambda(
+            lambda_client,
+            integration_config["get_signed_url_function"],
+            _api_event(
+                "POST",
+                {
+                    "file_name": file_name,
+                    "checksum": checksum,
+                    "media_type": "image",
+                    "visibility": "private",
+                },
+                user_id=user_id,
+            ),
+        )
+
+        second = _invoke_lambda(
+            lambda_client,
+            integration_config["get_signed_url_function"],
+            _api_event(
+                "POST",
+                {
+                    "file_name": file_name,
+                    "checksum": checksum,
+                    "media_type": "image",
+                    "visibility": "private",
+                },
+                user_id=user_id,
+            ),
+        )
+
+        first_body = _body(first)
+        second_body = _body(second)
+
+        assert first["statusCode"] == 200
+        assert first_body["duplicate"] is False
+        assert first_body["upload_url"].startswith("https://")
+
+        assert second["statusCode"] == 200
+        assert second_body["duplicate"] is True
+        assert second_body["upload_url"] is None
+
+    finally:
+        try:
+            _delete_media_record(table, created_record)
+        except Exception as e:
+            print(f"DynamoDB cleanup failed: {e}")
+
+
+def test_get_private_media(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    user_id = integration_config["test_user_id"]
+
+    record = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}.png",
+        checksum=f"{unique_id}-private",
+        full_key=f"integration-tests/{unique_id}.png",
+        thumbnail_key=f"integration-tests/{unique_id}-thumb.jpg",
+        visibility="private",
+        tags={"koala": 1},
+        upload_status="ready",
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            integration_config["get_private_media_function"],
+            _api_event("GET", user_id=user_id),
+        )
+
+        body = _body(response)
+        records = body["media_records"]
+
+        assert response["statusCode"] == 200
+        assert any(item["file_name"] == record["file_name"] for item in records)
+        assert all(item["owner_id"] == user_id for item in records)
+
+    finally:
+        try:
+            _delete_media_record(table, record)
+        except Exception as e:
+            print(f"DynamoDB cleanup failed: {e}")
+
+
+def test_get_public_media(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+
+    record = _put_media_record(
+        table,
+        owner_id=integration_config["test_user_id"],
+        file_name=f"{unique_id}.png",
+        checksum=f"{unique_id}-public",
+        full_key=f"integration-tests/{unique_id}.png",
+        thumbnail_key=f"integration-tests/{unique_id}-thumb.jpg",
+        visibility="public",
+        tags={"wombat": 1},
+        upload_status="ready",
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            integration_config["get_public_media_function"],
+            _api_event("GET"),
+        )
+
+        body = _body(response)
+        records = body["media_records"]
+
+        assert response["statusCode"] == 200
+        assert any(item["file_name"] == record["file_name"] for item in records)
+        assert all(item["visibility"] == "public" for item in records)
+
+    finally:
+        try:
+            _delete_media_record(table, record)
+        except Exception as e:
+            print(f"DynamoDB cleanup failed: {e}")
