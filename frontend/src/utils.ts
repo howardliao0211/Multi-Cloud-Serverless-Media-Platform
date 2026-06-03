@@ -63,3 +63,24 @@ export function getMediaType(file: File): "image" | "video" {
 
   throw new Error("Unsupported file type.");
 }
+
+export type QueryResult = {
+  checksum: string;
+  file_name: string;
+  media_type?: string | null;
+  url?: string | null;
+  thumbnail_url?: string | null;
+  tags?: Record<string, number>;
+};
+
+export type QueryResponse = {
+  count: number;
+  results: QueryResult[];
+};
+
+export type QueryThumbnailResponse = {
+  checksum: string;
+  file_name: string;
+  url: string;
+  thumbnail_url: string;
+};

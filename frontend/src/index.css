@@ -266,6 +266,23 @@ button:disabled {
   color: var(--text-muted);
 }
 
+.media-url-list label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: white;
+  font-size: 13px;
+}
+
+.media-url-list input {
+  background: #1c1c1c;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px;
+  color: white;
+  font-size: 12px;
+}
+
 .brand,
 .brand:visited,
 .brand:hover,
@@ -365,17 +382,24 @@ button:disabled {
   font-weight: 700;
 }
 
-.upload-status-track {
+.upload-progress-track {
+  width: 100%;
+  background-color: #333;
+  border-radius: 4px;
   height: 8px;
-  background: var(--border);
-  border-radius: 999px;
   overflow: hidden;
   margin: 8px 0;
 }
 
-.upload-status-bar {
+.upload-progress-bar {
   height: 100%;
-  background: var(--quinary);
+  background-color: #f5a623;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.upload-progress-bar.failed {
+  background: var(--danger);
 }
 
 .selected-file {
