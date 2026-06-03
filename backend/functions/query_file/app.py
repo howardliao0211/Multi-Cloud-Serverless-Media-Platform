@@ -1,8 +1,12 @@
 import base64
+import tempfile
 from http import HTTPMethod, HTTPStatus
+from contextlib import contextmanager
 from dataclasses import dataclass
 from email.parser import BytesParser
 from email.policy import default
+from pathlib import Path
+from typing import Iterator
 from typing import Mapping
 
 from shared.schemas import QueryFileResponse
@@ -14,6 +18,28 @@ class UploadedQueryFile:
     filename: str
     content_type: str
     content: bytes
+
+
+@contextmanager
+def temporary_query_file(uploaded_file: UploadedQueryFile) -> Iterator[Path]:
+    suffix = Path(uploaded_file.filename).suffix
+    temp_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            suffix=suffix,
+            delete=False,
+            dir="/tmp",
+        ) as temp_file:
+            temp_file.write(uploaded_file.content)
+            temp_path = Path(temp_file.name)
+
+        yield temp_path
+
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 def get_header(headers: Mapping[str, str], name: str) -> str | None:
@@ -108,18 +134,24 @@ def lambda_handler(event, context):
             allow_http_methods=allow_methods,
         )
 
-    response = build_not_implemented_response()
+    with temporary_query_file(uploaded_file) as temp_path:
+        temp_file_size = temp_path.stat().st_size
+        response = build_not_implemented_response()
 
-    return build_response_message(
-        status_code=HTTPStatus.NOT_IMPLEMENTED,
-        body={
-            **response.model_dump(mode="json"),
-            "message": "query_file ML matching is not implemented yet",
-            "uploaded_file": {
-                "filename": uploaded_file.filename,
-                "content_type": uploaded_file.content_type,
-                "size_bytes": len(uploaded_file.content),
+        return build_response_message(
+            status_code=HTTPStatus.NOT_IMPLEMENTED,
+            body={
+                **response.model_dump(mode="json"),
+                "message": "query_file ML matching is not implemented yet",
+                "uploaded_file": {
+                    "filename": uploaded_file.filename,
+                    "content_type": uploaded_file.content_type,
+                    "size_bytes": len(uploaded_file.content),
+                },
+                "temporary_file": {
+                    "saved": True,
+                    "size_bytes": temp_file_size,
+                },
             },
-        },
-        allow_http_methods=allow_methods,
-    )
+            allow_http_methods=allow_methods,
+        )
