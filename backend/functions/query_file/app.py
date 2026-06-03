@@ -6,11 +6,18 @@ from dataclasses import dataclass
 from email.parser import BytesParser
 from email.policy import default
 from pathlib import Path
+from typing import Dict
 from typing import Iterator
+from typing import List
 from typing import Mapping
 
-from shared.schemas import QueryFileResponse
-from shared.utils import build_response_message
+from shared.aws_resources import get_table, scan_media_record
+from shared.query_utils import can_query_media, infer_media_type, normalize_tag_counts
+from shared.schemas import MediaRecord, MediaRecordStatus, QueryFileResponse, QueryFileResult
+from shared.utils import build_response_message, get_current_user
+
+
+table = get_table()
 
 
 @dataclass
@@ -100,11 +107,60 @@ def parse_multipart_file(event: dict) -> UploadedQueryFile:
     raise ValueError("No uploaded file found in multipart request")
 
 
-def build_not_implemented_response() -> QueryFileResponse:
+def media_matches_detected_tags(
+    media_record: MediaRecord,
+    detected_tags: Dict[str, int],
+) -> bool:
+    media_tags = normalize_tag_counts(media_record.tags)
+
+    for tag, min_count in detected_tags.items():
+        if media_tags.get(tag, 0) < min_count:
+            return False
+
+    return True
+
+
+def shape_query_result(media_record: MediaRecord) -> QueryFileResult:
+    media_type = infer_media_type(media_record)
+    thumbnail_url = media_record.thumbnail_url if media_type == "image" else None
+
+    return QueryFileResult(
+        checksum=media_record.checksum,
+        file_name=media_record.file_name,
+        visibility=media_record.visibility,
+        media_type=media_type,
+        url=media_record.full_url,
+        thumbnail_url=thumbnail_url,
+        tags=normalize_tag_counts(media_record.tags),
+    )
+
+
+def query_matching_media(
+    detected_tags: Dict[str, int],
+    current_user: str,
+) -> QueryFileResponse:
+    results: List[QueryFileResult] = []
+
+    if not detected_tags:
+        return QueryFileResponse(
+            detected_tags=detected_tags,
+            count=0,
+            results=[],
+        )
+
+    filters = {"upload_status": MediaRecordStatus.ready}
+
+    for media_record in scan_media_record(table, filters):
+        if not can_query_media(media_record, current_user):
+            continue
+
+        if media_matches_detected_tags(media_record, detected_tags):
+            results.append(shape_query_result(media_record))
+
     return QueryFileResponse(
-        detected_tags={},
-        count=0,
-        results=[],
+        detected_tags=detected_tags,
+        count=len(results),
+        results=results,
     )
 
 
@@ -136,7 +192,9 @@ def lambda_handler(event, context):
 
     with temporary_query_file(uploaded_file) as temp_path:
         temp_file_size = temp_path.stat().st_size
-        response = build_not_implemented_response()
+        current_user = get_current_user(event)
+        detected_tags: Dict[str, int] = {}
+        response = query_matching_media(detected_tags, current_user)
 
         return build_response_message(
             status_code=HTTPStatus.NOT_IMPLEMENTED,
