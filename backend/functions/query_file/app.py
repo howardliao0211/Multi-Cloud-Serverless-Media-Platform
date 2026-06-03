@@ -1,5 +1,7 @@
 import base64
 import tempfile
+import cv2
+
 from http import HTTPMethod, HTTPStatus
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -10,6 +12,7 @@ from typing import Dict
 from typing import Iterator
 from typing import List
 from typing import Mapping
+
 
 from shared.aws_resources import (
     download_s3_file,
@@ -30,6 +33,8 @@ CLASSIFIER_MODEL_KEY = "models/model.pt"
 DETECTOR_MODEL_KEY = "models/mdv5a.pt"
 LOCAL_CLASSIFIER_MODEL_PATH = "/tmp/model.pt"
 LOCAL_DETECTOR_MODEL_PATH = "/tmp/mdv5a.pt"
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv"}
 
 # Models are copied from S3 into Lambda's writable /tmp folder during cold start.
 download_s3_file(
@@ -144,6 +149,23 @@ def parse_multipart_file(event: dict) -> UploadedQueryFile:
     raise ValueError("No uploaded file found in multipart request")
 
 
+def infer_uploaded_media_type(uploaded_file: UploadedQueryFile) -> str:
+    content_family = uploaded_file.content_type.split("/")[0].lower()
+
+    if content_family in {"image", "video"}:
+        return content_family
+
+    suffix = Path(uploaded_file.filename).suffix.lower()
+
+    if suffix in IMAGE_EXTENSIONS:
+        return "image"
+
+    if suffix in VIDEO_EXTENSIONS:
+        return "video"
+
+    raise ValueError("Uploaded query file must be an image or video")
+
+
 def media_matches_detected_tags(
     media_record: MediaRecord,
     detected_tags: Dict[str, int],
@@ -203,10 +225,67 @@ def query_matching_media(
     )
 
 
-def detect_query_file_tags(temp_path: Path) -> Dict[str, int]:
+def detect_image_query_tags(temp_path: Path) -> Dict[str, int]:
     # ImageTagger returns the animal tags found in the temporary query image.
     tagger_result = tagger.tag_image(temp_path)
     return normalize_tag_counts(tagger_result.get("tags"))
+
+
+def detect_video_query_tags(temp_path: Path) -> Dict[str, int]:
+    cap = cv2.VideoCapture(str(temp_path))
+
+    if not cap.isOpened():
+        raise ValueError(f"Cannot open uploaded query video: {temp_path}")
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+
+    if fps <= 0:
+        cap.release()
+        raise ValueError("Could not read FPS from uploaded query video")
+
+    frame_interval = max(1, int(round(fps)))
+    frame_count = 0
+    sampled_frames = 0
+    detected_tags: Dict[str, int] = {}
+
+    try:
+        while True:
+            success, frame = cap.read()
+
+            if not success:
+                break
+
+            # Match the upload pipeline: sample one frame per second, not every frame.
+            if frame_count % frame_interval == 0:
+                tagger_result = tagger.tag_image(frame)
+                frame_tags = normalize_tag_counts(tagger_result.get("tags"))
+
+                for tag, count in frame_tags.items():
+                    detected_tags[tag] = max(detected_tags.get(tag, 0), count)
+
+                sampled_frames += 1
+
+            frame_count += 1
+
+    finally:
+        cap.release()
+
+    if sampled_frames == 0:
+        raise ValueError("No frames were extracted from uploaded query video")
+
+    return detected_tags
+
+
+def detect_query_file_tags(
+    temp_path: Path,
+    uploaded_file: UploadedQueryFile,
+) -> Dict[str, int]:
+    media_type = infer_uploaded_media_type(uploaded_file)
+
+    if media_type == "image":
+        return detect_image_query_tags(temp_path)
+
+    return detect_video_query_tags(temp_path)
 
 
 def lambda_handler(event, context):
@@ -235,26 +314,33 @@ def lambda_handler(event, context):
             allow_http_methods=allow_methods,
         )
 
-    with temporary_query_file(uploaded_file) as temp_path:
-        temp_file_size = temp_path.stat().st_size
-        current_user = get_current_user(event)
-        detected_tags = detect_query_file_tags(temp_path)
-        response = query_matching_media(detected_tags, current_user)
+    try:
+        with temporary_query_file(uploaded_file) as temp_path:
+            temp_file_size = temp_path.stat().st_size
+            current_user = get_current_user(event)
+            detected_tags = detect_query_file_tags(temp_path, uploaded_file)
+            response = query_matching_media(detected_tags, current_user)
 
+            return build_response_message(
+                status_code=HTTPStatus.OK,
+                body={
+                    **response.model_dump(mode="json"),
+                    "message": "query_file processed",
+                    "uploaded_file": {
+                        "filename": uploaded_file.filename,
+                        "content_type": uploaded_file.content_type,
+                        "size_bytes": len(uploaded_file.content),
+                    },
+                    "temporary_file": {
+                        "saved": True,
+                        "size_bytes": temp_file_size,
+                    },
+                },
+                allow_http_methods=allow_methods,
+            )
+    except ValueError as error:
         return build_response_message(
-            status_code=HTTPStatus.OK,
-            body={
-                **response.model_dump(mode="json"),
-                "message": "query_file processed",
-                "uploaded_file": {
-                    "filename": uploaded_file.filename,
-                    "content_type": uploaded_file.content_type,
-                    "size_bytes": len(uploaded_file.content),
-                },
-                "temporary_file": {
-                    "saved": True,
-                    "size_bytes": temp_file_size,
-                },
-            },
+            status_code=HTTPStatus.BAD_REQUEST,
+            body={"message": "Invalid query file request", "error": str(error)},
             allow_http_methods=allow_methods,
         )
