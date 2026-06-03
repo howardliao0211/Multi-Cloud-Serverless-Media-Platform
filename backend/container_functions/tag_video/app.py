@@ -7,13 +7,12 @@ from shared.model import ImageTagger
 from shared.aws_resources import (
     get_bucket_and_name,
     get_table,
-    build_thumbnail_s3_key,
     download_s3_file,
     update_media_record_in_db,
     get_s3_object_head_and_url,
     is_media_record_processing
 )
-from shared.utils import build_db_key
+from shared.utils import build_db_key, build_thumbnail_s3_key
 
 s3, bucket_name = get_bucket_and_name()
 table = get_table()

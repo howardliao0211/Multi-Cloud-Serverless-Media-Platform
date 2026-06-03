@@ -36,10 +36,9 @@ def _checksum(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def _api_event(method, body=None, user_id="integration-test-user"):
-    return {
+def _api_event(method, body=None, query_params=None, user_id="integration-test-user"):
+    event = {
         "httpMethod": method,
-        "body": json.dumps(body or {}),
         "requestContext": {
             "authorizer": {
                 "jwt": {
@@ -50,6 +49,14 @@ def _api_event(method, body=None, user_id="integration-test-user"):
             }
         },
     }
+
+    if body is not None:
+        event["body"] = json.dumps(body)
+
+    if query_params is not None:
+        event["queryStringParameters"] = query_params
+
+    return event
 
 
 def _s3_event(bucket, key):
@@ -484,6 +491,52 @@ def test_get_public_media(aws_clients, integration_config, unique_id):
         assert any(item["file_name"] == record["file_name"]
                    for item in records)
         assert all(item["visibility"] == "public" for item in records)
+
+    finally:
+        try:
+            _delete_media_record(table, record)
+        except Exception as e:
+            print(f"DynamoDB cleanup failed: {e}")
+
+
+def test_get_upload_status(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+
+    record = _put_media_record(
+        table,
+        owner_id=integration_config["test_user_id"],
+        file_name=f"{unique_id}.png",
+        checksum=f"{unique_id}-public",
+        full_key=f"integration-tests/{unique_id}.png",
+        thumbnail_key=f"integration-tests/{unique_id}-thumb.jpg",
+        visibility="public",
+        tags={"wombat": 1},
+        upload_status="ready",
+        error_message="fake error message"
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            integration_config["get_upload_status_function"],
+            _api_event(
+                "GET",
+                query_params={
+                    "file_name": f"{unique_id}.png",
+                    "checksum": f"{unique_id}-public",
+                },
+                user_id=integration_config["test_user_id"],
+            ),
+        )
+
+        body = _body(response)
+        status = body["upload_status"]
+        error_message = body["error_message"]
+
+        assert response["statusCode"] == 200
+        assert status == "ready"
+        assert error_message == "fake error message"
 
     finally:
         try:

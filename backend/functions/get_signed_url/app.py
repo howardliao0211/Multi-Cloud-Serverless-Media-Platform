@@ -13,13 +13,13 @@ from shared.schemas import (
 from shared.aws_resources import (
     get_bucket_and_name,
     get_table,
-    build_s3_key,
     create_new_media_record,
 )
 from shared.utils import (
     build_response_message,
     get_current_user,
-    build_db_key
+    build_db_key,
+    build_s3_key,
 )
 
 s3, bucket_name = get_bucket_and_name()

@@ -27,8 +27,8 @@ URL_EXPIRES_SECONDS = 300
 
 
 def parse_request(event: dict, ) -> GetMediaUploadStatus | None:
-    body = event.get("body")
-    return GetMediaUploadStatus(**json.loads(body))
+    query_params = event.get("queryStringParameters") or {}
+    return GetMediaUploadStatus(**query_params)
 
 
 def lambda_handler(event, context):
@@ -45,23 +45,25 @@ def lambda_handler(event, context):
         )
 
     request = parse_request(event)
+    current_user = get_current_user(event)
 
     media = scan_media_record(
         table, filters={
+            "owner_id": current_user,
             "file_name": request.file_name,
-            "checksum": request.checksum
+            "checksum": request.checksum,
         }
     )
 
-    if len(media) > 1:
+    if len(media) != 1:
         return build_response_message(
             status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "More than one media is fetched"},
+            body={
+                "message": f"Number of fetched media is not 1: {len(media)}"},
             allow_http_methods=methods
         )
 
     media = media[0]
-    current_user = get_current_user(event)
     if current_user != media.owner_id:
         return build_response_message(
             status_code=HTTPStatus.BAD_REQUEST,
