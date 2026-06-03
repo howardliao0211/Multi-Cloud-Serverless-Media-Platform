@@ -99,6 +99,7 @@ class QueryTagsRequest(BaseModel):
 class QueryTagsResult(BaseModel):
     checksum: str
     file_name: str
+    visibility: MediaVisibility
     media_type: Optional[str] = None
     url: Optional[str] = None
     thumbnail_url: Optional[str] = None
@@ -127,6 +128,7 @@ class QuerySpeciesRequest(BaseModel):
 class QuerySpeciesResult(BaseModel):
     checksum: str
     file_name: str
+    visibility: MediaVisibility
     media_type: Optional[str] = None
     url: Optional[str] = None
     thumbnail_url: Optional[str] = None
@@ -155,8 +157,25 @@ class QueryThumbnailUrlRequest(BaseModel):
 class QueryThumbnailUrlResponse(BaseModel):
     checksum: str
     file_name: str
+    visibility: MediaVisibility
     url: str
     thumbnail_url: str
+
+
+class QueryFileResult(BaseModel):
+    checksum: str
+    file_name: str
+    visibility: MediaVisibility
+    media_type: Optional[str] = None
+    url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    tags: Dict[str, int] = Field(default_factory=dict)
+
+
+class QueryFileResponse(BaseModel):
+    detected_tags: Dict[str, int] = Field(default_factory=dict)
+    count: int
+    results: List[QueryFileResult] = Field(default_factory=list)
 
     
 class GetPrivateMediaRequest(BaseModel):
