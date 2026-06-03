@@ -27,20 +27,6 @@ def get_table():
     return dynamodb.Table(TABLE_NAME)
 
 
-def build_s3_key(
-    key_name: str,
-    media_type: Literal["image", "video"]
-) -> str:
-    assert media_type in ("image", "video")
-    return f"{media_type}s/{key_name}"
-
-
-def build_thumbnail_s3_key(
-    key_name: str
-) -> str:
-    return f"thumbnails/{key_name}"
-
-
 def get_s3_object_head_and_url(s3_key: str) -> Tuple[dict, str]:
     """
     Return the S3 object's head and permanent object URL.
