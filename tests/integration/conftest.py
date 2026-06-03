@@ -27,7 +27,7 @@ def integration_config():
         "tag_video_function": "tag_video",
         "get_upload_status_function": "get_upload_status",
         "test_user_id": "integration-test-user",
-        "test_video_path": "./integration/test_video.mp4"
+        "test_video_path": os.getenv("TEST_VIDEO_PATH", "./integration/test_video.mp4")
     }
 
 
