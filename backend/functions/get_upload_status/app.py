@@ -27,8 +27,8 @@ URL_EXPIRES_SECONDS = 300
 
 
 def parse_request(event: dict, ) -> GetMediaUploadStatus | None:
-    body = event.get("body")
-    return GetMediaUploadStatus(**json.loads(body))
+    query_params = event.get("queryStringParameters") or {}
+    return GetMediaUploadStatus(**query_params)
 
 
 def lambda_handler(event, context):
