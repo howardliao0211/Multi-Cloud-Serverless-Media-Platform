@@ -11,13 +11,46 @@ from typing import Iterator
 from typing import List
 from typing import Mapping
 
-from shared.aws_resources import get_table, scan_media_record
+from shared.aws_resources import (
+    download_s3_file,
+    get_bucket_and_name,
+    get_table,
+    scan_media_record,
+)
+from shared.model import ImageTagger
 from shared.query_utils import can_query_media, infer_media_type, normalize_tag_counts
 from shared.schemas import MediaRecord, MediaRecordStatus, QueryFileResponse, QueryFileResult
 from shared.utils import build_response_message, get_current_user
 
 
+s3, bucket_name = get_bucket_and_name()
 table = get_table()
+
+CLASSIFIER_MODEL_KEY = "models/model.pt"
+DETECTOR_MODEL_KEY = "models/mdv5a.pt"
+LOCAL_CLASSIFIER_MODEL_PATH = "/tmp/model.pt"
+LOCAL_DETECTOR_MODEL_PATH = "/tmp/mdv5a.pt"
+
+# Models are copied from S3 into Lambda's writable /tmp folder during cold start.
+download_s3_file(
+    s3,
+    bucket_name,
+    CLASSIFIER_MODEL_KEY,
+    LOCAL_CLASSIFIER_MODEL_PATH,
+)
+
+download_s3_file(
+    s3,
+    bucket_name,
+    DETECTOR_MODEL_KEY,
+    LOCAL_DETECTOR_MODEL_PATH,
+)
+
+# Keep one tagger instance warm across invocations whenever Lambda reuses the container.
+tagger = ImageTagger(
+    classifier_model_path=LOCAL_CLASSIFIER_MODEL_PATH,
+    detector_model_path=LOCAL_DETECTOR_MODEL_PATH,
+)
 
 
 @dataclass
@@ -33,6 +66,7 @@ def temporary_query_file(uploaded_file: UploadedQueryFile) -> Iterator[Path]:
     temp_path = None
 
     try:
+        # ImageTagger expects a local file path, so the uploaded bytes are staged briefly.
         with tempfile.NamedTemporaryFile(
             mode="wb",
             suffix=suffix,
@@ -45,6 +79,7 @@ def temporary_query_file(uploaded_file: UploadedQueryFile) -> Iterator[Path]:
         yield temp_path
 
     finally:
+        # query_file is search-only; the uploaded query image is not kept in S3 or DynamoDB.
         if temp_path is not None:
             temp_path.unlink(missing_ok=True)
 
@@ -76,6 +111,7 @@ def parse_multipart_file(event: dict) -> UploadedQueryFile:
         raise ValueError("Content-Type must be multipart/form-data")
 
     body_bytes = get_request_body_bytes(event)
+    # The email parser understands MIME-style multipart boundaries, which match form-data.
     raw_message = (
         f"Content-Type: {content_type}\r\n"
         "MIME-Version: 1.0\r\n"
@@ -90,6 +126,7 @@ def parse_multipart_file(event: dict) -> UploadedQueryFile:
     for part in message.iter_parts():
         filename = part.get_filename()
 
+        # Ignore normal form fields and keep the first actual file part.
         if not filename:
             continue
 
@@ -151,9 +188,11 @@ def query_matching_media(
     filters = {"upload_status": MediaRecordStatus.ready}
 
     for media_record in scan_media_record(table, filters):
+        # Private media is only searchable by its owner; public media is searchable by anyone.
         if not can_query_media(media_record, current_user):
             continue
 
+        # Match all detected tags with at least the detected count.
         if media_matches_detected_tags(media_record, detected_tags):
             results.append(shape_query_result(media_record))
 
@@ -162,6 +201,12 @@ def query_matching_media(
         count=len(results),
         results=results,
     )
+
+
+def detect_query_file_tags(temp_path: Path) -> Dict[str, int]:
+    # ImageTagger returns the animal tags found in the temporary query image.
+    tagger_result = tagger.tag_image(temp_path)
+    return normalize_tag_counts(tagger_result.get("tags"))
 
 
 def lambda_handler(event, context):
@@ -193,14 +238,14 @@ def lambda_handler(event, context):
     with temporary_query_file(uploaded_file) as temp_path:
         temp_file_size = temp_path.stat().st_size
         current_user = get_current_user(event)
-        detected_tags: Dict[str, int] = {}
+        detected_tags = detect_query_file_tags(temp_path)
         response = query_matching_media(detected_tags, current_user)
 
         return build_response_message(
-            status_code=HTTPStatus.NOT_IMPLEMENTED,
+            status_code=HTTPStatus.OK,
             body={
                 **response.model_dump(mode="json"),
-                "message": "query_file ML matching is not implemented yet",
+                "message": "query_file processed",
                 "uploaded_file": {
                     "filename": uploaded_file.filename,
                     "content_type": uploaded_file.content_type,

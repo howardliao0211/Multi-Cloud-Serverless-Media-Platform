@@ -9,6 +9,9 @@ FUNCTION_NAME="${FUNCTION_NAME:-tag_image}"
 if [[ "${FUNCTION_NAME}" == "tag_image" ]]; then
   REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-aussie-ecolens-tag-image}"
   IMAGE_TAG="${IMAGE_TAG:-gcp-ml-dev}"
+elif [[ "${FUNCTION_NAME}" == "query_file" ]]; then
+  REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-aussie-ecolens-query-file}"
+  IMAGE_TAG="${IMAGE_TAG:-ml-dev}"
 else
   REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-aussie_eco_len}"
   IMAGE_TAG="${IMAGE_TAG:-latest}"
@@ -78,8 +81,10 @@ if [[ ! -d "${BACKEND_ROOT}/layers/python/shared" ]]; then
   exit 1
 fi
 
-if [[ ! -f "${BACKEND_ROOT}/container_functions/${FUNCTION_NAME}/app.py" ]]; then
-  echo "Error: container function app.py does not exist: ${BACKEND_ROOT}/container_functions/${FUNCTION_NAME}/app.py" >&2
+if [[ ! -f "${BACKEND_ROOT}/container_functions/${FUNCTION_NAME}/app.py" && ! -f "${BACKEND_ROOT}/functions/${FUNCTION_NAME}/app.py" ]]; then
+  echo "Error: Lambda app.py does not exist in either:" >&2
+  echo "  ${BACKEND_ROOT}/container_functions/${FUNCTION_NAME}/app.py" >&2
+  echo "  ${BACKEND_ROOT}/functions/${FUNCTION_NAME}/app.py" >&2
   exit 1
 fi
 
