@@ -2,21 +2,23 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import koala from "../assets/koala.png";
 import animals from "../assets/animals.jpg";
 import { useEffect, useState } from "react";
-import { createStatus, getErrorMessage, 
-    type StatusMessage, type GetMediaResponse, type MediaRecordResponse } from "../utils";
+import {
+    createStatus, getErrorMessage, 
+    type StatusMessage, type GetMediaResponse, type MediaRecordResponse
+} from "../utils";
 import { authFetch } from "../services/api";
 
 
-function DashboardScreen(){
+function DashboardScreen() {
     const location = useLocation();
     const isDashboardHome = location.pathname === "/dashboard";
     const [mediaRecords, setMediaRecords] = useState<MediaRecordResponse[]>([]);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
-    
+
     useEffect(() => {
         async function loadMyMedia() {
             setStatus(createStatus("loading", "Loading your uploads..."));
-            
+
             try {
                 const response = await authFetch<GetMediaResponse>("/get_private_media", {
                     method: "GET",
@@ -30,9 +32,15 @@ function DashboardScreen(){
         }
 
         loadMyMedia();
+
+        const intervalId = window.setInterval(loadMyMedia, 5000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
     }, []);
 
-    return(
+    return (
         <div className="dashboard">
             <header className="dashboard-header">
                 <NavLink to="/dashboard" className="brand">
@@ -48,7 +56,7 @@ function DashboardScreen(){
                 </nav>
             </header>
 
-            { isDashboardHome ? (
+            {isDashboardHome ? (
                 <main className="dashboard-content">
                     <h1>My Uploads</h1>
                     <p>Welcome to your media dashboard!</p>
@@ -68,7 +76,7 @@ function DashboardScreen(){
                             <article className="media-card" key={`${record.owner_id}-${record.file_name}`}>
                                 <div className="media-thumbnail">
                                     {record.thumbnail_presigned_url ? (
-                                        <img src={record.thumbnail_presigned_url} alt={`${record.file_name} thumbnail`}/>
+                                        <img src={record.thumbnail_presigned_url} alt={`${record.file_name} thumbnail`} />
                                     ) : (
                                         <span>No thumbnail available</span>
                                     )}
