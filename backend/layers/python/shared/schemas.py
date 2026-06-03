@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
-
-from pydantic import BaseModel, Field, field_validator
+from shared.utils import build_db_key
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class MediaType(str, Enum):
@@ -23,6 +23,7 @@ class MediaRecordStatus(str, Enum):
 
 
 class MediaRecord(BaseModel):
+    key: str
     owner_id: str
     file_name: str
     checksum: str
@@ -44,16 +45,68 @@ class MediaRecord(BaseModel):
     upload_status: MediaRecordStatus = MediaRecordStatus.pending
     error_message: Optional[str] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def set_key_before_validation(cls, data: dict):
+
+        assert isinstance(data, dict)
+        assert "owner_id" in data
+        assert "full_key" in data
+
+        owner_id = data.get("owner_id")
+        full_key = data.get("full_key")
+
+        if owner_id and full_key:
+            data["key"] = build_db_key(owner_id, full_key)
+
+        return data
+
 
 class MediaRecordResponse(BaseModel):
     owner_id: str
     file_name: str
     visibility: MediaVisibility
+
     full_presigned_url: str
-    thumbnail_presigned_url: str
+    thumbnail_presigned_url: Optional[str] = None
+
     tags: Dict[str, int]
     upload_status: MediaRecordStatus
-    error_message: Optional[str]
+    error_message: Optional[str] = None
+
+    @classmethod
+    def from_media_record(cls, media_record, s3, bucket_name, expires_seconds):
+        full_presigned_url = s3.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={
+                "Bucket": bucket_name,
+                "Key": media_record.full_key,
+            },
+            ExpiresIn=expires_seconds,
+        )
+
+        thumbnail_presigned_url = None
+
+        if media_record.thumbnail_key:
+            thumbnail_presigned_url = s3.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={
+                    "Bucket": bucket_name,
+                    "Key": media_record.thumbnail_key,
+                },
+                ExpiresIn=expires_seconds,
+            )
+
+        return cls(
+            owner_id=media_record.owner_id,
+            file_name=media_record.file_name,
+            visibility=media_record.visibility,
+            full_presigned_url=full_presigned_url,
+            thumbnail_presigned_url=thumbnail_presigned_url,
+            tags=media_record.tags or {},
+            upload_status=media_record.upload_status,
+            error_message=media_record.error_message,
+        )
 
 
 class UploadUrlRequest(BaseModel):
@@ -177,7 +230,7 @@ class QueryFileResponse(BaseModel):
     count: int
     results: List[QueryFileResult] = Field(default_factory=list)
 
-    
+
 class GetPrivateMediaRequest(BaseModel):
     owner_id: str
 
@@ -238,7 +291,7 @@ class EditTagsResponse(BaseModel):
     updated_count: int
     results: List[EditTagsResult] = Field(default_factory=list)
 
-    
+
 class MediaUploadStatusResponse(BaseModel):
     upload_status: MediaRecordStatus
     error_message: Optional[str]

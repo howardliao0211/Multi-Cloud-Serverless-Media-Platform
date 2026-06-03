@@ -4,10 +4,9 @@ import json
 import os
 import time
 from decimal import Decimal
-from pathlib import Path, PurePosixPath
+from pathlib import Path
+
 from urllib.parse import unquote_plus
-from typing import Dict, Tuple
-from http import HTTPStatus, HTTPMethod
 
 import boto3
 import cv2
@@ -23,9 +22,7 @@ except ImportError:
     impersonated_credentials = None
     GoogleAuthRequest = None
 
-from botocore.exceptions import ClientError
-
-from shared.schemas import MediaRecord, MediaRecordStatus
+from shared.schemas import MediaRecordStatus
 from shared.model import ImageTagger
 from shared.aws_resources import (
     get_bucket_and_name,
@@ -36,6 +33,7 @@ from shared.aws_resources import (
     get_s3_object_head_and_url,
     is_media_record_processing
 )
+from shared.utils import build_db_key
 
 
 s3, bucket_name = get_bucket_and_name()
@@ -56,7 +54,8 @@ GCP_WIF_CREDENTIALS_FILE = os.getenv(
     "/var/task/auth/gcp_wif_credentials.json",
 )
 GCP_INVOKER_SERVICE_ACCOUNT = os.getenv("GCP_INVOKER_SERVICE_ACCOUNT", "")
-GCP_CLOUD_RUN_AUDIENCE = os.getenv("GCP_CLOUD_RUN_AUDIENCE", GCP_ML_PROCESSOR_URL)
+GCP_CLOUD_RUN_AUDIENCE = os.getenv(
+    "GCP_CLOUD_RUN_AUDIENCE", GCP_ML_PROCESSOR_URL)
 GCP_ML_HMAC_SECRET_ARN = os.getenv("GCP_ML_HMAC_SECRET_ARN", "")
 _cached_gcp_ml_hmac_secret = None
 
@@ -81,7 +80,6 @@ tagger = ImageTagger(
 
 _cached_gcp_id_token = None
 _cached_gcp_id_token_expiry = 0
-
 
 
 def get_gcp_ml_hmac_secret() -> str:
@@ -121,7 +119,8 @@ def get_gcp_cloud_run_id_token() -> str | None:
         return None
 
     if not Path(GCP_WIF_CREDENTIALS_FILE).exists():
-        print(f"GCP WIF credentials file not found: {GCP_WIF_CREDENTIALS_FILE}; calling Cloud Run without Google ID token")
+        print(
+            f"GCP WIF credentials file not found: {GCP_WIF_CREDENTIALS_FILE}; calling Cloud Run without Google ID token")
         return None
 
     now = int(time.time())
@@ -336,18 +335,18 @@ def process_image(bucket: str, s3_key: str, request_id: str):
 
     head, full_url = get_s3_object_head_and_url(s3_key)
     file_name = head["Metadata"]["file_name"]
-    file_ext = file_name.split(".")[-1]
     checksum = head["Metadata"]["checksum"]
+    owner_id = head["Metadata"]["owner_id"]
+    file_ext = file_name.split(".")[-1]
     file_type = head["ContentType"]
 
-    if file_type.split("/")[0] != "image":
-        print(f"Skipping non-image object: {s3_key}")
-        return
-
     thumbnail_s3_key = build_thumbnail_s3_key(checksum + f".{file_ext}")
+    db_key = build_db_key(
+        owner_id, s3_key
+    )
 
     update_media_record_in_db(
-        table, file_name, checksum, {
+        table, db_key, {
             "full_url": full_url,
             "file_type": file_type,
             "upload_status": MediaRecordStatus.uploaded,
@@ -355,7 +354,7 @@ def process_image(bucket: str, s3_key: str, request_id: str):
     )
 
     should_process = is_media_record_processing(
-        table, file_name, checksum,
+        table, db_key
     )
 
     if not should_process:
@@ -365,7 +364,7 @@ def process_image(bucket: str, s3_key: str, request_id: str):
 
     try:
         update_media_record_in_db(
-            table, file_name, checksum, {
+            table, db_key, {
                 "upload_status": MediaRecordStatus.processing,
             }
         )
@@ -396,7 +395,7 @@ def process_image(bucket: str, s3_key: str, request_id: str):
         )
 
         update_media_record_in_db(
-            table, file_name, checksum, {
+            table, db_key, {
                 "thumbnail_key": thumbnail_s3_key,
                 "thumbnail_url": thumbnail_url,
                 "tags": tagger_result["tags"],
@@ -412,7 +411,7 @@ def process_image(bucket: str, s3_key: str, request_id: str):
         print(f"Finished processing media: {s3_key}")
     except Exception as e:
         update_media_record_in_db(
-            table, file_name, checksum, {
+            table, db_key, {
                 "upload_status": MediaRecordStatus.failed,
                 "error_message": f"Error: {e}",
             }

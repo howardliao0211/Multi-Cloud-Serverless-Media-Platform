@@ -84,18 +84,17 @@ def _body(handler_response):
     return json.loads(handler_response["body"])
 
 
-def _get_media_record(table, checksum, file_name):
+def _get_media_record(table, key):
     response = table.get_item(
         Key={
-            "checksum": checksum,
-            "file_name": file_name,
+            "key": key,
         },
         ConsistentRead=True,
     )
     return response.get("Item")
 
 
-def _upload_to_presigned_url(upload_url, data, content_type, file_name, checksum):
+def _upload_to_presigned_url(upload_url, data, content_type, file_name, checksum, owner_id):
     request = urllib.request.Request(
         upload_url,
         data=data,
@@ -104,6 +103,7 @@ def _upload_to_presigned_url(upload_url, data, content_type, file_name, checksum
             "Content-Type": content_type,
             "x-amz-meta-file_name": file_name,
             "x-amz-meta-checksum": checksum,
+            "x-amz-meta-owner_id": owner_id,
         },
     )
 
@@ -111,8 +111,13 @@ def _upload_to_presigned_url(upload_url, data, content_type, file_name, checksum
         assert response.status == 200
 
 
+def _build_db_key(owner_id, full_key):
+    return f"OWNER#{owner_id}#KEY#{full_key}"
+
+
 def _put_media_record(table, **overrides):
     item = {
+        "key": "OWNER#integration-test-user#KEY#integration-tests/integration-test.png",
         "owner_id": "integration-test-user",
         "file_name": "integration-test.png",
         "checksum": "integration-test-checksum",
@@ -127,7 +132,10 @@ def _put_media_record(table, **overrides):
         "upload_status": "pending",
         "error_message": None,
     }
+
     item.update(overrides)
+    item["key"] = _build_db_key(item["owner_id"], item["full_key"])
+
     table.put_item(Item=item)
     return item
 
@@ -140,8 +148,7 @@ def _delete_media_record(table, item):
     an existing item. DynamoDB delete_item succeeds even when no item matches.
     """
     key = {
-        "checksum": item["checksum"],
-        "file_name": item["file_name"],
+        "key": item["key"],
     }
 
     response = table.delete_item(
@@ -157,34 +164,6 @@ def _delete_media_record(table, item):
         print(f"Deleted DynamoDB item: {key}")
 
     return deleted_item
-
-
-def _delete_records_by_checksum(table, checksum):
-    """
-    Clean stale records with the same checksum.
-
-    This is useful for video tests because the test video content is usually
-    the same across runs, so checksum may repeat while file_name changes.
-    """
-    response = table.query(
-        KeyConditionExpression=Key("checksum").eq(checksum),
-        ConsistentRead=True,
-    )
-
-    items = response.get("Items", [])
-
-    while "LastEvaluatedKey" in response:
-        response = table.query(
-            KeyConditionExpression=Key("checksum").eq(checksum),
-            ConsistentRead=True,
-            ExclusiveStartKey=response["LastEvaluatedKey"],
-        )
-        items.extend(response.get("Items", []))
-
-    for item in items:
-        _delete_media_record(table, item)
-
-    print(f"Deleted {len(items)} DynamoDB record(s) for checksum={checksum}")
 
 
 def _delete_s3_objects(s3, bucket, *keys):
@@ -210,7 +189,7 @@ def _delete_s3_objects(s3, bucket, *keys):
         raise RuntimeError(f"Failed to delete S3 objects: {errors}")
 
 
-def _cleanup_media(table, s3, bucket, checksum=None, record=None, s3_keys=None):
+def _cleanup_media(table, s3, bucket, record=None, s3_keys=None):
     """
     Cleanup helper that tries DynamoDB and S3 independently.
 
@@ -219,10 +198,7 @@ def _cleanup_media(table, s3, bucket, checksum=None, record=None, s3_keys=None):
     cleanup_errors = []
 
     try:
-        if checksum:
-            _delete_records_by_checksum(table, checksum)
-        elif record:
-            _delete_media_record(table, record)
+        _delete_media_record(table, record)
     except Exception as e:
         cleanup_errors.append(f"DynamoDB cleanup failed: {e}")
 
@@ -274,6 +250,7 @@ def test_tag_image(aws_clients, integration_config, unique_id):
             Metadata={
                 "file_name": file_name,
                 "checksum": checksum,
+                "owner_id": integration_config["test_user_id"]
             },
         )
 
@@ -283,7 +260,7 @@ def test_tag_image(aws_clients, integration_config, unique_id):
             _s3_event(bucket, full_key),
         )
 
-        item = _get_media_record(table, checksum, file_name)
+        item = _get_media_record(table, record["key"])
 
         assert item is not None
         assert item["upload_status"] == "ready", item.get("error_message")
@@ -294,7 +271,7 @@ def test_tag_image(aws_clients, integration_config, unique_id):
             table=table,
             s3=s3,
             bucket=bucket,
-            checksum=checksum,
+            record=record,
             s3_keys=[
                 full_key,
                 *thumbnail_keys,
@@ -347,6 +324,7 @@ def test_tag_video(aws_clients, integration_config, unique_id):
             Metadata={
                 "file_name": file_name,
                 "checksum": checksum,
+                "owner_id": integration_config["test_user_id"]
             },
         )
 
@@ -356,7 +334,7 @@ def test_tag_video(aws_clients, integration_config, unique_id):
             _s3_event(bucket, full_key),
         )
 
-        item = _get_media_record(table, checksum, file_name)
+        item = _get_media_record(table, record["key"])
 
         assert item is not None
         assert item["upload_status"] == "ready", item.get("error_message")
@@ -367,7 +345,7 @@ def test_tag_video(aws_clients, integration_config, unique_id):
             table=table,
             s3=s3,
             bucket=bucket,
-            checksum=checksum,
+            record=record,
             s3_keys=[
                 full_key,
                 *thumbnail_keys,
@@ -465,7 +443,8 @@ def test_get_private_media(aws_clients, integration_config, unique_id):
         records = body["media_records"]
 
         assert response["statusCode"] == 200
-        assert any(item["file_name"] == record["file_name"] for item in records)
+        assert any(item["file_name"] == record["file_name"]
+                   for item in records)
         assert all(item["owner_id"] == user_id for item in records)
 
     finally:
@@ -502,7 +481,8 @@ def test_get_public_media(aws_clients, integration_config, unique_id):
         records = body["media_records"]
 
         assert response["statusCode"] == 200
-        assert any(item["file_name"] == record["file_name"] for item in records)
+        assert any(item["file_name"] == record["file_name"]
+                   for item in records)
         assert all(item["visibility"] == "public" for item in records)
 
     finally:

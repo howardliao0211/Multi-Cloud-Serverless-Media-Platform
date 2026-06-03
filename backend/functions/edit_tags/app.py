@@ -175,8 +175,7 @@ def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResp
 
         update_media_record_in_db(
             table,
-            media_record.file_name,
-            media_record.checksum,
+            media_record.key,
             {"tags": updated_tags},
         )
 

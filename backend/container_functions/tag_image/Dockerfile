@@ -14,6 +14,7 @@ COPY layers/python/shared/__init__.py \
     layers/python/shared/aws_resources.py \
     layers/python/shared/schemas.py \
     layers/python/shared/utils.py \
+    layers/python/shared/species.py \
     /opt/python/shared/
 
 # Copy this Lambda function's app.py and Workload Identity Federation config

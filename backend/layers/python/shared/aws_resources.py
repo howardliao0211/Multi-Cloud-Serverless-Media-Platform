@@ -77,7 +77,7 @@ def get_s3_object_head_and_url(s3_key: str) -> Tuple[dict, str]:
     return head, object_url
 
 
-def update_media_record_in_db(table, file_name: str, checksum: str, updates: dict[str, Any]) -> None:
+def update_media_record_in_db(table, key: str, updates: dict[str, Any]) -> None:
     """
     Dynamically update fields of a MediaRecord in DynamoDB.
 
@@ -119,8 +119,7 @@ def update_media_record_in_db(table, file_name: str, checksum: str, updates: dic
 
     table.update_item(
         Key={
-            "checksum": checksum,
-            "file_name": file_name
+            "key": key,
         },
         UpdateExpression="SET " + ", ".join(update_expression_parts),
         ExpressionAttributeNames=expression_attribute_names,
@@ -144,20 +143,17 @@ def create_new_media_record(table, media: MediaRecord):
     table.put_item(
         Item=media.model_dump(mode="json"),
         ConditionExpression=(
-            "attribute_not_exists(#checksum) "
-            "AND attribute_not_exists(#file_name)"
+            "attribute_not_exists(#key) "
         ),
         ExpressionAttributeNames={
-            "#checksum": "checksum",
-            "#file_name": "file_name",
+            "#key": "key",
         },
     )
 
 
 def is_media_record_processing(
     table,
-    file_name: str,
-    checksum: str,
+    key
 ) -> bool:
     """
     Check whether this media record should be processed.
@@ -168,8 +164,7 @@ def is_media_record_processing(
     """
     response = table.get_item(
         Key={
-            "checksum": checksum,
-            "file_name": file_name,
+            "key": key,
         },
         ConsistentRead=True,
     )

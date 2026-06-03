@@ -9,6 +9,7 @@ from boto3.dynamodb.conditions import Key
 
 from shared.schemas import (
     MediaRecord,
+    MediaRecordResponse,
     MediaVisibility,
     GetMediaResponse,
 )
@@ -19,7 +20,6 @@ from shared.aws_resources import (
 )
 from shared.utils import (
     build_response_message,
-    build_media_record_response
 )
 
 s3, bucket_name = get_bucket_and_name()
@@ -48,7 +48,7 @@ def lambda_handler(event, context):
 
     media = get_public_media()
     media_response = [
-        build_media_record_response(
+        MediaRecordResponse.from_media_record(
             item,
             s3,
             bucket_name,

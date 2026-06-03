@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { calculateFileHash, createStatus, getMediaType, type StatusMessage } from "../utils";
+import { calculateFileHash, createStatus, getMediaType, getCurrentUserId, type StatusMessage } from "../utils";
 import { authFetch } from "../services/api";
 
 function UploadScreen() {
@@ -169,6 +169,7 @@ function UploadScreen() {
                 updateFileStatus(file.name, "uploading");
 
                 // call upload API for each file
+                const userId = await getCurrentUserId();
                 const hash = await calculateFileHash(file);
                 const mediaType = getMediaType(file);
                 const data = await authFetch<UploadResponse>("/get_signed_url", {
@@ -201,6 +202,7 @@ function UploadScreen() {
                     headers: {
                         "x-amz-meta-file_name": file.name,
                         "x-amz-meta-checksum": hash,
+                        "x-amz-meta-owner_id": userId
                     },
                     body: file,
                 });

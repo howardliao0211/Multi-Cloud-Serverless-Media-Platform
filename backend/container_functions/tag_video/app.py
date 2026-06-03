@@ -1,16 +1,8 @@
-import os
-from pathlib import Path, PurePosixPath
 from urllib.parse import unquote_plus
-from typing import Dict, Tuple
-from http import HTTPStatus, HTTPMethod
-
-import boto3
 import cv2
 import numpy as np
 
-from botocore.exceptions import ClientError
-
-from shared.schemas import MediaRecord, MediaRecordStatus
+from shared.schemas import MediaRecordStatus
 from shared.model import ImageTagger
 from shared.aws_resources import (
     get_bucket_and_name,
@@ -21,7 +13,7 @@ from shared.aws_resources import (
     get_s3_object_head_and_url,
     is_media_record_processing
 )
-
+from shared.utils import build_db_key
 
 s3, bucket_name = get_bucket_and_name()
 table = get_table()
@@ -97,11 +89,13 @@ def process_video_frames_one_by_one(local_path: str):
 
     return final_tags, best_thumbnail_frame
 
+
 def create_thumbnail(image: np.ndarray, fx: float = 0.5, fy: float = 0.5):
     resized_scaled = cv2.resize(
         image, None, fx=fx, fy=fy, interpolation=cv2.INTER_AREA
     )
     return resized_scaled
+
 
 def upload_thumbnail_to_s3(
     image_array: np.ndarray,
@@ -127,14 +121,18 @@ def process_video(bucket: str, s3_key: str):
 
     head, full_url = get_s3_object_head_and_url(s3_key)
     file_name = head["Metadata"]["file_name"]
-    file_ext = file_name.split(".")[-1]
     checksum = head["Metadata"]["checksum"]
+    owner_id = head["Metadata"]["owner_id"]
+    file_ext = file_name.split(".")[-1]
     file_type = head["ContentType"]
 
     thumbnail_s3_key = build_thumbnail_s3_key(checksum + f".{file_ext}")
+    db_key = build_db_key(
+        owner_id, s3_key
+    )
 
     update_media_record_in_db(
-        table, file_name, checksum, {
+        table, db_key, {
             "full_url": full_url,
             "file_type": file_type,
             "upload_status": MediaRecordStatus.uploaded,
@@ -142,7 +140,7 @@ def process_video(bucket: str, s3_key: str):
     )
 
     should_process = is_media_record_processing(
-        table, file_name, checksum,
+        table, db_key
     )
 
     if not should_process:
@@ -152,7 +150,7 @@ def process_video(bucket: str, s3_key: str):
 
     try:
         update_media_record_in_db(
-            table, file_name, checksum, {
+            table, db_key, {
                 "upload_status": MediaRecordStatus.processing,
             }
         )
@@ -169,7 +167,7 @@ def process_video(bucket: str, s3_key: str):
         final_tags, thumbnail_frame = process_video_frames_one_by_one(
             local_path
         )
-        
+
         # Use the frame with most animal to create thumbnail
         thumbnail = create_thumbnail(
             thumbnail_frame
@@ -179,7 +177,7 @@ def process_video(bucket: str, s3_key: str):
         _, thumbnail_url = get_s3_object_head_and_url(thumbnail_s3_key)
 
         update_media_record_in_db(
-            table, file_name, checksum, {
+            table, db_key, {
                 "thumbnail_key": thumbnail_s3_key,
                 "thumbnail_url": thumbnail_url,
                 "tags": final_tags,
@@ -190,7 +188,7 @@ def process_video(bucket: str, s3_key: str):
         print(f"Finished processing media: {s3_key}")
     except Exception as e:
         update_media_record_in_db(
-            table, file_name, checksum, {
+            table, db_key, {
                 "upload_status": MediaRecordStatus.failed,
                 "error_message": f"Error: {e}",
             }
@@ -199,19 +197,19 @@ def process_video(bucket: str, s3_key: str):
 
 
 def lambda_handler(event, context):
-    # video_file_extensions = [
-    #     "mp4"
-    # ]
+    video_file_extensions = [
+        "mp4", "mov", "mkv"
+    ]
 
     for record in event["Records"]:
         bucket = record["s3"]["bucket"]["name"]
         s3_key = unquote_plus(record["s3"]["object"]["key"])
         file_ext = s3_key.split(".")[-1]
 
-        # if file_ext not in video_file_extensions:
-        #     raise ValueError(
-        #         f"Unsupported image file type. Only support {video_file_extensions}"
-        #     )
+        if file_ext not in video_file_extensions:
+            raise ValueError(
+                f"Unsupported image file type. Only support {video_file_extensions}"
+            )
 
         process_video(
             bucket=bucket,
