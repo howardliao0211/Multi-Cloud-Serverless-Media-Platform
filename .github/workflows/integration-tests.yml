@@ -20,7 +20,7 @@ jobs:
 
     env:
       AUSSIE_ECOLENS_RUN_INTEGRATION: 1
-      AUSSIE_ECOLENS_TEST_VIDEO_PATH: tests/integration/assets/test.mp4
+      AUSSIE_ECOLENS_TEST_VIDEO_PATH: tests/integration/test_video.mp4
 
     steps:
       - name: Checkout repository
