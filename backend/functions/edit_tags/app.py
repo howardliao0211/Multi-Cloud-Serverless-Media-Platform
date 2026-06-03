@@ -4,10 +4,10 @@ from typing import Optional
 
 from pydantic import ValidationError
 
-from shared.aws_resources import get_table, scan_media_record
+from shared.aws_resources import get_table, scan_media_record, update_media_record_in_db
 from shared.query_utils import parse_json_request
 from shared.schemas import EditTagsRequest, EditTagsResponse, EditTagsResult, MediaRecord
-from shared.utils import build_response_message
+from shared.utils import build_response_message, get_current_user
 
 
 table = get_table()
@@ -32,8 +32,33 @@ def find_media_by_url(url: str) -> Optional[MediaRecord]:
     return None
 
 
-def build_lookup_response(request: EditTagsRequest) -> EditTagsResponse:
+def add_tags_to_media(media_record: MediaRecord, tags: list[str]) -> dict[str, int]:
+    updated_tags = dict(media_record.tags)
+
+    for tag in tags:
+        updated_tags[tag] = updated_tags.get(tag, 0) + 1
+
+    return updated_tags
+
+
+def build_add_tags_result(
+    url: str,
+    media_record: MediaRecord,
+    tags: dict[str, int],
+) -> EditTagsResult:
+    return EditTagsResult(
+        url=url,
+        updated=True,
+        checksum=media_record.checksum,
+        file_name=media_record.file_name,
+        tags=tags,
+        message="tags added",
+    )
+
+
+def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResponse:
     results: list[EditTagsResult] = []
+    updated_count = 0
 
     for url in request.urls:
         media_record = find_media_by_url(url)
@@ -48,19 +73,45 @@ def build_lookup_response(request: EditTagsRequest) -> EditTagsResponse:
             )
             continue
 
-        results.append(
-            EditTagsResult(
-                url=url,
-                updated=False,
-                checksum=media_record.checksum,
-                file_name=media_record.file_name,
-                tags=media_record.tags,
-                message="media found; edit_tags update logic is not implemented yet",
+        if media_record.owner_id != current_user:
+            results.append(
+                EditTagsResult(
+                    url=url,
+                    updated=False,
+                    checksum=media_record.checksum,
+                    file_name=media_record.file_name,
+                    tags=media_record.tags,
+                    message="forbidden: media is owned by another user",
+                )
             )
+            continue
+
+        if request.operation != 1:
+            results.append(
+                EditTagsResult(
+                    url=url,
+                    updated=False,
+                    checksum=media_record.checksum,
+                    file_name=media_record.file_name,
+                    tags=media_record.tags,
+                    message="remove tag operation is not implemented yet",
+                )
+            )
+            continue
+
+        updated_tags = add_tags_to_media(media_record, request.tags)
+        update_media_record_in_db(
+            table,
+            media_record.file_name,
+            media_record.checksum,
+            {"tags": updated_tags},
         )
 
+        updated_count += 1
+        results.append(build_add_tags_result(url, media_record, updated_tags))
+
     return EditTagsResponse(
-        updated_count=0,
+        updated_count=updated_count,
         results=results,
     )
 
@@ -84,10 +135,11 @@ def lambda_handler(event, context):
 
     try:
         request = parse_request(event)
-        response = build_lookup_response(request)
+        current_user = get_current_user(event)
+        response = apply_edit_tags(request, current_user)
 
         return build_response_message(
-            status_code=HTTPStatus.NOT_IMPLEMENTED,
+            status_code=HTTPStatus.OK,
             body=response.model_dump(mode="json"),
             allow_http_methods=allow_methods,
         )
