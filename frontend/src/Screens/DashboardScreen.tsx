@@ -3,8 +3,8 @@ import koala from "../assets/koala.png";
 import animals from "../assets/animals.jpg";
 import { useEffect, useState } from "react";
 import {
-    createStatus, getErrorMessage,
-    type StatusMessage, type GetMediaResponse, type MediaRecordResponse,
+    createStatus, getErrorMessage, getMyPrivateMedia, getMyPublicMedia,
+    type StatusMessage, type MediaRecordResponse,
     getCurrentUserId
 } from "../utils";
 import { authFetch } from "../services/api";
@@ -16,37 +16,48 @@ function DashboardScreen() {
     const [mediaRecords, setMediaRecords] = useState<MediaRecordResponse[]>([]);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
 
-    useEffect(() => {
-        async function loadMyMedia() {
-            const currentUserId = await getCurrentUserId();
+    async function loadMyMedia() {
+        const currentUserId = await getCurrentUserId();
 
-            setStatus(createStatus("loading", "Loading your uploads..."));
+        setStatus(createStatus("loading", "Loading your uploads..."));
 
-            try {
-                const privateData = await authFetch<GetMediaResponse>("/get_private_media", {
-                    method: "GET",
-                });
+        try {
+            const privateData = await getMyPrivateMedia();
 
-                const publicData = await authFetch<GetMediaResponse>("/get_public_media", {
-                    method: "GET",
-                });
+            const publicData = await getMyPublicMedia();
 
-                const myPublicRecords = publicData.media_records.filter(
-                    (record) => record.owner_id === currentUserId
-                );
+            const myPublicRecords = publicData.media_records.filter(
+                (record) => record.owner_id === currentUserId
+            );
 
-                setMediaRecords([
-                    ...privateData.media_records,
-                    ...myPublicRecords,
-                ]);
-                setStatus(createStatus("success", ""));
-            } catch (error) {
-                setStatus(createStatus("error", getErrorMessage(error)));
-            }
+            setMediaRecords([
+                ...privateData.media_records,
+                ...myPublicRecords,
+            ]);
+            setStatus(createStatus("success", ""));
+        } catch (error) {
+            setStatus(createStatus("error", getErrorMessage(error)));
         }
+    }
 
+    useEffect(() => {
         loadMyMedia();
     }, [location.state]);
+
+    async function handleChangeVisibility(url: string, visibility: "private" | "public") {
+        try {
+            await authFetch("/change_visibility", {
+                method: "POST",
+                body: JSON.stringify({
+                    url,
+                    visibility,
+                }),
+            });
+            await loadMyMedia();
+        } catch (error) {
+            setStatus(createStatus("error", getErrorMessage(error)));
+        }
+    }
 
     return (
         <div className="dashboard">
@@ -113,6 +124,13 @@ function DashboardScreen() {
                                     <button type="button" onClick={() => navigator.clipboard.writeText(record.thumbnail_presigned_url)}>
                                         Copy Thumbnail URL
                                     </button>
+                                    <button type="button" onClick={() => handleChangeVisibility(
+                                        record.full_presigned_url,
+                                        record.visibility === "private" ? "public" : "private"
+                                    )}
+                                    >
+                                        Make {record.visibility === "private" ? "Public" : "Private"}
+                                    </button>
                                 </div>
 
                             </article>
@@ -129,5 +147,4 @@ function DashboardScreen() {
         </div>
     );
 }
-
 export default DashboardScreen;

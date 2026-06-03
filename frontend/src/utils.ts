@@ -1,4 +1,5 @@
 import { getCurrentUser } from "aws-amplify/auth";
+import { authFetch } from "./services/api";
 
 export async function getCurrentUserId(): Promise<string> {
   const user = await getCurrentUser();
@@ -12,6 +13,18 @@ export async function getCurrentUserId(): Promise<string> {
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Something went wrong.";
+}
+
+export async function getMyPrivateMedia() {
+  return authFetch<GetMediaResponse>("/get_private_media", {
+    method: "GET",
+  });
+}
+
+export async function getMyPublicMedia() {
+  return authFetch<GetMediaResponse>("/get_private_media", {
+    method: "GET",
+  });
 }
 
 export type StatusType = "idle" | "loading" | "success" | "error";
