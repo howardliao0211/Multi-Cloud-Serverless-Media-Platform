@@ -3,7 +3,7 @@ import koala from "../assets/koala.png";
 import animals from "../assets/animals.jpg";
 import { useEffect, useState } from "react";
 import {
-    createStatus, getErrorMessage, 
+    createStatus, getErrorMessage,
     type StatusMessage, type GetMediaResponse, type MediaRecordResponse
 } from "../utils";
 import { authFetch } from "../services/api";
@@ -33,7 +33,7 @@ function DashboardScreen() {
 
         loadMyMedia();
 
-        const intervalId = window.setInterval(loadMyMedia, 5000);
+        const intervalId = window.setInterval(loadMyMedia, 3000);
 
         return () => {
             window.clearInterval(intervalId);
@@ -85,25 +85,26 @@ function DashboardScreen() {
                                     Visibility: <strong>{record.visibility}</strong>
                                 </p>
 
-                                <div className="media-tags">
-                                    {Object.entries(record.tags).length > 0 ? (
-                                        Object.entries(record.tags).map(([tag, count]) => (
-                                            <span className="tag-pill" key={tag}>
-                                                {tag}: ({count})
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="empty-tags">No tags yet</span>
-                                    )}
+                                <div className="media-tags-text">
+                                    {Object.entries(record.tags).length > 0
+                                        ? (Object.entries(record.tags)
+                                            .map(([tag, count]) => (
+                                                <p key={tag}>
+                                                    Tag: {tag}; Count: {count}
+                                                </p>
+                                            ))
+                                        ) : (
+                                            <p>No tags yet</p>
+                                        )}
                                 </div>
 
-                                <div className="media-url-list">
-                                    <label>
-                                        Full URL: <input readOnly value={record.full_presigned_url || ""} />
-                                    </label>
-                                    <label>
-                                        Thumbnail URL: <input readOnly value={record.thumbnail_presigned_url || ""} />
-                                    </label>
+                                <div className="media-url-actions">
+                                    <button type="button" onClick={() => navigator.clipboard.writeText(record.full_presigned_url)}>
+                                        Copy Full URL
+                                    </button>
+                                    <button type="button" onClick={() => navigator.clipboard.writeText(record.thumbnail_presigned_url)}>
+                                        Copy Thumbnail URL
+                                    </button>
                                 </div>
 
                             </article>
