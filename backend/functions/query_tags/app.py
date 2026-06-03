@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from shared.aws_resources import get_table, scan_media_record
 from shared.query_utils import (
+    can_query_media,
     infer_media_type,
     normalize_tag_counts,
     parse_json_request,
@@ -17,7 +18,7 @@ from shared.schemas import (
     QueryTagsResponse,
     QueryTagsResult,
 )
-from shared.utils import build_response_message
+from shared.utils import build_response_message, get_current_user
 
 
 table = get_table()
@@ -44,6 +45,7 @@ def shape_query_result(media_record: MediaRecord) -> QueryTagsResult:
     return QueryTagsResult(
         checksum=media_record.checksum,
         file_name=media_record.file_name,
+        visibility=media_record.visibility,
         media_type=media_type,
         url=media_record.full_url,
         thumbnail_url=thumbnail_url,
@@ -51,12 +53,15 @@ def shape_query_result(media_record: MediaRecord) -> QueryTagsResult:
     )
 
 
-def query_tags(request: QueryTagsRequest) -> QueryTagsResponse:
+def query_tags(request: QueryTagsRequest, current_user: str) -> QueryTagsResponse:
     results: List[QueryTagsResult] = []
 
     filters = {"upload_status": MediaRecordStatus.ready}
 
     for media_record in scan_media_record(table, filters):
+        if not can_query_media(media_record, current_user):
+            continue
+
         if media_matches_tags(media_record, request.tags):
             results.append(shape_query_result(media_record))
 
@@ -78,7 +83,8 @@ def lambda_handler(event, context):
 
     try:
         request = parse_request(event)
-        response = query_tags(request)
+        current_user = get_current_user(event)
+        response = query_tags(request, current_user)
 
         return build_response_message(
             status_code=HTTPStatus.OK,

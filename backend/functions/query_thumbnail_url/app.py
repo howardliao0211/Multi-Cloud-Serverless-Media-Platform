@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from shared.aws_resources import get_table, scan_media_record
 from shared.query_utils import (
+    can_query_media,
     infer_media_type,
     parse_json_request,
 )
@@ -15,7 +16,7 @@ from shared.schemas import (
     QueryThumbnailUrlRequest,
     QueryThumbnailUrlResponse,
 )
-from shared.utils import build_response_message
+from shared.utils import build_response_message, get_current_user
 
 
 table = get_table()
@@ -36,18 +37,25 @@ def shape_query_response(media_record: MediaRecord) -> QueryThumbnailUrlResponse
     return QueryThumbnailUrlResponse(
         checksum=media_record.checksum,
         file_name=media_record.file_name,
+        visibility=media_record.visibility,
         url=media_record.full_url,
         thumbnail_url=media_record.thumbnail_url,
     )
 
 
-def find_by_thumbnail_url(request: QueryThumbnailUrlRequest) -> Optional[QueryThumbnailUrlResponse]:
+def find_by_thumbnail_url(
+    request: QueryThumbnailUrlRequest,
+    current_user: str,
+) -> Optional[QueryThumbnailUrlResponse]:
     filters = {
         "upload_status": MediaRecordStatus.ready,
         "thumbnail_url": request.thumbnail_url,
     }
 
     for media_record in scan_media_record(table, filters):
+        if not can_query_media(media_record, current_user):
+            continue
+
         if is_matching_thumbnail(media_record, request.thumbnail_url):
             return shape_query_response(media_record)
 
@@ -66,7 +74,8 @@ def lambda_handler(event, context):
 
     try:
         request = parse_request(event)
-        response = find_by_thumbnail_url(request)
+        current_user = get_current_user(event)
+        response = find_by_thumbnail_url(request, current_user)
 
         if response is None:
             return build_response_message(

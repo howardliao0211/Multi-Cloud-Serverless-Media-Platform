@@ -4,7 +4,7 @@ from typing import Any, Dict, Type, TypeVar
 
 from pydantic import BaseModel
 
-from shared.schemas import MediaRecord
+from shared.schemas import MediaRecord, MediaVisibility
 
 
 RequestModel = TypeVar("RequestModel", bound=BaseModel)
@@ -46,3 +46,10 @@ def infer_media_type(media_record: MediaRecord) -> str | None:
         return None
 
     return file_type.split("/", 1)[0]
+
+
+def can_query_media(media_record: MediaRecord, current_user: str) -> bool:
+    if media_record.visibility == MediaVisibility.public:
+        return True
+
+    return media_record.owner_id == current_user
