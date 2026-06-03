@@ -283,3 +283,4 @@ dist/
 # Python virtual environments
 .venv/
 venv/
+gcp/ml_processor/models/
