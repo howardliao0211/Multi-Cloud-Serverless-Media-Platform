@@ -13,7 +13,7 @@ function RegisterScreen(){
         event.preventDefault();
         setStatus(createStatus("idle", ""));
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/register-user`,{
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/register_user`,{
                  method: "POST",
                  headers: {"Content-Type": "application/json"},
                  body: JSON.stringify({

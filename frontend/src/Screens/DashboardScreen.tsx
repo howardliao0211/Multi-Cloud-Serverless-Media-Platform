@@ -18,7 +18,7 @@ function DashboardScreen(){
             setStatus(createStatus("loading", "Loading your uploads..."));
             
             try {
-                const response = await authFetch<GetMediaResponse>("/get-private-media", {
+                const response = await authFetch<GetMediaResponse>("/get_private_media", {
                     method: "GET",
                 });
 
