@@ -779,8 +779,8 @@ def test_delete_file_removes_owned_record_and_unshared_s3_objects(
     bucket = integration_config["bucket"]
     user_id = integration_config["test_user_id"]
 
-    full_key = f"integration-tests/delete-file/{unique_id}.png"
-    thumbnail_key = f"integration-tests/delete-file/{unique_id}-thumb.jpg"
+    full_key = f"images/{unique_id}-delete-file.png"
+    thumbnail_key = f"thumbnails/{unique_id}-delete-file-thumb.jpg"
     full_url = f"https://example.com/{unique_id}/delete-file-full.png"
     thumbnail_url = f"https://example.com/{unique_id}/delete-file-thumb.jpg"
 
@@ -896,8 +896,8 @@ def test_delete_file_forbidden_when_url_belongs_to_another_user(
     user_id = integration_config["test_user_id"]
     other_user_id = f"{user_id}-other"
 
-    full_key = f"integration-tests/delete-file/{unique_id}-forbidden.png"
-    thumbnail_key = f"integration-tests/delete-file/{unique_id}-forbidden-thumb.jpg"
+    full_key = f"images/{unique_id}-delete-file-forbidden.png"
+    thumbnail_key = f"thumbnails/{unique_id}-delete-file-forbidden-thumb.jpg"
     full_url = f"https://example.com/{unique_id}/delete-file-forbidden-full.png"
     thumbnail_url = f"https://example.com/{unique_id}/delete-file-forbidden-thumb.jpg"
 
@@ -979,8 +979,8 @@ def test_delete_file_keeps_shared_s3_objects_when_other_entry_references_them(
     user_id = integration_config["test_user_id"]
     other_user_id = f"{user_id}-other"
 
-    full_key = f"integration-tests/delete-file/{unique_id}-shared.png"
-    thumbnail_key = f"integration-tests/delete-file/{unique_id}-shared-thumb.jpg"
+    full_key = f"images/{unique_id}-delete-file-shared.png"
+    thumbnail_key = f"thumbnails/{unique_id}-delete-file-shared-thumb.jpg"
     user_full_url = f"https://example.com/{unique_id}/delete-file-shared-user-full.png"
     user_thumbnail_url = f"https://example.com/{unique_id}/delete-file-shared-user-thumb.jpg"
     other_full_url = f"https://example.com/{unique_id}/delete-file-shared-other-full.png"
@@ -1079,8 +1079,8 @@ def test_delete_file_removes_shared_s3_objects_after_last_owner_deletes(
     user_id = integration_config["test_user_id"]
     other_user_id = f"{user_id}-other"
 
-    full_key = f"integration-tests/delete-file/{unique_id}-last-owner.png"
-    thumbnail_key = f"integration-tests/delete-file/{unique_id}-last-owner-thumb.jpg"
+    full_key = f"images/{unique_id}-delete-file-last-owner.png"
+    thumbnail_key = f"thumbnails/{unique_id}-delete-file-last-owner-thumb.jpg"
     user_full_url = f"https://example.com/{unique_id}/delete-file-last-owner-user-full.png"
     user_thumbnail_url = f"https://example.com/{unique_id}/delete-file-last-owner-user-thumb.jpg"
     other_full_url = f"https://example.com/{unique_id}/delete-file-last-owner-other-full.png"

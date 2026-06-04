@@ -59,6 +59,7 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
         "dynamodb:GetItem",
         "dynamodb:PutItem",
         "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
         "dynamodb:Query",
         "dynamodb:Scan"
       ],
@@ -81,7 +82,8 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
       "Sid": "S3UploadAndThumbnailWriteAccess",
       "Effect": "Allow",
       "Action": [
-        "s3:PutObject"
+        "s3:PutObject",
+        "s3:DeleteObject"
       ],
       "Resource": [
         "arn:aws:s3:::${BUCKET_NAME}/images/*",
