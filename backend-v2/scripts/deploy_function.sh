@@ -8,7 +8,7 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 AWS_PROFILE="${AWS_PROFILE:-AussieEcoLense}"
 LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-arn:aws:iam::539913718279:role/aussie-eco-len-lambda-role}"
 PYTHON_RUNTIME="${PYTHON_RUNTIME:-python3.12}"
-ARCHITECTURE="${LAMBDA_ARCHITECTURE:-arm64}"
+ARCHITECTURE="${LAMBDA_ARCHITECTURE:-x86_64}"
 TIMEOUT="${LAMBDA_TIMEOUT:-60}"
 MEMORY="${LAMBDA_MEMORY:-1024}"
 
@@ -29,7 +29,7 @@ if [ -f "${SOURCE_DIR}/requirements.txt" ] && [ -s "${SOURCE_DIR}/requirements.t
   echo "Installing dependencies with uv"
   uv pip install \
     --target "$BUILD_DIR" \
-    --python-platform "aarch64-manylinux2014" \
+    --python-platform "x86_64-manylinux2014" \
     --python-version "3.12" \
     -r "${SOURCE_DIR}/requirements.txt"
 fi
