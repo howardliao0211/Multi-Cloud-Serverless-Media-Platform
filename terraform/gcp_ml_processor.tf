@@ -5,19 +5,36 @@ resource "google_service_account" "ml_processor" {
 }
 
 resource "google_cloud_run_v2_service" "ml_processor" {
-  project  = var.gcp_project_id
-  name     = "${local.name_prefix}-ml-processor"
-  location = var.gcp_region
+  name                = "aussie-eco-len-${var.environment}-ml-processor"
+  location            = var.gcp_region
+  project             = var.gcp_project_id
+  ingress             = "INGRESS_TRAFFIC_ALL"
+  deletion_protection = false
 
-  deletion_protection = true
+  lifecycle {
+    ignore_changes = [
+      template,
+      client,
+      client_version,
+    ]
+  }
 
   template {
-    service_account = google_service_account.ml_processor.email
+    gpu_zonal_redundancy_disabled = true
 
-    scaling {
-      min_instance_count = 0
-      max_instance_count = 2
+    annotations = {
+      "autoscaling.knative.dev/minScale"                 = "0"
+      "autoscaling.knative.dev/maxScale"                 = "2"
+      "run.googleapis.com/cpu-throttling"                = "false"
+      "run.googleapis.com/execution-environment"         = "gen2"
+      "run.googleapis.com/gpu-zonal-redundancy-disabled" = "true"
     }
+
+    node_selector {
+      accelerator = "nvidia-l4"
+    }
+
+    max_instance_request_concurrency = 2
 
     containers {
       image = var.gcp_ml_processor_image
@@ -25,6 +42,26 @@ resource "google_cloud_run_v2_service" "ml_processor" {
       env {
         name  = "ENVIRONMENT"
         value = var.environment
+      }
+
+      env {
+        name  = "GCP_CLASSIFIER_MODEL_URL"
+        value = var.gcp_classifier_model_url
+      }
+
+      env {
+        name  = "GCP_DETECTOR_MODEL_URL"
+        value = var.gcp_detector_model_url
+      }
+
+      env {
+        name  = "GCP_MODEL_VERSION"
+        value = var.gcp_model_version
+      }
+
+      env {
+        name  = "GCP_MODEL_CACHE_DIR"
+        value = var.gcp_model_cache_dir
       }
 
       env {
@@ -45,8 +82,21 @@ resource "google_cloud_run_v2_service" "ml_processor" {
 
       resources {
         limits = {
-          cpu    = "1"
-          memory = "1Gi"
+          cpu              = var.gcp_ml_processor_cpu
+          memory           = var.gcp_ml_processor_memory
+          "nvidia.com/gpu" = var.gcp_ml_processor_gpu_count
+        }
+
+        cpu_idle = false
+      }
+
+      startup_probe {
+        timeout_seconds   = 240
+        period_seconds    = 240
+        failure_threshold = 1
+
+        tcp_socket {
+          port = 8080
         }
       }
     }
