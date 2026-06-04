@@ -6,6 +6,16 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
+def _get_media_record(table, item):
+    response = table.get_item(
+        Key={
+            "key": item["key"],
+        },
+        ConsistentRead=True,
+    )
+    return response.get("Item")
+
+
 def _api_event(method, body=None, user_id="integration-test-user"):
     event = {
         "httpMethod": method,
@@ -390,3 +400,283 @@ def test_query_thumbnail(aws_clients, integration_config, unique_id):
     finally:
         for record in records_to_delete:
             _delete_media_record(table, record)
+
+
+def test_edit_tags_add_by_thumbnail_url(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    user_id = integration_config["test_user_id"]
+
+    thumbnail_url = f"https://example.com/{unique_id}/edit-tags-add-thumb.jpg"
+
+    media_record = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-edit-tags-add.png",
+        checksum=f"{unique_id}-edit-tags-add",
+        full_key=f"integration-tests/edit-tags/{unique_id}-add.png",
+        full_url=f"https://example.com/{unique_id}/edit-tags-add-full.png",
+        thumbnail_url=thumbnail_url,
+        tags={
+            "koala": 1,
+            "wombat": 1,
+        },
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            "edit_tags",
+            _api_event(
+                "POST",
+                body={
+                    "urls": [thumbnail_url],
+                    "tags": ["koala"],
+                    "operation": 1,
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert response["statusCode"] == 200
+
+        body = _body(response)
+        assert body["updated_count"] == 1
+        assert len(body["results"]) == 1
+
+        result = body["results"][0]
+        assert result["url"] == thumbnail_url
+        assert result["updated"] is True
+        assert result["checksum"] == media_record["checksum"]
+        assert result["file_name"] == media_record["file_name"]
+        assert result["message"] == "tags added"
+        assert result["tags"]["koala"] == 2
+        assert result["tags"]["wombat"] == 1
+
+        stored_record = _get_media_record(table, media_record)
+        assert stored_record["tags"]["koala"] == 2
+        assert stored_record["tags"]["wombat"] == 1
+
+    finally:
+        _delete_media_record(table, media_record)
+
+
+def test_edit_tags_remove_by_full_url(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    user_id = integration_config["test_user_id"]
+
+    full_url = f"https://example.com/{unique_id}/edit-tags-remove-full.png"
+
+    media_record = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-edit-tags-remove.png",
+        checksum=f"{unique_id}-edit-tags-remove",
+        full_key=f"integration-tests/edit-tags/{unique_id}-remove.png",
+        full_url=full_url,
+        thumbnail_url=f"https://example.com/{unique_id}/edit-tags-remove-thumb.jpg",
+        tags={
+            "koala": 2,
+            "wombat": 1,
+        },
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            "edit_tags",
+            _api_event(
+                "POST",
+                body={
+                    "urls": [full_url],
+                    "tags": ["koala"],
+                    "operation": 0,
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert response["statusCode"] == 200
+
+        body = _body(response)
+        assert body["updated_count"] == 1
+
+        result = body["results"][0]
+        assert result["url"] == full_url
+        assert result["updated"] is True
+        assert result["checksum"] == media_record["checksum"]
+        assert result["file_name"] == media_record["file_name"]
+        assert result["message"] == "tags removed"
+        assert result["tags"] == {
+            "koala": 1,
+            "wombat": 1,
+        }
+
+        stored_record = _get_media_record(table, media_record)
+        assert stored_record["tags"] == {
+            "koala": 1,
+            "wombat": 1,
+        }
+
+    finally:
+        _delete_media_record(table, media_record)
+
+
+def test_edit_tags_remove_deletes_tag_when_count_reaches_zero(
+    aws_clients,
+    integration_config,
+    unique_id,
+):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    user_id = integration_config["test_user_id"]
+
+    thumbnail_url = f"https://example.com/{unique_id}/edit-tags-remove-zero-thumb.jpg"
+
+    media_record = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-edit-tags-remove-zero.png",
+        checksum=f"{unique_id}-edit-tags-remove-zero",
+        full_key=f"integration-tests/edit-tags/{unique_id}-remove-zero.png",
+        full_url=f"https://example.com/{unique_id}/edit-tags-remove-zero-full.png",
+        thumbnail_url=thumbnail_url,
+        tags={
+            "koala": 1,
+            "wombat": 1,
+        },
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            "edit_tags",
+            _api_event(
+                "POST",
+                body={
+                    "urls": [thumbnail_url],
+                    "tags": ["koala"],
+                    "operation": 0,
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert response["statusCode"] == 200
+
+        body = _body(response)
+        assert body["updated_count"] == 1
+
+        result = body["results"][0]
+        assert result["updated"] is True
+        assert result["message"] == "tags removed"
+        assert result["tags"] == {
+            "wombat": 1,
+        }
+
+        stored_record = _get_media_record(table, media_record)
+        assert stored_record["tags"] == {
+            "wombat": 1,
+        }
+
+    finally:
+        _delete_media_record(table, media_record)
+
+
+def test_edit_tags_not_found(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    user_id = integration_config["test_user_id"]
+
+    missing_url = f"https://example.com/{unique_id}/edit-tags-missing.png"
+
+    response = _invoke_lambda(
+        lambda_client,
+        "edit_tags",
+        _api_event(
+            "POST",
+            body={
+                "urls": [missing_url],
+                "tags": ["koala"],
+                "operation": 1,
+            },
+            user_id=user_id,
+        ),
+    )
+
+    assert response["statusCode"] == 200
+
+    body = _body(response)
+    assert body["updated_count"] == 0
+    assert len(body["results"]) == 1
+
+    result = body["results"][0]
+    assert result["url"] == missing_url
+    assert result["updated"] is False
+    assert result["checksum"] is None
+    assert result["file_name"] is None
+    assert result["tags"] == {}
+    assert result["message"] == "media not found"
+
+
+def test_edit_tags_forbidden_when_url_belongs_to_another_user(
+    aws_clients,
+    integration_config,
+    unique_id,
+):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    user_id = integration_config["test_user_id"]
+    other_user_id = f"{user_id}-other"
+
+    thumbnail_url = f"https://example.com/{unique_id}/edit-tags-forbidden-thumb.jpg"
+
+    other_user_record = _put_media_record(
+        table,
+        owner_id=other_user_id,
+        file_name=f"{unique_id}-edit-tags-forbidden.png",
+        checksum=f"{unique_id}-edit-tags-forbidden",
+        full_key=f"integration-tests/edit-tags/{unique_id}-forbidden.png",
+        full_url=f"https://example.com/{unique_id}/edit-tags-forbidden-full.png",
+        thumbnail_url=thumbnail_url,
+        tags={
+            "koala": 1,
+        },
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            "edit_tags",
+            _api_event(
+                "POST",
+                body={
+                    "urls": [thumbnail_url],
+                    "tags": ["koala"],
+                    "operation": 1,
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert response["statusCode"] == 200
+
+        body = _body(response)
+        assert body["updated_count"] == 0
+        assert len(body["results"]) == 1
+
+        result = body["results"][0]
+        assert result["url"] == thumbnail_url
+        assert result["updated"] is False
+        assert result["checksum"] is None
+        assert result["file_name"] is None
+        assert result["tags"] == {}
+        assert result["message"] == "media not found"
+
+        stored_record = _get_media_record(table, other_user_record)
+        assert stored_record["tags"] == {
+            "koala": 1,
+        }
+
+    finally:
+        _delete_media_record(table, other_user_record)

@@ -40,30 +40,18 @@ def find_user_media_by_url(
     media_records: list[MediaRecord],
     url: str,
     current_user: str,
-) -> tuple[Optional[MediaRecord], bool]:
+) -> Optional[MediaRecord]:
     matching_records = find_media_records_by_url(media_records, url)
 
     for media_record in matching_records:
         if media_record.owner_id == current_user:
-            return media_record, True
+            return media_record
 
-    return None, bool(matching_records)
+    return None
 
 
-def normalize_requested_species(tags: list[str]) -> tuple[list[str], list[str]]:
-    valid_tags: list[str] = []
-    invalid_tags: list[str] = []
-
-    for tag in tags:
-        normalized_tag = normalize_species_tag(tag)
-
-        if normalized_tag is None:
-            invalid_tags.append(tag)
-            continue
-
-        valid_tags.append(normalized_tag)
-
-    return list(dict.fromkeys(valid_tags)), invalid_tags
+def normalize_requested_species(tags: list[str]) -> list[str]:
+    return [tag.strip().lower() for tag in tags]
 
 
 def add_tags_to_media(media_record: MediaRecord, tags: list[str]) -> dict[str, int]:
@@ -123,45 +111,22 @@ def build_remove_tags_result(
 def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResponse:
     results: list[EditTagsResult] = []
     updated_count = 0
-    valid_tags, invalid_tags = normalize_requested_species(request.tags)
+    valid_tags = normalize_requested_species(request.tags)
     media_records = scan_media_record(table)
 
     for url in request.urls:
-        media_record, media_exists = find_user_media_by_url(
+        media_record = find_user_media_by_url(
             media_records,
             url,
             current_user,
         )
-
-        if not media_exists:
-            results.append(
-                EditTagsResult(
-                    url=url,
-                    updated=False,
-                    message="media not found",
-                )
-            )
-            continue
 
         if media_record is None:
             results.append(
                 EditTagsResult(
                     url=url,
                     updated=False,
-                    message="forbidden: media is owned by another user",
-                )
-            )
-            continue
-
-        if invalid_tags:
-            results.append(
-                EditTagsResult(
-                    url=url,
-                    updated=False,
-                    checksum=media_record.checksum,
-                    file_name=media_record.file_name,
-                    tags=media_record.tags,
-                    message=f"invalid species tags: {', '.join(invalid_tags)}",
+                    message="media not found",
                 )
             )
             continue

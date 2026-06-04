@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-FUNCTION_NAME="${FUNCTION_NAME:-query_thumbnail_url}"
+FUNCTION_NAME="${FUNCTION_NAME:-edit_tags}"
 LAYER_NAME="${LAYER_NAME:-aussie-eco-len-shared}"
 RUNTIME="${RUNTIME:-python3.12}"
 HANDLER="${HANDLER:-app.lambda_handler}"
