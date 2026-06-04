@@ -2,6 +2,8 @@
 # data "aws_s3_bucket" "media" { ... }
 
 resource "aws_lambda_permission" "allow_s3_invoke_tag_image" {
+  count = var.enable_s3_notifications ? 1 : 0
+
   statement_id  = "allow-s3-invoke-tag-image"
   action        = "lambda:InvokeFunction"
   function_name = "tag_image"
@@ -10,6 +12,8 @@ resource "aws_lambda_permission" "allow_s3_invoke_tag_image" {
 }
 
 resource "aws_lambda_permission" "allow_s3_invoke_tag_video" {
+  count = var.enable_s3_notifications ? 1 : 0
+
   statement_id  = "allow-s3-invoke-tag-video"
   action        = "lambda:InvokeFunction"
   function_name = "tag_video"
@@ -18,6 +22,7 @@ resource "aws_lambda_permission" "allow_s3_invoke_tag_video" {
 }
 
 resource "aws_s3_bucket_notification" "media_uploads" {
+  count  = var.enable_s3_notifications ? 1 : 0
   bucket = data.aws_s3_bucket.media.id
 
   lambda_function {
