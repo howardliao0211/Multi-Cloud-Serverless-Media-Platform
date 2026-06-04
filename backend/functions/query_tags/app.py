@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from pydantic import ValidationError
 
-from shared.aws_resources import get_table, scan_media_record
+from shared.aws_resources import get_table, scan_media_record, get_bucket_and_name
 from shared.query_utils import (
     can_query_media,
     infer_media_type,
@@ -15,12 +15,12 @@ from shared.schemas import (
     MediaRecord,
     MediaRecordStatus,
     QueryTagsRequest,
-    QueryTagsResponse,
-    QueryTagsResult,
+    MediaRecordResponse,
+    GetMediaResponse,
 )
 from shared.utils import build_response_message, get_current_user
 
-
+s3, bucket_name = get_bucket_and_name()
 table = get_table()
 
 
@@ -38,9 +38,7 @@ def media_matches_tags(media_record: MediaRecord, requested_tags: Dict[str, int]
     return True
 
 
-def shape_query_result(media_record: MediaRecord) -> QueryTagsResult:
-    media_type = infer_media_type(media_record)
-    thumbnail_url = media_record.thumbnail_url if media_type == "image" else None
+def shape_query_result(media_record: MediaRecord) -> MediaRecordResponse:
 
     return QueryTagsResult(
         checksum=media_record.checksum,
@@ -53,8 +51,8 @@ def shape_query_result(media_record: MediaRecord) -> QueryTagsResult:
     )
 
 
-def query_tags(request: QueryTagsRequest, current_user: str) -> QueryTagsResponse:
-    results: List[QueryTagsResult] = []
+def query_tags(request: QueryTagsRequest, current_user: str) -> GetMediaResponse:
+    results: List[MediaRecordResponse] = []
 
     filters = {"upload_status": MediaRecordStatus.ready}
 
@@ -63,11 +61,15 @@ def query_tags(request: QueryTagsRequest, current_user: str) -> QueryTagsRespons
             continue
 
         if media_matches_tags(media_record, request.tags):
-            results.append(shape_query_result(media_record))
+            results.append(
+                MediaRecordResponse.from_media_record(
+                    media_record,
+                    s3, bucket_name, 300
+                )
+            )
 
-    return QueryTagsResponse(
-        count=len(results),
-        results=results,
+    return GetMediaResponse(
+        media_records=results,
     )
 
 

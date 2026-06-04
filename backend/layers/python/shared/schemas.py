@@ -236,10 +236,6 @@ class QueryFileResponse(BaseModel):
     results: List[QueryFileResult] = Field(default_factory=list)
 
 
-class GetPrivateMediaRequest(BaseModel):
-    owner_id: str
-
-
 class GetMediaResponse(BaseModel):
     media_records: List[MediaRecordResponse]
 
