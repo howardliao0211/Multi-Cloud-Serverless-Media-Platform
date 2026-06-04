@@ -51,8 +51,12 @@ export type MediaRecordResponse = {
   owner_id: string;
   file_name: string;
   visibility: MediaVisibility;
-  full_presigned_url: string;
-  thumbnail_presigned_url: string;
+  full_presigned_url?: string | null;
+  thumbnail_presigned_url?: string | null;
+
+  full_url?: string | null;
+  thumbnail_url?: string | null;
+
   tags: Record<string, number>;
   upload_status: MediaRecordStatus;
   error_message?: string | null;

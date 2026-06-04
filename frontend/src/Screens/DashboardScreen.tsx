@@ -96,9 +96,13 @@ function DashboardScreen() {
                                 <div className="media-thumbnail">
                                     {record.thumbnail_presigned_url ? (
                                         <img
-                                            src={record.thumbnail_presigned_url}
-                                            alt={`${record.file_name} thumbnail`}
-                                            onClick={() => window.open(record.full_presigned_url, "_blank")}
+                                        src={record.thumbnail_presigned_url}
+                                        alt={`${record.file_name} thumbnail`}
+                                        onClick={() => {
+                                            if (record.full_presigned_url) {
+                                            window.open(record.full_presigned_url, "_blank");
+                                            }
+                                        }}
                                         />
                                     ) : (
                                         <span>No thumbnail available</span>
@@ -122,16 +126,40 @@ function DashboardScreen() {
                                 </div>
 
                                 <div className="media-url-actions">
-                                    <button type="button" onClick={() => navigator.clipboard.writeText(record.full_presigned_url)}>
+                                    <button type="button" 
+                                        disabled={!record.full_url}
+                                        onClick={() =>{
+                                            if (record.full_url){
+                                                navigator.clipboard.writeText(record.full_url);
+                                            }
+                                        }}
+                                    >
                                         Copy Full URL
                                     </button>
-                                    <button type="button" onClick={() => navigator.clipboard.writeText(record.thumbnail_presigned_url)}>
+                                    
+                                    <button 
+                                        type="button" 
+                                        disabled={!record.thumbnail_url}
+                                        onClick={() => {
+                                            if (record.thumbnail_url){
+                                                navigator.clipboard.writeText(record.thumbnail_url);
+                                            }
+                                        }}
+                                    >
                                         Copy Thumbnail URL
                                     </button>
-                                    <button type="button" onClick={() => handleChangeVisibility(
-                                        record.full_presigned_url,
-                                        record.visibility === "private" ? "public" : "private"
-                                    )}
+
+                                    <button 
+                                        type="button" 
+                                        disabled={!record.full_url}
+                                        onClick={() => {
+                                            if (record.full_url) {
+                                                handleChangeVisibility(
+                                                    record.full_url,
+                                                    record.visibility === "private" ? "public" : "private"
+                                                );
+                                            }
+                                        }}
                                     >
                                         Make {record.visibility === "private" ? "Public" : "Private"}
                                     </button>
