@@ -8,4 +8,5 @@ dependencies = [
     "boto3>=1.43.20",
     "pytest>=9.0.3",
     "python-dotenv>=1.2.2",
+    "requests>=2.34.2",
 ]

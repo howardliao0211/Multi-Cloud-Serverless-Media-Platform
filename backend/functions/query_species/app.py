@@ -4,7 +4,7 @@ from typing import List
 
 from pydantic import ValidationError
 
-from shared.aws_resources import get_table, scan_media_record
+from shared.aws_resources import get_table, scan_media_record, get_bucket_and_name
 from shared.query_utils import (
     can_query_media,
     infer_media_type,
@@ -15,12 +15,13 @@ from shared.schemas import (
     MediaRecord,
     MediaRecordStatus,
     QuerySpeciesRequest,
-    QuerySpeciesResponse,
-    QuerySpeciesResult,
+    MediaRecordResponse,
+    GetMediaResponse
 )
 from shared.utils import build_response_message, get_current_user
 
 
+s3, bucket_name = get_bucket_and_name()
 table = get_table()
 
 
@@ -33,23 +34,8 @@ def media_contains_species(media_record: MediaRecord, species: str) -> bool:
     return tag_counts.get(species, 0) >= 1
 
 
-def shape_query_result(media_record: MediaRecord) -> QuerySpeciesResult:
-    media_type = infer_media_type(media_record)
-    thumbnail_url = media_record.thumbnail_url if media_type == "image" else None
-
-    return QuerySpeciesResult(
-        checksum=media_record.checksum,
-        file_name=media_record.file_name,
-        visibility=media_record.visibility,
-        media_type=media_type,
-        url=media_record.full_url,
-        thumbnail_url=thumbnail_url,
-        tags=normalize_tag_counts(media_record.tags),
-    )
-
-
-def query_species(request: QuerySpeciesRequest, current_user: str) -> QuerySpeciesResponse:
-    results: List[QuerySpeciesResult] = []
+def query_species(request: QuerySpeciesRequest, current_user: str) -> GetMediaResponse:
+    results: List[MediaRecordResponse] = []
 
     filters = {"upload_status": MediaRecordStatus.ready}
 
@@ -58,11 +44,14 @@ def query_species(request: QuerySpeciesRequest, current_user: str) -> QuerySpeci
             continue
 
         if media_contains_species(media_record, request.species):
-            results.append(shape_query_result(media_record))
+            results.append(
+                MediaRecordResponse.from_media_record(
+                    media_record, s3, bucket_name, 300
+                )
+            )
 
-    return QuerySpeciesResponse(
-        count=len(results),
-        results=results,
+    return GetMediaResponse(
+        media_records=results
     )
 
 

@@ -1,6 +1,6 @@
-from pathlib import Path
-
+import pydantic
 import boto3
+from pathlib import Path
 from boto3.dynamodb.conditions import Attr
 from botocore.config import Config
 from typing import Literal, Tuple, Any, Optional, List
@@ -251,7 +251,12 @@ def scan_media_record(
         if not last_evaluated_key:
             break
 
-    return [
-        MediaRecord.model_validate(item)
-        for item in items
-    ]
+    results = []
+    for item in items:
+        try:
+            record = MediaRecord.model_validate(item)
+            results.append(record)
+        except pydantic.ValidationError:
+            pass
+
+    return results

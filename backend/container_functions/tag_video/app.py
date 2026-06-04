@@ -197,7 +197,7 @@ def process_video(bucket: str, s3_key: str):
 
 def lambda_handler(event, context):
     video_file_extensions = [
-        "mp4", "mov", "mkv"
+        "mp4", "mov", "webm"
     ]
 
     for record in event["Records"]:
@@ -205,7 +205,7 @@ def lambda_handler(event, context):
         s3_key = unquote_plus(record["s3"]["object"]["key"])
         file_ext = s3_key.split(".")[-1]
 
-        if file_ext not in video_file_extensions:
+        if file_ext.lower() not in video_file_extensions:
             raise ValueError(
                 f"Unsupported image file type. Only support {video_file_extensions}"
             )

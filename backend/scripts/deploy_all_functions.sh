@@ -11,6 +11,8 @@ FUNCTIONS=(
   "get_private_media"
   "get_public_media"
   "change_visibility"
+  "query_tags"
+  "query_species"
 )
 
 CONTAINER_FUNCTIONS=(

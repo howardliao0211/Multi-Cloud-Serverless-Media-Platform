@@ -5,6 +5,7 @@ import urllib.request
 import zlib
 from pathlib import Path
 from struct import pack
+import requests
 
 import pytest
 from boto3.dynamodb.conditions import Key
@@ -196,17 +197,19 @@ def _delete_media_record(table, item):
         "key": item["key"],
     }
 
-    response = table.delete_item(
-        Key=key,
-        ReturnValues="ALL_OLD",
-    )
+    for _ in range(3):
+        response = table.delete_item(
+            Key=key,
+            ReturnValues="ALL_OLD",
+        )
 
-    deleted_item = response.get("Attributes")
+        deleted_item = response.get("Attributes")
 
-    if deleted_item is None:
-        print(f"No DynamoDB item deleted. Key may not exist: {key}")
-    else:
-        print(f"Deleted DynamoDB item: {key}")
+        if deleted_item is None:
+            print(f"No DynamoDB item deleted. Key may not exist: {key}")
+        else:
+            print(f"Deleted DynamoDB item: {key}")
+            break
 
     return deleted_item
 
@@ -401,6 +404,193 @@ def test_tag_video(aws_clients, integration_config, unique_id):
             ],
         )
 
+
+def test_media(aws_clients, integration_config, unique_id):
+    s3 = aws_clients["s3"]
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    bucket = integration_config["bucket"]
+    user_id = integration_config["test_user_id"]
+
+    image = _solid_png_bytes()
+    checksum = "integration_test_" + _checksum(image)
+    file_name = f"{unique_id}.png"
+
+    full_key = f"images/{checksum}.png"
+    db_key = _build_db_key(user_id, full_key)
+
+    record = None
+
+    try:
+        first = _invoke_lambda(
+            lambda_client,
+            integration_config["get_signed_url_function"],
+            _api_event(
+                "POST",
+                {
+                    "file_name": file_name,
+                    "checksum": checksum,
+                    "media_type": "image",
+                    "visibility": "private",
+                },
+                user_id=user_id,
+            ),
+        )
+
+        first_body = _body(first)
+
+        assert first["statusCode"] == 200
+        assert first_body["duplicate"] is False
+        assert first_body["upload_url"].startswith("https://")
+
+        upload_url = first_body["upload_url"]
+
+        upload_response = requests.put(
+            upload_url,
+            data=image,
+            headers={
+                "Content-Type": "image/png",
+                "x-amz-meta-file_name": file_name,
+                "x-amz-meta-checksum": checksum,
+                "x-amz-meta-owner_id": user_id,
+            },
+            timeout=30,
+        )
+
+        assert upload_response.status_code == 200
+
+        head = s3.head_object(
+            Bucket=bucket,
+            Key=full_key,
+        )
+
+        assert head["ContentLength"] == len(image)
+        assert head["ContentType"] == "image/png"
+
+        metadata = head.get("Metadata", {})
+
+        assert metadata["file_name"] == file_name
+        assert metadata["checksum"] == checksum
+        assert metadata["owner_id"] == user_id
+
+        _wait_for_media_status(table, db_key, expected_status="ready")
+        record = _get_media_record(table, db_key)
+
+        assert record is not None
+        assert record["full_key"].endswith(".png")
+        assert record["file_name"] == file_name
+        assert record["checksum"] == checksum
+        assert record["owner_id"] == user_id
+        assert record["visibility"] == "private"
+
+    finally:
+        try:
+            s3.delete_object(
+                Bucket=bucket,
+                Key=full_key,
+            )
+        except Exception as e:
+            print(f"S3 cleanup failed: {e}")
+
+        if record is not None:
+            try:
+                _delete_media_record(table, record)
+            except Exception as e:
+                print(f"DynamoDB cleanup failed: {e}")
+
+
+def test_upper_case_media(aws_clients, integration_config, unique_id):
+    s3 = aws_clients["s3"]
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    bucket = integration_config["bucket"]
+    user_id = integration_config["test_user_id"]
+
+    image = _solid_png_bytes()
+    checksum = "integration_test_" + _checksum(image)
+    file_name = f"{unique_id}.png"
+
+    full_key = f"images/{checksum}.png"
+    db_key = _build_db_key(user_id, full_key)
+
+    record = None
+
+    try:
+        first = _invoke_lambda(
+            lambda_client,
+            integration_config["get_signed_url_function"],
+            _api_event(
+                "POST",
+                {
+                    "file_name": file_name,
+                    "checksum": checksum,
+                    "media_type": "image",
+                    "visibility": "private",
+                },
+                user_id=user_id,
+            ),
+        )
+
+        first_body = _body(first)
+
+        assert first["statusCode"] == 200
+        assert first_body["duplicate"] is False
+        assert first_body["upload_url"].startswith("https://")
+
+        upload_url = first_body["upload_url"]
+
+        upload_response = requests.put(
+            upload_url,
+            data=image,
+            headers={
+                "Content-Type": "image/png",
+                "x-amz-meta-file_name": file_name,
+                "x-amz-meta-checksum": checksum,
+                "x-amz-meta-owner_id": user_id,
+            },
+            timeout=30,
+        )
+
+        assert upload_response.status_code == 200
+
+        head = s3.head_object(
+            Bucket=bucket,
+            Key=full_key,
+        )
+
+        assert head["ContentLength"] == len(image)
+        assert head["ContentType"] == "image/png"
+
+        metadata = head.get("Metadata", {})
+
+        assert metadata["file_name"] == file_name
+        assert metadata["checksum"] == checksum
+        assert metadata["owner_id"] == user_id
+
+        _wait_for_media_status(table, db_key, expected_status="ready")
+        record = _get_media_record(table, db_key)
+
+        assert record is not None
+        assert record["full_key"].endswith(".png")
+        assert record["file_name"] == file_name
+        assert record["checksum"] == checksum
+        assert record["owner_id"] == user_id
+        assert record["visibility"] == "private"
+
+    finally:
+        try:
+            s3.delete_object(
+                Bucket=bucket,
+                Key=full_key,
+            )
+        except Exception as e:
+            print(f"S3 cleanup failed: {e}")
+
+        if record is not None:
+            try:
+                _delete_media_record(table, record)
+            except Exception as e:
+                print(f"DynamoDB cleanup failed: {e}")
 
 def test_deduplicate_media_in_s3(aws_clients, integration_config, unique_id):
     lambda_client = aws_clients["lambda"]

@@ -421,7 +421,7 @@ def process_image(bucket: str, s3_key: str, request_id: str):
 
 def lambda_handler(event, context):
     img_file_extensions = [
-        "png", "jpg",
+        "jpg", "jpeg", "png", "webp"
     ]
 
     for record in event["Records"]:
@@ -429,7 +429,7 @@ def lambda_handler(event, context):
         s3_key = unquote_plus(record["s3"]["object"]["key"])
         file_ext = s3_key.split(".")[-1]
 
-        if file_ext not in img_file_extensions:
+        if file_ext.lower() not in img_file_extensions:
             raise ValueError(
                 f"Unsupported image file type. Only support {img_file_extensions}"
             )

@@ -48,6 +48,21 @@ def generate_upload_url(s3_key: str, file_name: str, checksum: str, owner_id: st
     )
 
 
+def normalize_file_extension(file_name: str) -> tuple[str, str]:
+    """
+    Return:
+    - normalized file name with lowercase extension
+    - lowercase file extension without dot
+    """
+    if "." not in file_name:
+        raise ValueError("File name must have an extension")
+
+    name, ext = file_name.rsplit(".", 1)
+    ext = ext.lower()
+
+    return f"{name}.{ext}", ext
+
+
 def is_duplicated(key: str) -> bool:
     result = table.query(
         KeyConditionExpression=Key("key").eq(key),
@@ -68,7 +83,7 @@ def lambda_handler(event, context):
     owner_id = get_current_user(event)
     request = parse_request(event)
 
-    file_ext = request.file_name.split(".")[-1]
+    request.file_name, file_ext = normalize_file_extension(request.file_name)
     s3_filename = f"{request.checksum}.{file_ext}"
     s3_key = build_s3_key(s3_filename, request.media_type.value)
     db_key = build_db_key(owner_id, s3_key)
