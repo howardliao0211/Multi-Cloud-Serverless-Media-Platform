@@ -4,12 +4,19 @@ from typing import Optional
 
 from pydantic import ValidationError
 
-from shared.aws_resources import get_table, scan_media_record
+from shared.aws_resources import (
+    delete_media_record_from_db,
+    delete_s3_object_if_exists,
+    get_bucket_and_name,
+    get_table,
+    scan_media_record,
+)
 from shared.query_utils import parse_json_request
 from shared.schemas import DeleteFileRequest, DeleteFileResponse, DeleteFileResult, MediaRecord
 from shared.utils import build_response_message, get_current_user
 
 
+s3, bucket_name = get_bucket_and_name()
 table = get_table()
 
 
@@ -49,8 +56,23 @@ def find_user_media_by_url(
     return None, bool(matching_records)
 
 
-def plan_delete_file(request: DeleteFileRequest, current_user: str) -> DeleteFileResponse:
+def is_s3_key_referenced(
+    media_records: list[MediaRecord],
+    s3_key: str | None,
+    field_name: str,
+) -> bool:
+    if not s3_key:
+        return False
+
+    return any(
+        getattr(media_record, field_name) == s3_key
+        for media_record in media_records
+    )
+
+
+def delete_files(request: DeleteFileRequest, current_user: str) -> DeleteFileResponse:
     results: list[DeleteFileResult] = []
+    deleted_count = 0
     media_records = scan_media_record(table)
 
     for url in request.urls:
@@ -80,18 +102,61 @@ def plan_delete_file(request: DeleteFileRequest, current_user: str) -> DeleteFil
             )
             continue
 
+        remaining_records = [
+            record
+            for record in media_records
+            if record.key != media_record.key
+        ]
+
+        should_delete_full_object = not is_s3_key_referenced(
+            remaining_records,
+            media_record.full_key,
+            "full_key",
+        )
+        
+        should_delete_thumbnail_object = not is_s3_key_referenced(
+            remaining_records,
+            media_record.thumbnail_key,
+            "thumbnail_key",
+        )
+
+        delete_media_record_from_db(table, media_record.key)
+
+        removed_full_object = False
+        removed_thumbnail_object = False
+
+        if should_delete_full_object:
+            removed_full_object = delete_s3_object_if_exists(
+                s3,
+                bucket_name,
+                media_record.full_key,
+            )
+
+        if should_delete_thumbnail_object:
+            removed_thumbnail_object = delete_s3_object_if_exists(
+                s3,
+                bucket_name,
+                media_record.thumbnail_key,
+            )
+
+        media_records = remaining_records
+        deleted_count += 1
+
         results.append(
             DeleteFileResult(
                 url=url,
-                deleted=False,
+                deleted=True,
                 checksum=media_record.checksum,
                 file_name=media_record.file_name,
-                message="delete target resolved",
+                removed_db_entry=True,
+                removed_full_object=removed_full_object,
+                removed_thumbnail_object=removed_thumbnail_object,
+                message="media deleted",
             )
         )
 
     return DeleteFileResponse(
-        deleted_count=0,
+        deleted_count=deleted_count,
         results=results,
     )
 
@@ -116,7 +181,7 @@ def lambda_handler(event, context):
     try:
         request = parse_request(event)
         current_user = get_current_user(event)
-        response = plan_delete_file(request, current_user)
+        response = delete_files(request, current_user)
 
         return build_response_message(
             status_code=HTTPStatus.OK,
