@@ -112,36 +112,53 @@ export function getMediaType(file: File): "image" | "video" {
   throw new Error("Unsupported file type.");
 }
 
-export type QueryMediaResult = {
-  checksum: string;
-  file_name: string;
-  visibility: MediaVisibility;
-  media_type?: string | null;
-  full_presigned_url?: string | null;
-  thumbnail_presigned_url?: string | null;
-  tags: Record<string, number>;
-};
+// export type QueryMediaResult = {
+//   checksum: string;
+//   file_name: string;
+//   visibility: MediaVisibility;
+//   media_type?: string | null;
+//   // full_presigned_url?: string | null;
+//   // thumbnail_presigned_url?: string | null;
+//   url?: string | null;
+//   thumbnail_url?: string | null;
+//   tags: Record<string, number>;
+// };
 
-export type QueryTagsResponse = {
-  count: number;
-  results: QueryMediaResult[];
-};
+// export type QueryTagsResponse = {
+//   count: number;
+//   results: QueryMediaResult[];
+// };
 
-export type QuerySpeciesResponse = {
-  count: number;
-  results: QueryMediaResult[];
-};
+// export type QuerySpeciesResponse = {
+//   count: number;
+//   results: QueryMediaResult[];
+// };
 
-export type QueryThumbnailUrlResponse = {
-  checksum: string;
-  file_name: string;
-  visibility: MediaVisibility;
-  full_presigned_url?: string | null;
-  thumbnail_presigned_url?: string | null;
-};
+// export type QueryThumbnailUrlResponse = {
+//   checksum: string;
+//   file_name: string;
+//   visibility: MediaVisibility;
+//   // full_presigned_url?: string | null;
+//   // thumbnail_presigned_url?: string | null;
+//   url?: string | null;
+//   thumbnail_url?: string | null;
+// };
+
+// export type QueryFileResponse = {
+//   detected_tags: Record<string, number>;
+//   count: number;
+//   results: QueryMediaResult[];
+// };
+
+export type QueryTagsResponse = GetMediaResponse;
+
+export type QuerySpeciesResponse = GetMediaResponse;
 
 export type QueryFileResponse = {
   detected_tags: Record<string, number>;
-  count: number;
-  results: QueryMediaResult[];
+  media_records: MediaRecordResponse[];
+};
+
+export type QueryThumbnailUrlResponse = {
+  media_records: MediaRecordResponse[];
 };

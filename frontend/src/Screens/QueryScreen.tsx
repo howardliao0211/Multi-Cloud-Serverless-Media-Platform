@@ -1,13 +1,14 @@
 import { useRef, useState } from "react";
 import { authFetch } from "../services/api";
+
 import {
     getErrorMessage,
     isValidMediaFile,
+    type MediaRecordResponse,
     type QueryTagsResponse,
     type QuerySpeciesResponse,
     type QueryThumbnailUrlResponse,
     type QueryFileResponse,
-    type QueryMediaResult,
 } from "../utils";
 
 type SearchMode = "tags" | "species" | "thumbnail" | "content";
@@ -22,7 +23,7 @@ function QueryScreen() {
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    const [results, setResults] = useState<QueryMediaResult[]>([]);
+    const [results, setResults] = useState<MediaRecordResponse[]>([]);
     const [detectedTags, setDetectedTags] = useState<Record<string, number>>({});
     const [resultCount, setResultCount] = useState<number>(0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -94,8 +95,8 @@ function QueryScreen() {
                 body: JSON.stringify({ tags }),
             });
 
-            setResults(data.results ?? []);
-            setResultCount(data.count ?? data.results?.length ?? 0);
+            setResults(data.media_records ?? []);
+            setResultCount(data.media_records?.length ?? 0);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -123,8 +124,8 @@ function QueryScreen() {
                 }),
             });
 
-            setResults(data.results ?? []);
-            setResultCount(data.count ?? data.results?.length ?? 0);
+            setResults(data.media_records ?? []);
+            setResultCount(data.media_records?.length ?? 0);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -152,18 +153,8 @@ function QueryScreen() {
                 }),
             });
 
-            const result: QueryMediaResult = {
-                checksum: data.checksum,
-                file_name: data.file_name,
-                visibility: data.visibility,
-                media_type: null,
-                full_presigned_url: data.full_presigned_url,
-                thumbnail_presigned_url: data.thumbnail_presigned_url,
-                tags: {},
-            };
-
-            setResults([result]);
-            setResultCount(1);
+            setResults(data.media_records ?? []);
+            setResultCount(data.media_records?.length ?? 0);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -171,7 +162,6 @@ function QueryScreen() {
         }
     }
 
-    //modified leter FORMDATA -> UPLOAD
     async function handleContentSearch() {
         if (!file) {
             setError("Please select a file.");
@@ -196,8 +186,8 @@ function QueryScreen() {
             });
 
             setDetectedTags(data.detected_tags ?? {});
-            setResults(data.results ?? []);
-            setResultCount(data.count ?? data.results?.length ?? 0);
+            setResults(data.media_records ?? []);
+            setResultCount(data.media_records?.length ?? 0);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -413,49 +403,47 @@ function QueryScreen() {
                     </p>
                 )}
 
-                <div className="media-cards-grid">
-                    {results.map((result) => {
-                        const preThumbUrl = result.thumbnail_presigned_url ?? result.full_presigned_url ?? "";
-                        const preFullUrl = result.thumbnail_presigned_url ?? preThumbUrl;
-
-                        return (
-                            <article
-                                key={`${result.checksum}-${result.file_name}`}
-                                className="media-card"
-                            >
-                                <div className="media-thumbnail">
-                                    {preThumbUrl ? (
-                                        <img
-                                            src={preThumbUrl}
-                                            alt={`${result.file_name} thumbnail`}
-                                            onClick={() => {
-                                                if (preFullUrl) {
-                                                    window.open(preFullUrl, "_blank");
-                                                }
-                                            }}
-                                        />
-                                    ) : (
-                                        <span>No thumbnail available</span>
-                                    )}
-                                </div>
-
-                                <p>
-                                    File: <strong>{result.file_name}</strong>
-                                </p>
-
-                                <p>
-                                    Visibility: <strong>{result.visibility}</strong>
-                                </p>
-
-                                {result.media_type && (
-                                    <p>
-                                        Type: <strong>{result.media_type}</strong>
-                                    </p>
+                <section className="media-cards-grid">
+                    {results.map((record) => (
+                        <article className="media-card" key={`${record.owner_id}-${record.file_name}-${record.full_url ?? ""}`} >
+                            <div className="media-thumbnail">
+                                {record.thumbnail_presigned_url ? (
+                                    <img
+                                        src={record.thumbnail_presigned_url}
+                                        alt={`${record.file_name} thumbnail`}
+                                        onClick={() => {
+                                            if (record.full_presigned_url) {
+                                                window.open(record.full_presigned_url, "_blank");
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <span>No thumbnail available</span>
                                 )}
-                            </article>
-                        );
-                    })}
-                </div>
+                            </div>
+
+                            <p>
+                                File Name: <strong>{record.file_name}</strong>
+                            </p>
+
+                            <p>
+                                Visibility: <strong>{record.visibility}</strong>
+                            </p>
+
+                            <div className="media-tags-text">
+                                {Object.entries(record.tags ?? {}).length > 0 ? (
+                                    Object.entries(record.tags).map(([tag, count]) => (
+                                        <p key={tag}>
+                                            Tag: {tag}; Count: {count}
+                                        </p>
+                                    ))
+                                ) : (
+                                    <p>No tags yet</p>
+                                )}
+                            </div>
+                        </article>
+                    ))}
+                </section>
             </section>
         </main >
     );
