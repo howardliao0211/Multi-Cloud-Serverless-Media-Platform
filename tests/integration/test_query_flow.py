@@ -900,3 +900,103 @@ def test_delete_file_forbidden_when_url_belongs_to_another_user(
         _delete_media_record(table, other_user_record)
         _delete_s3_object(s3, bucket, full_key)
         _delete_s3_object(s3, bucket, thumbnail_key)
+
+
+def test_delete_file_keeps_shared_s3_objects_when_other_entry_references_them(
+    aws_clients,
+    integration_config,
+    unique_id,
+):
+    s3 = aws_clients["s3"]
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    bucket = integration_config["bucket"]
+    user_id = integration_config["test_user_id"]
+    other_user_id = f"{user_id}-other"
+
+    full_key = f"integration-tests/delete-file/{unique_id}-shared.png"
+    thumbnail_key = f"integration-tests/delete-file/{unique_id}-shared-thumb.jpg"
+    user_full_url = f"https://example.com/{unique_id}/delete-file-shared-user-full.png"
+    user_thumbnail_url = f"https://example.com/{unique_id}/delete-file-shared-user-thumb.jpg"
+    other_full_url = f"https://example.com/{unique_id}/delete-file-shared-other-full.png"
+    other_thumbnail_url = f"https://example.com/{unique_id}/delete-file-shared-other-thumb.jpg"
+
+    user_record = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-delete-file-shared-user.png",
+        checksum=f"{unique_id}-delete-file-shared",
+        full_key=full_key,
+        full_url=user_full_url,
+        thumbnail_key=thumbnail_key,
+        thumbnail_url=user_thumbnail_url,
+        tags={
+            "koala": 1,
+        },
+    )
+    other_user_record = _put_media_record(
+        table,
+        owner_id=other_user_id,
+        file_name=f"{unique_id}-delete-file-shared-other.png",
+        checksum=f"{unique_id}-delete-file-shared",
+        full_key=full_key,
+        full_url=other_full_url,
+        thumbnail_key=thumbnail_key,
+        thumbnail_url=other_thumbnail_url,
+        tags={
+            "koala": 1,
+        },
+    )
+
+    try:
+        s3.put_object(
+            Bucket=bucket,
+            Key=full_key,
+            Body=b"integration-test-shared-full-object",
+            ContentType="image/png",
+        )
+        s3.put_object(
+            Bucket=bucket,
+            Key=thumbnail_key,
+            Body=b"integration-test-shared-thumbnail-object",
+            ContentType="image/jpeg",
+        )
+
+        response = _invoke_lambda(
+            lambda_client,
+            integration_config["delete_file_function"],
+            _api_event(
+                "POST",
+                body={
+                    "urls": [user_full_url],
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert response["statusCode"] == 200
+
+        body = _body(response)
+        assert body["deleted_count"] == 1
+        assert len(body["results"]) == 1
+
+        result = body["results"][0]
+        assert result["url"] == user_full_url
+        assert result["deleted"] is True
+        assert result["checksum"] == user_record["checksum"]
+        assert result["file_name"] == user_record["file_name"]
+        assert result["removed_db_entry"] is True
+        assert result["removed_full_object"] is False
+        assert result["removed_thumbnail_object"] is False
+        assert result["message"] == "media deleted"
+
+        assert _get_media_record(table, user_record) is None
+        assert _get_media_record(table, other_user_record) is not None
+        assert _s3_object_exists(s3, bucket, full_key) is True
+        assert _s3_object_exists(s3, bucket, thumbnail_key) is True
+
+    finally:
+        _delete_media_record(table, user_record)
+        _delete_media_record(table, other_user_record)
+        _delete_s3_object(s3, bucket, full_key)
+        _delete_s3_object(s3, bucket, thumbnail_key)
