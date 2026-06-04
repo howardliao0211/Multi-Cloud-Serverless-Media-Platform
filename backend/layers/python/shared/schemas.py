@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 from shared.utils import build_db_key
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, HttpUrl
 
 
 class MediaType(str, Enum):
@@ -30,10 +30,10 @@ class MediaRecord(BaseModel):
     full_key: str
     visibility: MediaVisibility
 
-    full_url: Optional[str] = None
+    full_url: Optional[HttpUrl] = None
     file_type: Optional[str] = None
     thumbnail_key: Optional[str] = None
-    thumbnail_url: Optional[str] = None
+    thumbnail_url: Optional[HttpUrl] = None
 
     tags: Dict[str, int] = Field(default_factory=dict)
 
@@ -67,15 +67,18 @@ class MediaRecordResponse(BaseModel):
     file_name: str
     visibility: MediaVisibility
 
-    full_presigned_url: str
-    thumbnail_presigned_url: Optional[str] = None
+    full_url: Optional[HttpUrl]
+    thumbnail_url: Optional[HttpUrl]
+
+    full_presigned_url: Optional[HttpUrl]
+    thumbnail_presigned_url: Optional[HttpUrl]
 
     tags: Dict[str, int]
     upload_status: MediaRecordStatus
-    error_message: Optional[str] = None
+    error_message: Optional[str]
 
     @classmethod
-    def from_media_record(cls, media_record, s3, bucket_name, expires_seconds):
+    def from_media_record(cls, media_record: MediaRecord, s3, bucket_name, expires_seconds):
         full_presigned_url = s3.generate_presigned_url(
             ClientMethod="get_object",
             Params={
@@ -101,6 +104,8 @@ class MediaRecordResponse(BaseModel):
             owner_id=media_record.owner_id,
             file_name=media_record.file_name,
             visibility=media_record.visibility,
+            full_url=media_record.full_url,
+            thumbnail_url=media_record.thumbnail_url,
             full_presigned_url=full_presigned_url,
             thumbnail_presigned_url=thumbnail_presigned_url,
             tags=media_record.tags or {},
@@ -118,7 +123,7 @@ class UploadUrlRequest(BaseModel):
 
 class UploadUrlResponse(BaseModel):
     duplicate: bool
-    upload_url: Optional[str] = None
+    upload_url: Optional[HttpUrl] = None
     expires_in: Optional[int] = None
 
 
@@ -154,8 +159,8 @@ class QueryTagsResult(BaseModel):
     file_name: str
     visibility: MediaVisibility
     media_type: Optional[str] = None
-    url: Optional[str] = None
-    thumbnail_url: Optional[str] = None
+    url: Optional[HttpUrl] = None
+    thumbnail_url: Optional[HttpUrl] = None
     tags: Dict[str, int] = Field(default_factory=dict)
 
 
@@ -183,8 +188,8 @@ class QuerySpeciesResult(BaseModel):
     file_name: str
     visibility: MediaVisibility
     media_type: Optional[str] = None
-    url: Optional[str] = None
-    thumbnail_url: Optional[str] = None
+    url: Optional[HttpUrl] = None
+    thumbnail_url: Optional[HttpUrl] = None
     tags: Dict[str, int] = Field(default_factory=dict)
 
 
@@ -194,11 +199,11 @@ class QuerySpeciesResponse(BaseModel):
 
 
 class QueryThumbnailUrlRequest(BaseModel):
-    thumbnail_url: str
+    thumbnail_url: HttpUrl
 
     @field_validator("thumbnail_url")
     @classmethod
-    def validate_thumbnail_url(cls, thumbnail_url: str) -> str:
+    def validate_thumbnail_url(cls, thumbnail_url: HttpUrl) -> HttpUrl:
         normalized_thumbnail_url = thumbnail_url.strip()
 
         if not normalized_thumbnail_url:
@@ -211,8 +216,8 @@ class QueryThumbnailUrlResponse(BaseModel):
     checksum: str
     file_name: str
     visibility: MediaVisibility
-    url: str
-    thumbnail_url: str
+    url: HttpUrl
+    thumbnail_url: HttpUrl
 
 
 class QueryFileResult(BaseModel):
@@ -220,8 +225,8 @@ class QueryFileResult(BaseModel):
     file_name: str
     visibility: MediaVisibility
     media_type: Optional[str] = None
-    url: Optional[str] = None
-    thumbnail_url: Optional[str] = None
+    url: Optional[HttpUrl] = None
+    thumbnail_url: Optional[HttpUrl] = None
     tags: Dict[str, int] = Field(default_factory=dict)
 
 
@@ -285,7 +290,7 @@ class EditTagsRequest(BaseModel):
 
 
 class EditTagsResult(BaseModel):
-    url: str
+    url: HttpUrl
     updated: bool
     checksum: Optional[str] = None
     file_name: Optional[str] = None
@@ -317,7 +322,7 @@ class DeleteFileRequest(BaseModel):
 
 
 class DeleteFileResult(BaseModel):
-    url: str
+    url: HttpUrl
     deleted: bool
     checksum: Optional[str] = None
     file_name: Optional[str] = None

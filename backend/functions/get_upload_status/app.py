@@ -71,6 +71,6 @@ def lambda_handler(event, context):
 
     return build_response_message(
         status_code=HTTPStatus.OK,
-        body=res.model_dump(),
+        body=res.model_dump(mode="json"),
         allow_http_methods=methods
     )
