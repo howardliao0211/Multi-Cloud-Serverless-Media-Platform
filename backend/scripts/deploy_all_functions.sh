@@ -9,7 +9,8 @@ FUNCTIONS=(
   "get_signed_url"
   "get_upload_status"
   "get_private_media"
-  "get_public_media"
+  "get_public_media",
+  "change_visibility"
 )
 
 CONTAINER_FUNCTIONS=(

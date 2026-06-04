@@ -7,14 +7,13 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 from shared.schemas import (
-    MediaRecord,
-    GetMediaUploadStatus,
-    MediaUploadStatusResponse
+    ChangeVisibilityRequest,
 )
 from shared.aws_resources import (
     get_bucket_and_name,
     get_table,
     scan_media_record,
+    update_media_record_in_db
 )
 from shared.utils import (
     build_response_message,
@@ -26,15 +25,15 @@ table = get_table()
 URL_EXPIRES_SECONDS = 300
 
 
-def parse_request(event: dict, ) -> GetMediaUploadStatus | None:
-    query_params = event.get("queryStringParameters") or {}
-    return GetMediaUploadStatus(**query_params)
+def parse_request(event: dict, ) -> ChangeVisibilityRequest | None:
+    body = event.get("body")
+    return ChangeVisibilityRequest(**json.loads(body))
 
 
 def lambda_handler(event, context):
 
     methods = [
-        HTTPMethod.OPTIONS, HTTPMethod.GET
+        HTTPMethod.OPTIONS, HTTPMethod.POST
     ]
 
     if event.get("httpMethod") == "OPTIONS":
@@ -64,13 +63,14 @@ def lambda_handler(event, context):
         )
 
     media = media[0]
-    res = MediaUploadStatusResponse(
-        upload_status=media.upload_status,
-        error_message=media.error_message
+    update_media_record_in_db(
+        table, media.key, updates={
+            "visibility": request.visibility
+        }
     )
 
     return build_response_message(
         status_code=HTTPStatus.OK,
-        body=res.model_dump(),
+        body={"message": f"Visibility updated to {request.visibility.value}"},
         allow_http_methods=methods
     )

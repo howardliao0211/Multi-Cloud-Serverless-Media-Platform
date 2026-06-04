@@ -543,3 +543,105 @@ def test_get_upload_status(aws_clients, integration_config, unique_id):
             _delete_media_record(table, record)
         except Exception as e:
             print(f"DynamoDB cleanup failed: {e}")
+
+
+def test_change_visibility_to_private(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+
+    record = _put_media_record(
+        table,
+        owner_id=integration_config["test_user_id"],
+        file_name=f"{unique_id}.png",
+        checksum=f"{unique_id}-public",
+        full_key=f"integration-tests/{unique_id}.png",
+        thumbnail_key=f"integration-tests/{unique_id}-thumb.jpg",
+        visibility="public",
+        tags={"wombat": 1},
+        upload_status="ready",
+        error_message="fake error message"
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            "change_visibility",
+            _api_event(
+                "POST",
+                body={
+                    "file_name": f"{unique_id}.png",
+                    "checksum": f"{unique_id}-public",
+                    "visibility": "private",
+                },
+                user_id=integration_config["test_user_id"],
+            ),
+        )
+
+        body = _body(response)
+        message = body["message"]
+
+        assert response["statusCode"] == 200
+        assert message == f"Visibility updated to private"
+
+        updated_record = _get_media_record(
+            table, record["key"]
+        )
+
+        assert updated_record["visibility"] == "private"
+
+    finally:
+        try:
+            _delete_media_record(table, record)
+        except Exception as e:
+            print(f"DynamoDB cleanup failed: {e}")
+
+
+def test_change_visibility_to_public(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+
+    record = _put_media_record(
+        table,
+        owner_id=integration_config["test_user_id"],
+        file_name=f"{unique_id}.png",
+        checksum=f"{unique_id}-private",
+        full_key=f"integration-tests/{unique_id}.png",
+        thumbnail_key=f"integration-tests/{unique_id}-thumb.jpg",
+        visibility="private",
+        tags={"wombat": 1},
+        upload_status="ready",
+        error_message="fake error message"
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            "change_visibility",
+            _api_event(
+                "POST",
+                body={
+                    "file_name": f"{unique_id}.png",
+                    "checksum": f"{unique_id}-private",
+                    "visibility": "public",
+                },
+                user_id=integration_config["test_user_id"],
+            ),
+        )
+
+        body = _body(response)
+        message = body["message"]
+
+        assert response["statusCode"] == 200
+        assert message == f"Visibility updated to public"
+
+        updated_record = _get_media_record(
+            table, record["key"]
+        )
+
+        assert updated_record["visibility"] == "public"
+
+    finally:
+        try:
+            _delete_media_record(table, updated_record)
+        except Exception as e:
+            print(f"DynamoDB cleanup failed: {e}")

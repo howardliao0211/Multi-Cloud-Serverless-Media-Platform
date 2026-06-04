@@ -244,6 +244,12 @@ class GetMediaUploadStatus(BaseModel):
     checksum: str
 
 
+class ChangeVisibilityRequest(BaseModel):
+    file_name: str
+    checksum: str
+    visibility: MediaVisibility
+
+
 class EditTagsRequest(BaseModel):
     urls: List[str]
     tags: List[str]
