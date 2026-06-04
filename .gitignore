@@ -284,3 +284,10 @@ dist/
 .venv/
 venv/
 gcp/ml_processor/models/
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.*
+terraform/*.tfplan
+terraform/crash.log
+terraform/crash.*.log
+evidence/
