@@ -22,7 +22,7 @@ export async function getMyPrivateMedia() {
 }
 
 export async function getMyPublicMedia() {
-  return authFetch<GetMediaResponse>("/get_private_media", {
+  return authFetch<GetMediaResponse>("/get_public_media", {
     method: "GET",
   });
 }
@@ -111,23 +111,28 @@ export function getMediaType(file: File): "image" | "video" {
   throw new Error("Unsupported file type.");
 }
 
-export type QueryResult = {
+export type QueryMediaResult = {
   checksum: string;
   file_name: string;
+  visibility: MediaVisibility;
   media_type?: string | null;
-  url?: string | null;
-  thumbnail_url?: string | null;
-  tags?: Record<string, number>;
+  full_presigned_url?: string | null;
+  thumbnail_presigned_url?: string | null;
+  tags: Record<string, number>;
 };
 
-export type QueryResponse = {
+export type QueryTagsResponse = {
   count: number;
-  results: QueryResult[];
+  results: QueryMediaResult[];
 };
 
-export type QueryThumbnailResponse = {
-  checksum: string;
-  file_name: string;
-  url: string;
-  thumbnail_url: string;
+export type QuerySpeciesResponse = {
+  count: number;
+  results: QueryMediaResult[];
+};
+
+export type QueryFileResponse = {
+  detected_tags: Record<string, number>;
+  count: number;
+  results: QueryMediaResult[];
 };

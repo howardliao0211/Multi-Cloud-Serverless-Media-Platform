@@ -1,6 +1,14 @@
 import { useRef, useState } from "react";
 import { authFetch } from "../services/api";
-import { type QueryResult, type QueryResponse, type QueryThumbnailResponse} from "../utils";
+import {
+    getErrorMessage,
+    isValidMediaFile,
+    type QueryTagsResponse,
+    type QuerySpeciesResponse,
+    type QueryThumbnailUrlResponse,
+    type QueryFileResponse,
+    type QueryMediaResult,
+} from "../utils";
 
 type SearchMode = "tags" | "species" | "thumbnail" | "content";
 
@@ -13,17 +21,50 @@ function QueryScreen() {
     const [thumbUrl, setThumbUrl] = useState<string>("");
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const [results, setResults] = useState<QueryResult[]>([]);
+
+    const [results, setResults] = useState<QueryMediaResult[]>([]);
+    const [detectedTags, setDetectedTags] = useState<Record<string, number>>({});
+    const [resultCount, setResultCount] = useState<number>(0);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
+
+    function resetSearchState() {
+        setResults([]);
+        setDetectedTags({});
+        setResultCount(0);
+        setError(null);
+    }
+
+    function handleModeChange(nextMode: SearchMode) {
+        setMode(nextMode);
+        resetSearchState();
+    }
 
     function handleAddTag() {
-        if (!tagName.trim()) return;
+        const normalizedName = tagName.trim().toLowerCase();
+        const normalizedCount = Math.max(1, Number(tagCount) || 1);
 
-        setTagQueries([
-            ...tagQueries, {
-                name: tagName.trim(),
-                count: tagCount,
-            },
-        ]);
+        if (!normalizedName) return;
+
+        setTagQueries((prev) => {
+            const existingTag = prev.find((tag) => tag.name === normalizedName);
+
+            if (existingTag) {
+                return prev.map((tag) =>
+                    tag.name === normalizedName
+                        ? { ...tag, count: normalizedCount }
+                        : tag
+                );
+            }
+
+            return [
+                ...prev,
+                {
+                    name: normalizedName,
+                    count: normalizedCount,
+                },
+            ];
+        });
 
         setTagName("");
         setTagCount(1);
@@ -34,15 +75,34 @@ function QueryScreen() {
     }
 
     async function handleTagSearch() {
-        const tags = Object.fromEntries(
-            tagQueries.map((tag) => [tag.name, tag.count]));
+        if (tagQueries.length === 0) {
+            setError("Please add at least one tag.");
+            return;
+        }
 
-        const data = await authFetch<QueryResponse>("/query_tags", {
-            method: "POST",
-            body: JSON.stringify({ tags }),
-        });
-        setResults(data.results);
+        const tags = Object.fromEntries(
+            tagQueries.map((tag) => [tag.name, tag.count])
+        );
+
+        setIsLoading(true);
+        setError(null);
+        setDetectedTags({});
+
+        try {
+            const data = await authFetch<QueryTagsResponse>("/query_tags", {
+                method: "POST",
+                body: JSON.stringify({ tags }),
+            });
+
+            setResults(data.results ?? []);
+            setResultCount(data.count ?? data.results?.length ?? 0);
+        } catch (error) {
+            setError(getErrorMessage(error));
+        } finally {
+            setIsLoading(false);
+        }
     }
+
 
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
         if (event.target.files && event.target.files[0]) {
