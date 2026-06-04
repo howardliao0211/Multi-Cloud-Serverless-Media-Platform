@@ -8,7 +8,6 @@ import {
     getCurrentUserId
 } from "../utils";
 import { authFetch } from "../services/api";
-import { record } from "aws-amplify/analytics";
 
 
 function DashboardScreen() {
