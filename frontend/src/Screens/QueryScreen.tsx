@@ -103,6 +103,34 @@ function QueryScreen() {
         }
     }
 
+    async function handleSpeciesSearch() {
+        const normalizedSpecies = species.trim().toLowerCase();
+
+        if (!normalizedSpecies) {
+            setError("Please enter a species name.");
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setDetectedTags({});
+
+        try {
+            const data = await authFetch<QuerySpeciesResponse>("/query_species", {
+                method: "POST",
+                body: JSON.stringify({
+                    species: normalizedSpecies,
+                }),
+            });
+
+            setResults(data.results ?? []);
+            setResultCount(data.count ?? data.results?.length ?? 0);
+        } catch (error) {
+            setError(getErrorMessage(error));
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
         if (event.target.files && event.target.files[0]) {
@@ -146,23 +174,22 @@ function QueryScreen() {
         });
     }
 
-
     return (
         <main className="dashboard-content">
             <h1>Search Files</h1>
             <p>Find wildlife media using different search methods.</p>
 
             <div className="button-row">
-                <button className={mode === "tags" ? "active" : ""} onClick={() => setMode("tags")}>
+                <button className={mode === "tags" ? "active" : ""} onClick={() => handleModeChange("tags")}>
                     By Tags + Count
                 </button>
-                <button className={mode === "species" ? "active" : ""} onClick={() => setMode("species")}>
+                <button className={mode === "species" ? "active" : ""} onClick={() => handleModeChange("species")}>
                     By Species
                 </button>
-                <button className={mode === "thumbnail" ? "active" : ""} onClick={() => setMode("thumbnail")}>
+                <button className={mode === "thumbnail" ? "active" : ""} onClick={() => handleModeChange("thumbnail")}>
                     By Thumbnail URL
                 </button>
-                <button className={mode === "content" ? "active" : ""} onClick={() => setMode("content")}>
+                <button className={mode === "content" ? "active" : ""} onClick={() => handleModeChange("content")}>
                     By File Content
                 </button>
             </div>
@@ -171,28 +198,65 @@ function QueryScreen() {
                 {mode === "tags" && (
                     <>
                         <h2>Add species tags with minimum count:</h2>
+
                         <div className="search-row">
-                            <input value={tagName} onChange={(event) => setTagName(event.target.value)} placeholder="Species (e.g. koala)" />
-                            <input type="number" min={1} value={tagCount} onChange={(event) => setTagCount(Number(event.target.value))} />
-                            <button type="button" onClick={handleAddTag}>+ Add</button>
+                            <input
+                                value={tagName}
+                                onChange={(event) => setTagName(event.target.value)}
+                                placeholder="Species (e.g. koala)"
+                            />
+
+                            <input
+                                type="number"
+                                min={1}
+                                value={tagCount}
+                                onChange={(event) => setTagCount(Number(event.target.value))}
+                            />
+
+                            <button type="button" onClick={handleAddTag}>
+                                + Add
+                            </button>
                         </div>
+
                         {tagQueries.length > 0 && (
                             <div className="selected-tags">
-                                {tagQueries.map((tag) => (<span key={tag.name} className="tag-pill" onClick={() => handleRemoveTag(tag.name)}>
-                                    {tag.name}: {tag.count} x
-                                </span>))}
+                                {tagQueries.map((tag) => (
+                                    <span
+                                        key={tag.name}
+                                        className="tag-pill"
+                                        onClick={() => handleRemoveTag(tag.name)}
+                                    >
+                                        {tag.name}: {tag.count}x
+                                    </span>
+                                ))}
                             </div>
                         )}
-                        <br /><button type="button" onClick={handleTagSearch}>Search</button>
+
+                        <br />
+
+                        <button type="button" onClick={handleTagSearch} disabled={isLoading}>
+                            {isLoading ? "Searching..." : "Search"}
+                        </button>
                     </>
                 )}
 
                 {mode === "species" && (
                     <>
+                        <h2>Search by species:</h2>
+
                         <div className="search-row">
-                            <input value={species} onChange={(event) => setSpecies(event.target.value)} placeholder="Enter species name (eg. koala)" />
+                            <input
+                                value={species}
+                                onChange={(event) => setSpecies(event.target.value)}
+                                placeholder="Enter species name (eg. koala)"
+                            />
                         </div>
-                        <br /><button type="button" onClick={handleAddTag}>Search</button>
+
+                        <br />
+
+                        <button type="button" onClick={handleSpeciesSearch} disabled={isLoading}>
+                            {isLoading ? "Searching..." : "Search"}
+                        </button>
                     </>
                 )}
 
