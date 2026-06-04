@@ -16,6 +16,6 @@ COPY layers/python/shared/__init__.py \
     layers/python/shared/utils.py \
     /opt/python/shared/
 
-COPY functions/query_file/app.py ${LAMBDA_TASK_ROOT}/app.py
+COPY container_functions/query_file/app.py ${LAMBDA_TASK_ROOT}/app.py
 
 CMD ["app.lambda_handler"]
