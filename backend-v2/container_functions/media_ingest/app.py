@@ -114,6 +114,17 @@ def _invoke_process_ml_result(payload: dict[str, Any]) -> dict[str, Any]:
     if response.get("FunctionError"):
         raise RuntimeError(f"process_ml_result failed: {response_payload}")
 
+    status_code = int(response_payload.get("statusCode", 200))
+    if status_code >= 400:
+        raise RuntimeError(f"process_ml_result returned {status_code}: {response_payload}")
+
+    body = response_payload.get("body")
+    if isinstance(body, str):
+        try:
+            response_payload["parsed_body"] = json.loads(body)
+        except json.JSONDecodeError:
+            response_payload["parsed_body"] = body
+
     return response_payload
 
 
