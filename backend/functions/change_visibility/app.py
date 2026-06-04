@@ -33,7 +33,7 @@ def parse_request(event: dict, ) -> ChangeVisibilityRequest | None:
 def lambda_handler(event, context):
 
     methods = [
-        HTTPMethod.OPTIONS, HTTPMethod.POST
+        HTTPMethod.OPTIONS, HTTPMethod.PATCH
     ]
 
     if event.get("httpMethod") == "OPTIONS":

@@ -567,7 +567,7 @@ def test_change_visibility_to_private(aws_clients, integration_config, unique_id
             lambda_client,
             "change_visibility",
             _api_event(
-                "POST",
+                "PATCH",
                 body={
                     "file_name": f"{unique_id}.png",
                     "checksum": f"{unique_id}-public",
@@ -618,7 +618,7 @@ def test_change_visibility_to_public(aws_clients, integration_config, unique_id)
             lambda_client,
             "change_visibility",
             _api_event(
-                "POST",
+                "PATCH",
                 body={
                     "file_name": f"{unique_id}.png",
                     "checksum": f"{unique_id}-private",
