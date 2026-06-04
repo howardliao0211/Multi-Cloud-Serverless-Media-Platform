@@ -117,8 +117,8 @@ export type QueryMediaResult = {
   file_name: string;
   visibility: MediaVisibility;
   media_type?: string | null;
-  full_presigned_url?: string | null;
-  thumbnail_presigned_url?: string | null;
+  url?: string | null;
+  thumbnail_url?: string | null;
   tags: Record<string, number>;
 };
 

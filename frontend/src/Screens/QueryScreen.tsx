@@ -132,11 +132,11 @@ function QueryScreen() {
         }
     }
 
-    async function handleThumbnailSearch(){
+    async function handleThumbnailSearch() {
         const normalizedThumbUrl = thumbUrl.trim();
 
-        if (!normalizedThumbUrl){
-            setError("Pleasse enter a thumbnail URL.");
+        if (!normalizedThumbUrl) {
+            setError("Please enter a thumbnail URL.");
             return;
         }
 
@@ -144,11 +144,11 @@ function QueryScreen() {
         setError(null);
         setDetectedTags({});
 
-        try{
+        try {
             const data = await authFetch<QueryThumbnailUrlResponse>("/query_thumbnail_url", {
                 method: "POST",
                 body: JSON.stringify({
-                    thumbUrl: normalizedThumbUrl,
+                    thumbnail_url: normalizedThumbUrl,
                 }),
             });
 
@@ -164,10 +164,10 @@ function QueryScreen() {
 
             setResults([result]);
             setResultCount(1);
-        }catch(error){
+        } catch (error) {
             setError(getErrorMessage(error));
-        }finally{
-            setIsLoading
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -303,13 +303,13 @@ function QueryScreen() {
                     <>
                         <h2>Enter thumbnail URL to get full-size image:</h2>
                         <div className="search-row">
-                            <input value={thumbUrl} 
-                                onChange={(event) => setThumbUrl(event.target.value)} 
+                            <input value={thumbUrl}
+                                onChange={(event) => setThumbUrl(event.target.value)}
                                 placeholder="https://.../thumbnail.jpg" />
                         </div>
                         <br />
                         <button type="button" onClick={handleThumbnailSearch} disabled={isLoading}>
-                                {isLoading ? "Searching..." : "Search"}
+                            {isLoading ? "Searching..." : "Search"}
                         </button>
                     </>
                 )}
