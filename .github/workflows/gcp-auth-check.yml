@@ -14,6 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate required GitHub variables
+        run: |
+          test -n "${{ vars.GCP_PROJECT_ID }}" || (echo "Missing repo variable GCP_PROJECT_ID" && exit 1)
+          test -n "${{ vars.GCP_REGION }}" || (echo "Missing repo variable GCP_REGION" && exit 1)
+          test -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing repo variable GCP_WORKLOAD_IDENTITY_PROVIDER" && exit 1)
+          test -n "${{ vars.GCP_SERVICE_ACCOUNT }}" || (echo "Missing repo variable GCP_SERVICE_ACCOUNT" && exit 1)
+
       - id: auth
         uses: google-github-actions/auth@v3
         with:
