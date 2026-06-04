@@ -5,7 +5,6 @@ from typing import Any
 
 from shared.aws_resources import get_table
 from shared.ml_contracts import GcpMlResult, ProcessMlResultEvent
-from shared.schemas import MediaRecordStatus
 from shared.utils import build_db_key
 
 
@@ -76,7 +75,7 @@ def update_media_record_from_ml_result(event: ProcessMlResultEvent) -> dict[str,
 
     if gcp_result.status == "failed":
         updates = {
-            "upload_status": MediaRecordStatus.FAILED.value,
+            "upload_status": "failed",
             "error_message": gcp_result.error_message or "GCP ML processing failed",
             "ml_provider": gcp_result.provider,
             "ml_model_name": gcp_result.model_name,
@@ -85,7 +84,7 @@ def update_media_record_from_ml_result(event: ProcessMlResultEvent) -> dict[str,
     else:
         updates = {
             "file_type": event.file_type,
-            "upload_status": MediaRecordStatus.READY.value,
+            "upload_status": "ready",
             "error_message": None,
             "tags": normalize_tags(gcp_result.tags),
             "ml_provider": gcp_result.provider,
