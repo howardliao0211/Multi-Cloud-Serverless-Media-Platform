@@ -286,3 +286,107 @@ def test_query_species(aws_clients, integration_config, unique_id):
     finally:
         for record in records_to_delete:
             _delete_media_record(table, record)
+
+
+def test_query_thumbnail(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    user_id = integration_config["test_user_id"]
+
+    matching_record_1 = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-koala-1.png",
+        checksum=f"{unique_id}-query-species-koala-1",
+        full_key=f"integration-tests/query-species/{unique_id}-koala-1.png",
+        thumbnail_url="https://example.com/matched_thumbnail_url.png",
+        tags={
+            "koala": 2,
+            "wombat": 1,
+        },
+    )
+
+    matching_record_2 = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-koala-2.png",
+        checksum=f"{unique_id}-query-species-koala-2",
+        full_key=f"integration-tests/query-species/{unique_id}-koala-2.png",
+        thumbnail_url="https://example.com/matched_thumbnail_url.png",
+        tags={
+            "koala": 1,
+            "kangaroo": 3,
+        },
+    )
+
+    non_matching_record = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-no-koala.png",
+        checksum=f"{unique_id}-query-species-no-koala",
+        full_key=f"integration-tests/query-species/{unique_id}-no-koala.png",
+        thumbnail_url="https://example.com/unmatched_thumbnail_url.png",
+        tags={
+            "wombat": 5,
+            "kangaroo": 1,
+        },
+    )
+
+    records_to_delete = [
+        matching_record_1,
+        matching_record_2,
+        non_matching_record,
+    ]
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            "query_thumbnail_url",
+            _api_event(
+                "POST",
+                body={
+                    "thumbnail_url": "https://example.com/matched_thumbnail_url.png",
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert response["statusCode"] == 200
+
+        body = _body(response)
+        media_records = body["media_records"]
+
+        records_by_file_name = {
+            media["file_name"]: media
+            for media in media_records
+        }
+
+        matched_record_1 = records_by_file_name.get(
+            matching_record_1["file_name"]
+        )
+        matched_record_2 = records_by_file_name.get(
+            matching_record_2["file_name"]
+        )
+        non_matched_record = records_by_file_name.get(
+            non_matching_record["file_name"]
+        )
+
+        assert matched_record_1 is not None, f"{media_records}"
+        assert matched_record_2 is not None
+        assert non_matched_record is None
+
+        assert matched_record_1["owner_id"] == user_id
+        assert matched_record_1["visibility"] == "private"
+        assert matched_record_1["tags"]["koala"] == 2
+        assert matched_record_1["tags"]["wombat"] == 1
+        assert matched_record_1["upload_status"] == "ready"
+
+        assert matched_record_2["owner_id"] == user_id
+        assert matched_record_2["visibility"] == "private"
+        assert matched_record_2["tags"]["koala"] == 1
+        assert matched_record_2["tags"]["kangaroo"] == 3
+        assert matched_record_2["upload_status"] == "ready"
+
+    finally:
+        for record in records_to_delete:
+            _delete_media_record(table, record)

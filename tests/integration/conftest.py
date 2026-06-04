@@ -7,6 +7,7 @@ import pytest
 from botocore.config import Config
 from boto3.dynamodb.conditions import Attr
 
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
@@ -90,6 +91,7 @@ def _cleanup_integration_test_media_records(table, test_user_id: str):
         f"Integration-test media cleanup complete. "
         f"Deleted={deleted_count}, skipped={skipped_count}"
     )
+
 
 @pytest.fixture(scope="session")
 def integration_config():

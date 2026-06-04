@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-FUNCTION_NAME="${FUNCTION_NAME:-get_signed_url}"
+FUNCTION_NAME="${FUNCTION_NAME:-query_thumbnail_url}"
 LAYER_NAME="${LAYER_NAME:-aussie-eco-len-shared}"
 RUNTIME="${RUNTIME:-python3.12}"
 HANDLER="${HANDLER:-app.lambda_handler}"
@@ -10,6 +10,10 @@ ARCHITECTURE="${ARCHITECTURE:-x86_64}"
 LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-arn:aws:iam::539913718279:role/aussie-eco-len-lambda-role}"
 
 URL_EXPIRES_SECONDS="${URL_EXPIRES_SECONDS:-300}"
+
+# Set REBUILD_LAYER=false to reuse shared_layer.zip.
+REBUILD_LAYER="${REBUILD_LAYER:-true}"
+
 PYTHON_VERSION="${RUNTIME#python}"
 
 case "${ARCHITECTURE}" in
@@ -25,8 +29,17 @@ case "${ARCHITECTURE}" in
     ;;
 esac
 
+case "${REBUILD_LAYER}" in
+  true|false)
+    ;;
+  *)
+    echo "Error: REBUILD_LAYER must be either true or false. Got: ${REBUILD_LAYER}" >&2
+    exit 1
+    ;;
+esac
+
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILD_DIR="${PROJECT_ROOT}/build"
+BUILD_DIR="${BUILD_DIR:-${PROJECT_ROOT}/build}"
 LAYER_BUILD_DIR="${BUILD_DIR}/shared_layer"
 FUNCTION_BUILD_DIR="${BUILD_DIR}/${FUNCTION_NAME}"
 LAYER_ZIP="${BUILD_DIR}/shared_layer.zip"
@@ -36,6 +49,7 @@ SHARED_SOURCE_DIR="${PROJECT_ROOT}/layers/python/shared"
 FUNCTION_SOURCE_DIR="${PROJECT_ROOT}/functions/${FUNCTION_NAME}"
 
 echo "Deploying ${FUNCTION_NAME} to ${AWS_REGION}"
+echo "REBUILD_LAYER=${REBUILD_LAYER}"
 
 command -v aws >/dev/null 2>&1 || {
   echo "Error: aws CLI is not installed or not on PATH." >&2
@@ -52,18 +66,23 @@ command -v zip >/dev/null 2>&1 || {
   exit 1
 }
 
-# Do NOT delete the whole build directory, because it may contain shared_layer.zip.
 mkdir -p "${BUILD_DIR}"
 
 # Always rebuild only the Lambda function package.
 rm -rf "${FUNCTION_BUILD_DIR}" "${FUNCTION_ZIP}"
 mkdir -p "${FUNCTION_BUILD_DIR}"
 
-# Build shared layer only when shared_layer.zip does not exist.
-if [[ ! -f "${LAYER_ZIP}" ]]; then
-  echo "Shared layer zip not found. Building shared layer..."
+# Build shared layer if:
+# 1. REBUILD_LAYER=true, or
+# 2. shared_layer.zip does not exist.
+if [[ "${REBUILD_LAYER}" == "true" || ! -f "${LAYER_ZIP}" ]]; then
+  if [[ "${REBUILD_LAYER}" == "true" ]]; then
+    echo "REBUILD_LAYER=true. Rebuilding shared layer..."
+  else
+    echo "Shared layer zip not found. Building shared layer..."
+  fi
 
-  rm -rf "${LAYER_BUILD_DIR}"
+  rm -rf "${LAYER_BUILD_DIR}" "${LAYER_ZIP}"
   mkdir -p "${LAYER_BUILD_DIR}/python"
 
   python3 -m pip install \
@@ -84,7 +103,8 @@ if [[ ! -f "${LAYER_ZIP}" ]]; then
 
   echo "Built shared layer zip: ${LAYER_ZIP}"
 else
-  echo "Shared layer zip already exists. Reusing: ${LAYER_ZIP}"
+  echo "REBUILD_LAYER=false and shared layer zip exists."
+  echo "Reusing shared layer zip: ${LAYER_ZIP}"
 fi
 
 echo "Publishing layer ${LAYER_NAME}..."
