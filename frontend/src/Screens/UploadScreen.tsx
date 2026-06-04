@@ -1,22 +1,43 @@
 import { useRef, useState } from "react";
-import { calculateFileHash, createStatus, getMediaType, getCurrentUserId, type StatusMessage } from "../utils";
+import { calculateFileHash, createStatus, getMediaType, getCurrentUserId, type StatusMessage, validateMediaFiles } from "../utils";
 import { authFetch } from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 function UploadScreen() {
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
-    const [visibility, setVisibility] = useState<"private" | "public">("private");
+    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));    const [visibility, setVisibility] = useState<"private" | "public">("private");
     const [fileStatuses, setFileStatuses] = useState<FileUploadItem[]>([]);
     const [overallProgress, setOverallProgress] = useState<number>(0);
     const navigate = useNavigate();
+
+    function handleSelectedFiles(selectedFiles: File[]) {
+        const { validFiles, invalidFiles } = validateMediaFiles(selectedFiles);
+
+        if (invalidFiles.length > 0) {
+            setFiles([]);
+            setFileStatuses([]);
+            setOverallProgress(0);
+            setStatus(
+            createStatus(
+                "error",
+                `Unsupported file type: ${invalidFiles.map((file) => file.name).join(", ")}. Please upload JPG, PNG, WEBP, MP4, or MOV files.`
+            )
+            );
+            return;
+        }
+
+        setStatus(createStatus("idle", ""));
+        setFiles(validFiles);
+        setFileStatuses(validFiles.map((file) => ({name: file.name, status: "waiting"})));
+        setOverallProgress(0);
+    }
 
     function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
         event.preventDefault();
 
         if (event.dataTransfer.files) {
-            setFiles(Array.from(event.dataTransfer.files));
+            handleSelectedFiles(Array.from(event.dataTransfer.files));
         }
     }
 
@@ -49,10 +70,7 @@ function UploadScreen() {
 
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
         if (event.target.files) {
-            const newFiles = Array.from(event.target.files);
-            setFiles(newFiles);
-            setFileStatuses(newFiles.map((file) => ({ name: file.name, status: "waiting" })));
-            setOverallProgress(0);
+            handleSelectedFiles(Array.from(event.target.files));
         }
     }
 
@@ -260,7 +278,10 @@ function UploadScreen() {
                 </label>
             </div>
             <div className="button-row">
-                <button type="button" onClick={handleUpload} disabled={files.length === 0}>
+                <button type="button" 
+                    onClick={handleUpload} 
+                    disabled={files.length === 0 || status.type === "error"}
+                >
                     Upload
                 </button>
             </div>
