@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from botocore.exceptions import ClientError
 
 
 pytestmark = pytest.mark.integration
@@ -91,6 +92,26 @@ def _delete_media_record(table, item):
         Key={
             "key": item["key"],
         }
+    )
+
+
+def _s3_object_exists(s3, bucket, key):
+    try:
+        s3.head_object(
+            Bucket=bucket,
+            Key=key,
+        )
+        return True
+    except ClientError as error:
+        if error.response["Error"]["Code"] in {"404", "NoSuchKey", "NotFound"}:
+            return False
+        raise
+
+
+def _delete_s3_object(s3, bucket, key):
+    s3.delete_object(
+        Bucket=bucket,
+        Key=key,
     )
 
 
@@ -680,3 +701,85 @@ def test_edit_tags_forbidden_when_url_belongs_to_another_user(
 
     finally:
         _delete_media_record(table, other_user_record)
+
+
+def test_delete_file_removes_owned_record_and_unshared_s3_objects(
+    aws_clients,
+    integration_config,
+    unique_id,
+):
+    s3 = aws_clients["s3"]
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    bucket = integration_config["bucket"]
+    user_id = integration_config["test_user_id"]
+
+    full_key = f"integration-tests/delete-file/{unique_id}.png"
+    thumbnail_key = f"integration-tests/delete-file/{unique_id}-thumb.jpg"
+    full_url = f"https://example.com/{unique_id}/delete-file-full.png"
+    thumbnail_url = f"https://example.com/{unique_id}/delete-file-thumb.jpg"
+
+    media_record = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-delete-file.png",
+        checksum=f"{unique_id}-delete-file",
+        full_key=full_key,
+        full_url=full_url,
+        thumbnail_key=thumbnail_key,
+        thumbnail_url=thumbnail_url,
+        tags={
+            "koala": 1,
+        },
+    )
+
+    try:
+        s3.put_object(
+            Bucket=bucket,
+            Key=full_key,
+            Body=b"integration-test-full-object",
+            ContentType="image/png",
+        )
+        s3.put_object(
+            Bucket=bucket,
+            Key=thumbnail_key,
+            Body=b"integration-test-thumbnail-object",
+            ContentType="image/jpeg",
+        )
+
+        response = _invoke_lambda(
+            lambda_client,
+            integration_config["delete_file_function"],
+            _api_event(
+                "POST",
+                body={
+                    "urls": [full_url],
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert response["statusCode"] == 200
+
+        body = _body(response)
+        assert body["deleted_count"] == 1
+        assert len(body["results"]) == 1
+
+        result = body["results"][0]
+        assert result["url"] == full_url
+        assert result["deleted"] is True
+        assert result["checksum"] == media_record["checksum"]
+        assert result["file_name"] == media_record["file_name"]
+        assert result["removed_db_entry"] is True
+        assert result["removed_full_object"] is True
+        assert result["removed_thumbnail_object"] is True
+        assert result["message"] == "media deleted"
+
+        assert _get_media_record(table, media_record) is None
+        assert _s3_object_exists(s3, bucket, full_key) is False
+        assert _s3_object_exists(s3, bucket, thumbnail_key) is False
+
+    finally:
+        _delete_media_record(table, media_record)
+        _delete_s3_object(s3, bucket, full_key)
+        _delete_s3_object(s3, bucket, thumbnail_key)
