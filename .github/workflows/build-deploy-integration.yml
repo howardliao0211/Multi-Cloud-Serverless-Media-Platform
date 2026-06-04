@@ -15,7 +15,6 @@ permissions:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  AWS_PROFILE: AussieEcoLense
   AWS_ARCHITECTURE: x86_64
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GCP_REGION: ${{ vars.GCP_REGION }}
@@ -61,23 +60,13 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Create AWS CLI profile for deployment scripts
-        run: |
-          aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID" --profile "$AWS_PROFILE"
-          aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY" --profile "$AWS_PROFILE"
-          if [ -n "${AWS_SESSION_TOKEN:-}" ]; then
-            aws configure set aws_session_token "$AWS_SESSION_TOKEN" --profile "$AWS_PROFILE"
-          fi
-          aws configure set region "$AWS_REGION" --profile "$AWS_PROFILE"
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Verify cloud identities
         run: |
           aws sts get-caller-identity
-          aws sts get-caller-identity --profile "$AWS_PROFILE"
           gcloud auth list
           gcloud config set project "$GCP_PROJECT_ID"
 
