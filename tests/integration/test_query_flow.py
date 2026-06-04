@@ -1000,3 +1000,126 @@ def test_delete_file_keeps_shared_s3_objects_when_other_entry_references_them(
         _delete_media_record(table, other_user_record)
         _delete_s3_object(s3, bucket, full_key)
         _delete_s3_object(s3, bucket, thumbnail_key)
+
+
+def test_delete_file_removes_shared_s3_objects_after_last_owner_deletes(
+    aws_clients,
+    integration_config,
+    unique_id,
+):
+    s3 = aws_clients["s3"]
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    bucket = integration_config["bucket"]
+    user_id = integration_config["test_user_id"]
+    other_user_id = f"{user_id}-other"
+
+    full_key = f"integration-tests/delete-file/{unique_id}-last-owner.png"
+    thumbnail_key = f"integration-tests/delete-file/{unique_id}-last-owner-thumb.jpg"
+    user_full_url = f"https://example.com/{unique_id}/delete-file-last-owner-user-full.png"
+    user_thumbnail_url = f"https://example.com/{unique_id}/delete-file-last-owner-user-thumb.jpg"
+    other_full_url = f"https://example.com/{unique_id}/delete-file-last-owner-other-full.png"
+    other_thumbnail_url = f"https://example.com/{unique_id}/delete-file-last-owner-other-thumb.jpg"
+
+    user_record = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-delete-file-last-owner-user.png",
+        checksum=f"{unique_id}-delete-file-last-owner",
+        full_key=full_key,
+        full_url=user_full_url,
+        thumbnail_key=thumbnail_key,
+        thumbnail_url=user_thumbnail_url,
+        tags={
+            "koala": 1,
+        },
+    )
+    other_user_record = _put_media_record(
+        table,
+        owner_id=other_user_id,
+        file_name=f"{unique_id}-delete-file-last-owner-other.png",
+        checksum=f"{unique_id}-delete-file-last-owner",
+        full_key=full_key,
+        full_url=other_full_url,
+        thumbnail_key=thumbnail_key,
+        thumbnail_url=other_thumbnail_url,
+        tags={
+            "koala": 1,
+        },
+    )
+
+    try:
+        s3.put_object(
+            Bucket=bucket,
+            Key=full_key,
+            Body=b"integration-test-last-owner-full-object",
+            ContentType="image/png",
+        )
+        s3.put_object(
+            Bucket=bucket,
+            Key=thumbnail_key,
+            Body=b"integration-test-last-owner-thumbnail-object",
+            ContentType="image/jpeg",
+        )
+
+        first_response = _invoke_lambda(
+            lambda_client,
+            integration_config["delete_file_function"],
+            _api_event(
+                "POST",
+                body={
+                    "urls": [user_full_url],
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert first_response["statusCode"] == 200
+        first_body = _body(first_response)
+        assert first_body["deleted_count"] == 1
+
+        first_result = first_body["results"][0]
+        assert first_result["removed_db_entry"] is True
+        assert first_result["removed_full_object"] is False
+        assert first_result["removed_thumbnail_object"] is False
+
+        assert _get_media_record(table, user_record) is None
+        assert _get_media_record(table, other_user_record) is not None
+        assert _s3_object_exists(s3, bucket, full_key) is True
+        assert _s3_object_exists(s3, bucket, thumbnail_key) is True
+
+        second_response = _invoke_lambda(
+            lambda_client,
+            integration_config["delete_file_function"],
+            _api_event(
+                "POST",
+                body={
+                    "urls": [other_full_url],
+                },
+                user_id=other_user_id,
+            ),
+        )
+
+        assert second_response["statusCode"] == 200
+        second_body = _body(second_response)
+        assert second_body["deleted_count"] == 1
+
+        second_result = second_body["results"][0]
+        assert second_result["url"] == other_full_url
+        assert second_result["deleted"] is True
+        assert second_result["checksum"] == other_user_record["checksum"]
+        assert second_result["file_name"] == other_user_record["file_name"]
+        assert second_result["removed_db_entry"] is True
+        assert second_result["removed_full_object"] is True
+        assert second_result["removed_thumbnail_object"] is True
+        assert second_result["message"] == "media deleted"
+
+        assert _get_media_record(table, other_user_record) is None
+        assert _s3_object_exists(s3, bucket, full_key) is False
+        assert _s3_object_exists(s3, bucket, thumbnail_key) is False
+
+    finally:
+        _delete_media_record(table, user_record)
+        _delete_media_record(table, other_user_record)
+        _delete_s3_object(s3, bucket, full_key)
+        _delete_s3_object(s3, bucket, thumbnail_key)
