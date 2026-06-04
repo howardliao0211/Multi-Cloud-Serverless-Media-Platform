@@ -20,8 +20,16 @@ set -euo pipefail
 
 # ---------- AWS config ----------
 export AWS_REGION="${AWS_REGION:-us-east-1}"
-export AWS_PROFILE="${AWS_PROFILE:-AussieEcoLense}"
+AWS_PROFILE="${AWS_PROFILE:-}"
 export AWS_ARCHITECTURE="${AWS_ARCHITECTURE:-x86_64}"
+
+# In local development you may set AWS_PROFILE.
+# In GitHub Actions, leave AWS_PROFILE empty and use the credentials
+# configured by aws-actions/configure-aws-credentials.
+AWS_CLI_ARGS=(--region "${AWS_REGION}")
+if [[ -n "${AWS_PROFILE}" ]]; then
+  AWS_CLI_ARGS+=(--profile "${AWS_PROFILE}")
+fi
 
 # Lambda repositories / tags
 export AWS_BASE_IMAGE_NAME="${AWS_BASE_IMAGE_NAME:-ml_base}"
@@ -137,12 +145,10 @@ ensure_ecr_repo() {
 
   aws ecr describe-repositories \
     --repository-names "${repo}" \
-    --region "${AWS_REGION}" \
-    --profile "${AWS_PROFILE}" >/dev/null 2>&1 || \
+    "${AWS_CLI_ARGS[@]}" >/dev/null 2>&1 || \
   aws ecr create-repository \
     --repository-name "${repo}" \
-    --region "${AWS_REGION}" \
-    --profile "${AWS_PROFILE}" \
+    "${AWS_CLI_ARGS[@]}" \
     --image-scanning-configuration scanOnPush=true \
     --image-tag-mutability MUTABLE >/dev/null
 }
@@ -173,10 +179,20 @@ if [[ ! -f "${PROJECT_ROOT}/gcp/ml_processor/models/model.pt" || ! -f "${PROJECT
   exit 1
 fi
 
+if [[ -z "${GCP_PROJECT_ID}" ]]; then
+  echo "Error: GCP_PROJECT_ID is required." >&2
+  exit 1
+fi
+
+if [[ -z "${GCP_REGION}" ]]; then
+  echo "Error: GCP_REGION is required." >&2
+  exit 1
+fi
+
 echo ""
 echo "Repo root: ${PROJECT_ROOT}"
 echo "AWS region: ${AWS_REGION}"
-echo "AWS profile: ${AWS_PROFILE}"
+echo "AWS profile: ${AWS_PROFILE:-<not used>}"
 echo "AWS architecture: ${AWS_ARCHITECTURE}"
 echo "AWS Docker platform: ${AWS_DOCKER_PLATFORM}"
 echo "GCP project: ${GCP_PROJECT_ID}"
@@ -191,12 +207,12 @@ echo "============================================================"
 echo "Logging in to AWS ECR"
 echo "============================================================"
 
-AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+AWS_ACCOUNT_ID="$(aws sts get-caller-identity "${AWS_CLI_ARGS[@]}" --query Account --output text)"
 
-AWS_ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+AWS_ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 echo "Logging in to ECR..."
-aws ecr get-login-password --region "${AWS_REGION}" | \
+aws ecr get-login-password "${AWS_CLI_ARGS[@]}" | \
   docker login --username AWS --password-stdin "${AWS_ECR_REGISTRY}"
 
 # ---------- GCP login ----------
