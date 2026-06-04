@@ -132,6 +132,14 @@ export type QuerySpeciesResponse = {
   results: QueryMediaResult[];
 };
 
+export type QueryThumbnailUrlResponse = {
+  checksum: string;
+  file_name: string;
+  visibility: MediaVisibility;
+  url: string;
+  thumbnail_url: string;
+};
+
 export type QueryFileResponse = {
   detected_tags: Record<string, number>;
   count: number;

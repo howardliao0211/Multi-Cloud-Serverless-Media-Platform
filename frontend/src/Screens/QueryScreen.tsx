@@ -132,6 +132,45 @@ function QueryScreen() {
         }
     }
 
+    async function handleThumbnailSearch(){
+        const normalizedThumbUrl = thumbUrl.trim();
+
+        if (!normalizedThumbUrl){
+            setError("Pleasse enter a thumbnail URL.");
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setDetectedTags({});
+
+        try{
+            const data = await authFetch<QueryThumbnailUrlResponse>("/query_thumbnail_url", {
+                method: "POST",
+                body: JSON.stringify({
+                    thumbUrl: normalizedThumbUrl,
+                }),
+            });
+
+            const result: QueryMediaResult = {
+                checksum: data.checksum,
+                file_name: data.file_name,
+                visibility: data.visibility,
+                media_type: null,
+                url: data.url,
+                thumbnail_url: data.thumbnail_url,
+                tags: {},
+            };
+
+            setResults([result]);
+            setResultCount(1);
+        }catch(error){
+            setError(getErrorMessage(error));
+        }finally{
+            setIsLoading
+        }
+    }
+
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
         if (event.target.files && event.target.files[0]) {
             setFile(event.target.files[0]);
@@ -264,9 +303,14 @@ function QueryScreen() {
                     <>
                         <h2>Enter thumbnail URL to get full-size image:</h2>
                         <div className="search-row">
-                            <input value={thumbUrl} onChange={(event) => setThumbUrl(event.target.value)} placeholder="https://.../thumbnail.jpg" />
+                            <input value={thumbUrl} 
+                                onChange={(event) => setThumbUrl(event.target.value)} 
+                                placeholder="https://.../thumbnail.jpg" />
                         </div>
-                        <br /><button type="button">Search</button>
+                        <br />
+                        <button type="button" onClick={handleThumbnailSearch} disabled={isLoading}>
+                                {isLoading ? "Searching..." : "Search"}
+                        </button>
                     </>
                 )}
 
