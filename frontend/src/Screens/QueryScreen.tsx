@@ -9,6 +9,8 @@ import {
     type QuerySpeciesResponse,
     type QueryThumbnailUrlResponse,
     type QueryFileResponse,
+    calculateFileHash,
+    getMediaType,
 } from "../utils";
 
 type SearchMode = "tags" | "species" | "thumbnail" | "content";
@@ -173,19 +175,23 @@ function QueryScreen() {
             return;
         }
 
-        const formData = new FormData();
-        formData.append("file", file);
-
         setIsLoading(true);
         setError(null);
-
+        
         try {
+            const hash = await calculateFileHash(file);
+            const mediaType = getMediaType(file);
+            
             const data = await authFetch<QueryFileResponse>("/query_file", {
                 method: "POST",
-                body: formData,
+                body: JSON.stringify({
+                    file_name: file.name,
+                    checksum: hash,
+                    media_type: mediaType,
+                }),
             });
 
-            setDetectedTags(data.detected_tags ?? {});
+            // setDetectedTags(data.detected_tags ?? {});
             setResults(data.media_records ?? []);
             setResultCount(data.media_records?.length ?? 0);
         } catch (error) {
@@ -374,7 +380,7 @@ function QueryScreen() {
                 {error && <p className="error-message">{error}</p>}
             </section>
 
-            {Object.keys(detectedTags).length > 0 && (
+            {/* {Object.keys(detectedTags).length > 0 && (
                 <section className="search-card">
                     <h2>Detected Tags</h2>
 
@@ -386,7 +392,7 @@ function QueryScreen() {
                         ))}
                     </div>
                 </section>
-            )}
+            )} */}
 
             <section className="search-card">
                 <h2>Results</h2>

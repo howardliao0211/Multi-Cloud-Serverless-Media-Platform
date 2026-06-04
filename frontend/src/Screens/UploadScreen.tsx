@@ -203,8 +203,6 @@ function UploadScreen() {
                     }),
                 });
 
-                console.log(file.name, data);
-
                 if (data.duplicate) {
                     duplicatedFiles.push(file.name);
                     updateFileStatus(file.name, "duplicate");
@@ -239,7 +237,6 @@ function UploadScreen() {
 
         } catch (error) {
             setStatus(createStatus("error", "Upload failed."));
-            console.error(error);
         }
     }
 
