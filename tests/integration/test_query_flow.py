@@ -439,8 +439,8 @@ def test_edit_tags_add_by_thumbnail_url(aws_clients, integration_config, unique_
         full_url=f"https://example.com/{unique_id}/edit-tags-add-full.png",
         thumbnail_url=thumbnail_url,
         tags={
-            "koala": 1,
-            "wombat": 1,
+            "Canis_familiaris": 1,
+            "Vombatus_ursinus": 1,
         },
     )
 
@@ -452,8 +452,7 @@ def test_edit_tags_add_by_thumbnail_url(aws_clients, integration_config, unique_
                 "POST",
                 body={
                     "urls": [thumbnail_url],
-                    "tags": ["koala"],
-                    "operation": 1,
+                    "tags": [{"Canis_familiaris": 1}],
                 },
                 user_id=user_id,
             ),
@@ -470,13 +469,13 @@ def test_edit_tags_add_by_thumbnail_url(aws_clients, integration_config, unique_
         assert result["updated"] is True
         assert result["checksum"] == media_record["checksum"]
         assert result["file_name"] == media_record["file_name"]
-        assert result["message"] == "tags added"
-        assert result["tags"]["koala"] == 2
-        assert result["tags"]["wombat"] == 1
+        assert result["message"] == "tags updated"
+        assert result["tags"]["Canis_familiaris"] == 2
+        assert result["tags"]["Vombatus_ursinus"] == 1
 
         stored_record = _get_media_record(table, media_record)
-        assert stored_record["tags"]["koala"] == 2
-        assert stored_record["tags"]["wombat"] == 1
+        assert stored_record["tags"]["Canis_familiaris"] == 2
+        assert stored_record["tags"]["Vombatus_ursinus"] == 1
 
     finally:
         _delete_media_record(table, media_record)
@@ -498,8 +497,8 @@ def test_edit_tags_remove_by_full_url(aws_clients, integration_config, unique_id
         full_url=full_url,
         thumbnail_url=f"https://example.com/{unique_id}/edit-tags-remove-thumb.jpg",
         tags={
-            "koala": 2,
-            "wombat": 1,
+            "Canis_familiaris": 2,
+            "Vombatus_ursinus": 1,
         },
     )
 
@@ -511,8 +510,7 @@ def test_edit_tags_remove_by_full_url(aws_clients, integration_config, unique_id
                 "POST",
                 body={
                     "urls": [full_url],
-                    "tags": ["koala"],
-                    "operation": 0,
+                    "tags": [{"Canis_familiaris": -1}],
                 },
                 user_id=user_id,
             ),
@@ -528,16 +526,16 @@ def test_edit_tags_remove_by_full_url(aws_clients, integration_config, unique_id
         assert result["updated"] is True
         assert result["checksum"] == media_record["checksum"]
         assert result["file_name"] == media_record["file_name"]
-        assert result["message"] == "tags removed"
+        assert result["message"] == "tags updated"
         assert result["tags"] == {
-            "koala": 1,
-            "wombat": 1,
+            "Canis_familiaris": 1,
+            "Vombatus_ursinus": 1,
         }
 
         stored_record = _get_media_record(table, media_record)
         assert stored_record["tags"] == {
-            "koala": 1,
-            "wombat": 1,
+            "Canis_familiaris": 1,
+            "Vombatus_ursinus": 1,
         }
 
     finally:
@@ -564,8 +562,8 @@ def test_edit_tags_remove_deletes_tag_when_count_reaches_zero(
         full_url=f"https://example.com/{unique_id}/edit-tags-remove-zero-full.png",
         thumbnail_url=thumbnail_url,
         tags={
-            "koala": 1,
-            "wombat": 1,
+            "Canis_familiaris": 1,
+            "Vombatus_ursinus": 1,
         },
     )
 
@@ -577,8 +575,7 @@ def test_edit_tags_remove_deletes_tag_when_count_reaches_zero(
                 "POST",
                 body={
                     "urls": [thumbnail_url],
-                    "tags": ["koala"],
-                    "operation": 0,
+                    "tags": [{"Canis_familiaris": -1}],
                 },
                 user_id=user_id,
             ),
@@ -591,14 +588,84 @@ def test_edit_tags_remove_deletes_tag_when_count_reaches_zero(
 
         result = body["results"][0]
         assert result["updated"] is True
-        assert result["message"] == "tags removed"
+        assert result["message"] == "tags updated"
         assert result["tags"] == {
-            "wombat": 1,
+            "Vombatus_ursinus": 1,
         }
 
         stored_record = _get_media_record(table, media_record)
         assert stored_record["tags"] == {
-            "wombat": 1,
+            "Vombatus_ursinus": 1,
+        }
+
+    finally:
+        _delete_media_record(table, media_record)
+
+
+def test_edit_tags_applies_independent_tag_deltas(
+    aws_clients,
+    integration_config,
+    unique_id,
+):
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    user_id = integration_config["test_user_id"]
+
+    full_url = f"https://example.com/{unique_id}/edit-tags-deltas-full.png"
+
+    media_record = _put_media_record(
+        table,
+        owner_id=user_id,
+        file_name=f"{unique_id}-edit-tags-deltas.png",
+        checksum=f"{unique_id}-edit-tags-deltas",
+        full_key=f"integration-tests/edit-tags/{unique_id}-deltas.png",
+        full_url=full_url,
+        thumbnail_url=f"https://example.com/{unique_id}/edit-tags-deltas-thumb.jpg",
+        tags={
+            "Canis_familiaris": 1,
+            "Felis_catus": 3,
+            "Vombatus_ursinus": 1,
+        },
+    )
+
+    try:
+        response = _invoke_lambda(
+            lambda_client,
+            "edit_tags",
+            _api_event(
+                "POST",
+                body={
+                    "urls": [full_url],
+                    "tags": [
+                        {"Canis_familiaris": 2},
+                        {"Felis_catus": -3},
+                        {"Wallabia_bicolor": 1},
+                    ],
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert response["statusCode"] == 200
+
+        body = _body(response)
+        assert body["updated_count"] == 1
+
+        result = body["results"][0]
+        assert result["url"] == full_url
+        assert result["updated"] is True
+        assert result["message"] == "tags updated"
+        assert result["tags"] == {
+            "Canis_familiaris": 3,
+            "Vombatus_ursinus": 1,
+            "Wallabia_bicolor": 1,
+        }
+
+        stored_record = _get_media_record(table, media_record)
+        assert stored_record["tags"] == {
+            "Canis_familiaris": 3,
+            "Vombatus_ursinus": 1,
+            "Wallabia_bicolor": 1,
         }
 
     finally:
@@ -618,8 +685,7 @@ def test_edit_tags_not_found(aws_clients, integration_config, unique_id):
             "POST",
             body={
                 "urls": [missing_url],
-                "tags": ["koala"],
-                "operation": 1,
+                "tags": [{"Canis_familiaris": 1}],
             },
             user_id=user_id,
         ),
@@ -661,7 +727,7 @@ def test_edit_tags_forbidden_when_url_belongs_to_another_user(
         full_url=f"https://example.com/{unique_id}/edit-tags-forbidden-full.png",
         thumbnail_url=thumbnail_url,
         tags={
-            "koala": 1,
+            "Canis_familiaris": 1,
         },
     )
 
@@ -673,8 +739,7 @@ def test_edit_tags_forbidden_when_url_belongs_to_another_user(
                 "POST",
                 body={
                     "urls": [thumbnail_url],
-                    "tags": ["koala"],
-                    "operation": 1,
+                    "tags": [{"Canis_familiaris": 1}],
                 },
                 user_id=user_id,
             ),
@@ -696,7 +761,7 @@ def test_edit_tags_forbidden_when_url_belongs_to_another_user(
 
         stored_record = _get_media_record(table, other_user_record)
         assert stored_record["tags"] == {
-            "koala": 1,
+            "Canis_familiaris": 1,
         }
 
     finally:

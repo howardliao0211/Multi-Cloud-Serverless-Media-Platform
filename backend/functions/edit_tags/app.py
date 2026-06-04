@@ -50,68 +50,53 @@ def find_user_media_by_url(
     return None
 
 
-def normalize_requested_species(tags: list[str]) -> list[str]:
-    return [tag.strip().lower() for tag in tags]
+def normalize_requested_tag_deltas(
+    tag_deltas: list[dict[str, int]],
+) -> tuple[dict[str, int], list[str]]:
+    valid_tag_deltas: dict[str, int] = {}
+    invalid_tags: list[str] = []
 
+    for tag_delta in tag_deltas:
+        raw_tag, delta = next(iter(tag_delta.items()))
+        normalized_tag = normalize_species_tag(raw_tag)
 
-def add_tags_to_media(media_record: MediaRecord, tags: list[str]) -> dict[str, int]:
-    updated_tags = dict(media_record.tags)
-
-    for tag in tags:
-        updated_tags[tag] = updated_tags.get(tag, 0) + 1
-
-    return updated_tags
-
-
-def remove_tags_from_media(media_record: MediaRecord, tags: list[str]) -> dict[str, int]:
-    updated_tags = dict(media_record.tags)
-
-    for tag in tags:
-        if tag not in updated_tags:
+        if normalized_tag is None:
+            invalid_tags.append(raw_tag)
             continue
 
-        updated_tags[tag] -= 1
+        valid_tag_deltas[normalized_tag] = (
+            valid_tag_deltas.get(normalized_tag, 0) + delta
+        )
 
-        if updated_tags[tag] <= 0:
-            updated_tags.pop(tag)
+    return {
+        tag: delta
+        for tag, delta in valid_tag_deltas.items()
+        if delta != 0
+    }, invalid_tags
+
+
+def apply_tag_deltas_to_media(
+    media_record: MediaRecord,
+    tag_deltas: dict[str, int],
+) -> dict[str, int]:
+    updated_tags = dict(media_record.tags)
+
+    for tag, delta in tag_deltas.items():
+        next_count = updated_tags.get(tag, 0) + delta
+
+        if next_count <= 0:
+            updated_tags.pop(tag, None)
+            continue
+
+        updated_tags[tag] = next_count
 
     return updated_tags
-
-
-def build_add_tags_result(
-    url: str,
-    media_record: MediaRecord,
-    tags: dict[str, int],
-) -> EditTagsResult:
-    return EditTagsResult(
-        url=url,
-        updated=True,
-        checksum=media_record.checksum,
-        file_name=media_record.file_name,
-        tags=tags,
-        message="tags added",
-    )
-
-
-def build_remove_tags_result(
-    url: str,
-    media_record: MediaRecord,
-    tags: dict[str, int],
-) -> EditTagsResult:
-    return EditTagsResult(
-        url=url,
-        updated=True,
-        checksum=media_record.checksum,
-        file_name=media_record.file_name,
-        tags=tags,
-        message="tags removed",
-    )
 
 
 def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResponse:
     results: list[EditTagsResult] = []
     updated_count = 0
-    valid_tags = normalize_requested_species(request.tags)
+    valid_tag_deltas, invalid_tags = normalize_requested_tag_deltas(request.tags)
     media_records = scan_media_record(table)
 
     for url in request.urls:
@@ -131,12 +116,41 @@ def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResp
             )
             continue
 
-        if request.operation == 1:
-            updated_tags = add_tags_to_media(media_record, valid_tags)
-            result = build_add_tags_result(url, media_record, updated_tags)
-        else:
-            updated_tags = remove_tags_from_media(media_record, valid_tags)
-            result = build_remove_tags_result(url, media_record, updated_tags)
+        if invalid_tags:
+            results.append(
+                EditTagsResult(
+                    url=url,
+                    updated=False,
+                    checksum=media_record.checksum,
+                    file_name=media_record.file_name,
+                    tags=media_record.tags,
+                    message=f"invalid species tags: {', '.join(invalid_tags)}",
+                )
+            )
+            continue
+
+        if not valid_tag_deltas:
+            results.append(
+                EditTagsResult(
+                    url=url,
+                    updated=False,
+                    checksum=media_record.checksum,
+                    file_name=media_record.file_name,
+                    tags=media_record.tags,
+                    message="no tag changes requested",
+                )
+            )
+            continue
+
+        updated_tags = apply_tag_deltas_to_media(media_record, valid_tag_deltas)
+        result = EditTagsResult(
+            url=url,
+            updated=True,
+            checksum=media_record.checksum,
+            file_name=media_record.file_name,
+            tags=updated_tags,
+            message="tags updated",
+        )
 
         update_media_record_in_db(
             table,
