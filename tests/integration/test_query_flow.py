@@ -783,3 +783,120 @@ def test_delete_file_removes_owned_record_and_unshared_s3_objects(
         _delete_media_record(table, media_record)
         _delete_s3_object(s3, bucket, full_key)
         _delete_s3_object(s3, bucket, thumbnail_key)
+
+
+def test_delete_file_not_found(aws_clients, integration_config, unique_id):
+    lambda_client = aws_clients["lambda"]
+    user_id = integration_config["test_user_id"]
+    missing_url = f"https://example.com/{unique_id}/delete-file-missing.png"
+
+    response = _invoke_lambda(
+        lambda_client,
+        integration_config["delete_file_function"],
+        _api_event(
+            "POST",
+            body={
+                "urls": [missing_url],
+            },
+            user_id=user_id,
+        ),
+    )
+
+    assert response["statusCode"] == 200
+
+    body = _body(response)
+    assert body["deleted_count"] == 0
+    assert len(body["results"]) == 1
+
+    result = body["results"][0]
+    assert result["url"] == missing_url
+    assert result["deleted"] is False
+    assert result["checksum"] is None
+    assert result["file_name"] is None
+    assert result["removed_db_entry"] is False
+    assert result["removed_full_object"] is False
+    assert result["removed_thumbnail_object"] is False
+    assert result["message"] == "media not found"
+
+
+def test_delete_file_forbidden_when_url_belongs_to_another_user(
+    aws_clients,
+    integration_config,
+    unique_id,
+):
+    s3 = aws_clients["s3"]
+    lambda_client = aws_clients["lambda"]
+    table = aws_clients["table"]
+    bucket = integration_config["bucket"]
+    user_id = integration_config["test_user_id"]
+    other_user_id = f"{user_id}-other"
+
+    full_key = f"integration-tests/delete-file/{unique_id}-forbidden.png"
+    thumbnail_key = f"integration-tests/delete-file/{unique_id}-forbidden-thumb.jpg"
+    full_url = f"https://example.com/{unique_id}/delete-file-forbidden-full.png"
+    thumbnail_url = f"https://example.com/{unique_id}/delete-file-forbidden-thumb.jpg"
+
+    other_user_record = _put_media_record(
+        table,
+        owner_id=other_user_id,
+        file_name=f"{unique_id}-delete-file-forbidden.png",
+        checksum=f"{unique_id}-delete-file-forbidden",
+        full_key=full_key,
+        full_url=full_url,
+        thumbnail_key=thumbnail_key,
+        thumbnail_url=thumbnail_url,
+        tags={
+            "koala": 1,
+        },
+    )
+
+    try:
+        s3.put_object(
+            Bucket=bucket,
+            Key=full_key,
+            Body=b"integration-test-forbidden-full-object",
+            ContentType="image/png",
+        )
+        s3.put_object(
+            Bucket=bucket,
+            Key=thumbnail_key,
+            Body=b"integration-test-forbidden-thumbnail-object",
+            ContentType="image/jpeg",
+        )
+
+        response = _invoke_lambda(
+            lambda_client,
+            integration_config["delete_file_function"],
+            _api_event(
+                "POST",
+                body={
+                    "urls": [full_url],
+                },
+                user_id=user_id,
+            ),
+        )
+
+        assert response["statusCode"] == 200
+
+        body = _body(response)
+        assert body["deleted_count"] == 0
+        assert len(body["results"]) == 1
+
+        result = body["results"][0]
+        assert result["url"] == full_url
+        assert result["deleted"] is False
+        assert result["checksum"] is None
+        assert result["file_name"] is None
+        assert result["removed_db_entry"] is False
+        assert result["removed_full_object"] is False
+        assert result["removed_thumbnail_object"] is False
+        assert result["message"] == "forbidden: media is owned by another user"
+
+        assert _get_media_record(table, other_user_record) is not None
+        assert _s3_object_exists(s3, bucket, full_key) is True
+        assert _s3_object_exists(s3, bucket, thumbnail_key) is True
+
+    finally:
+        _delete_media_record(table, other_user_record)
+        _delete_s3_object(s3, bucket, full_key)
+        _delete_s3_object(s3, bucket, thumbnail_key)
