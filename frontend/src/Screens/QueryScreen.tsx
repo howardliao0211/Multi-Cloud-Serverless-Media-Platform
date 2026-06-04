@@ -171,6 +171,7 @@ function QueryScreen() {
         }
     }
 
+    //modified leter FORMDATA -> UPLOAD
     async function handleContentSearch() {
         if (!file) {
             setError("Please select a file.");
@@ -381,6 +382,37 @@ function QueryScreen() {
                 )}
 
                 {error && <p className="error-message">{error}</p>}
+            </section>
+
+            {Object.keys(detectedTags).length > 0 && (
+                <section className="search-card">
+                    <h2>Detected Tags</h2>
+
+                    <div className="selected-tags">
+                        {Object.entries(detectedTags).map(([tag, count]) => (
+                        <span key={tag} className="tag-pill">
+                            {tag} : {count} x
+                        </span>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            <section className="search-card">
+                <h2>Results</h2>
+
+                {isLoading && <p>Searching...</p>}
+
+                {!isLoading && !error && resultCount === 0 && (
+                    <p>No results yet.</p>
+                )}
+
+                {!isLoading && !error && resultCount > 0 && (
+                    <p>
+                        {resultCount} result{resultCount === 1 ? "": "s"} found.
+                    </p>
+                )}
+
             </section>
         </main>
     );
