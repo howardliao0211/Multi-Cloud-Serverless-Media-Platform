@@ -1,5 +1,6 @@
 import hashlib
 import json
+import time
 import urllib.request
 import zlib
 from pathlib import Path
@@ -100,6 +101,43 @@ def _get_media_record(table, key):
     )
     return response.get("Item")
 
+
+
+def _wait_for_media_status(
+    table,
+    key: str,
+    expected_status: str = "ready",
+    timeout_seconds: int = 60 * 5,
+    poll_interval_seconds: float = 2.0,
+):
+    deadline = time.time() + timeout_seconds
+    last_item = None
+    last_status = None
+
+    while time.time() < deadline:
+        item = _get_media_record(table, key)
+        last_item = item
+
+        if item is not None:
+            last_status = item.get("upload_status")
+
+            if last_status == expected_status:
+                return item
+
+            if last_status == "failed":
+                raise AssertionError(
+                    f"Media processing failed for {key!r}: "
+                    f"{item.get('error_message') or item}"
+                )
+
+        time.sleep(poll_interval_seconds)
+
+    raise TimeoutError(
+        f"Timed out waiting for media record {key!r} "
+        f"to become {expected_status!r}. "
+        f"Last status: {last_status!r}. "
+        f"Last item: {last_item}"
+    )
 
 def _upload_to_presigned_url(upload_url, data, content_type, file_name, checksum, owner_id):
     request = urllib.request.Request(
@@ -261,14 +299,18 @@ def test_tag_image(aws_clients, integration_config, unique_id):
             },
         )
 
-        _invoke_lambda(
-            lambda_client,
-            integration_config["tag_image_function"],
-            _s3_event(bucket, full_key),
+        # Do not invoke tag_image manually here.
+        # The S3 bucket notification triggers tag_image for images/.
+        # Manually invoking it as well creates duplicate concurrent processing
+        # and can race with cleanup, causing intermittent S3 404s in Cloud Run.
+        record = _wait_for_media_status(
+            table,
+            key=record["key"],
+            expected_status="ready",
+            timeout_seconds=60 * 5,
         )
 
         item = _get_media_record(table, record["key"])
-
         assert item is not None
         assert item["upload_status"] == "ready", item.get("error_message")
         assert item["file_type"] == "image/png"

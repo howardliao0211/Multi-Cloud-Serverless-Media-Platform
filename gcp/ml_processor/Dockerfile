@@ -10,7 +10,5 @@ COPY backend/layers/python/shared/species.py /app/shared/species.py
 RUN touch /app/shared/__init__.py
 
 COPY gcp/ml_processor/server.py /app/server.py
-COPY gcp/ml_processor/models/model.pt /models/model.pt
-COPY gcp/ml_processor/models/mdv5a.pt /models/mdv5a.pt
 
 CMD ["/app/.venv/bin/python", "server.py"]

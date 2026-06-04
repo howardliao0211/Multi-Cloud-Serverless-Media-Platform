@@ -2,6 +2,8 @@ import hashlib
 import hmac
 import json
 import os
+import urllib.request
+from pathlib import Path
 import time
 import tempfile
 from collections import Counter
@@ -63,24 +65,143 @@ def verify_hmac(body, timestamp, signature):
         raise PermissionError("Invalid HMAC signature")
 
 
+
+def _download_file(url: str, destination: Path) -> Path:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    tmp = destination.with_suffix(destination.suffix + ".tmp")
+
+    print(f"Downloading model from {urlparse(url).scheme}://{urlparse(url).netloc}/... to {destination}")
+
+    with requests.get(url, stream=True, timeout=(10, 600)) as response:
+        response.raise_for_status()
+        with tmp.open("wb") as f:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+
+    tmp.replace(destination)
+    return destination
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def resolve_model_path(
+    *,
+    url_env: str,
+    local_env: str,
+    default_local_path: str,
+    cache_filename: str,
+    checksum_env: str | None = None,
+) -> str:
+    url = os.getenv(url_env)
+    local_path = os.getenv(local_env, default_local_path)
+
+    if not url:
+        print(f"{url_env} not set; using local model path {local_path}")
+        return local_path
+
+    version = os.getenv("GCP_MODEL_VERSION", "default")
+    cache_dir = Path(os.getenv("GCP_MODEL_CACHE_DIR", "/tmp/aussie-ecolens-models")) / version
+    destination = cache_dir / cache_filename
+
+    if not destination.exists() or destination.stat().st_size == 0:
+        _download_file(url, destination)
+    else:
+        print(f"Using cached model file {destination}")
+
+    if checksum_env:
+        expected = os.getenv(checksum_env)
+        if expected:
+            actual = _sha256_file(destination)
+            if actual.lower() != expected.lower():
+                destination.unlink(missing_ok=True)
+                raise ValueError(
+                    f"Checksum mismatch for {destination}: expected {expected}, got {actual}"
+                )
+
+    return str(destination)
+
+
+
+def _download_model_if_needed(url: str, path: str) -> str:
+    """Download a model from a URL into local writable storage if not already present."""
+    if not url:
+        raise ValueError(f"Missing model URL for {path}")
+
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    if target.exists() and target.stat().st_size > 0:
+        print(f"Using cached model: {target} ({target.stat().st_size} bytes)", flush=True)
+        return str(target)
+
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    print(f"Downloading model to {target}", flush=True)
+
+    with requests.get(url, stream=True, timeout=(10, 600)) as response:
+        response.raise_for_status()
+        with tmp.open("wb") as f:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+
+    tmp.replace(target)
+    print(f"Downloaded model: {target} ({target.stat().st_size} bytes)", flush=True)
+    return str(target)
+
+
+def _resolve_model_paths() -> tuple[str, str]:
+    """Resolve classifier/detector model paths from presigned URLs or baked-in fallback."""
+    cache_dir = Path(os.environ.get("GCP_MODEL_CACHE_DIR", "/tmp/aussie-ecolens-models"))
+
+    classifier_url = os.environ.get("GCP_CLASSIFIER_MODEL_URL", "")
+    detector_url = os.environ.get("GCP_DETECTOR_MODEL_URL", "")
+
+    if classifier_url and detector_url:
+        classifier_path = _download_model_if_needed(
+            classifier_url,
+            str(cache_dir / "model.pt"),
+        )
+        detector_path = _download_model_if_needed(
+            detector_url,
+            str(cache_dir / "mdv5a.pt"),
+        )
+        return classifier_path, detector_path
+
+    # Backward-compatible fallback for old baked-model images.
+    return "/models/model.pt", "/models/mdv5a.pt"
+
 def get_tagger() -> ImageTagger:
     global _tagger
 
     if _tagger is not None:
         return _tagger
 
-    for model_path in [LOCAL_CLASSIFIER_MODEL_PATH, LOCAL_DETECTOR_MODEL_PATH]:
+    print("Initializing ImageTagger", flush=True)
+
+    classifier_model_path, detector_model_path = _resolve_model_paths()
+    print(f"Using classifier model: {classifier_model_path}", flush=True)
+    print(f"Using detector model: {detector_model_path}", flush=True)
+
+    for model_path in [Path(classifier_model_path), Path(detector_model_path)]:
         if not model_path.exists():
             raise FileNotFoundError(f"Model file not found: {model_path}")
         if model_path.stat().st_size < 1024:
-            raise ValueError(f"Model file looks too small: {model_path} ({model_path.stat().st_size} bytes)")
+            raise ValueError(
+                f"Model file looks too small: {model_path} ({model_path.stat().st_size} bytes)"
+            )
 
-    print("Initializing ImageTagger")
     _tagger = ImageTagger(
-        classifier_model_path=LOCAL_CLASSIFIER_MODEL_PATH,
-        detector_model_path=LOCAL_DETECTOR_MODEL_PATH,
+        classifier_model_path=classifier_model_path,
+        detector_model_path=detector_model_path,
     )
-    print("ImageTagger initialized")
+    print("ImageTagger initialized", flush=True)
 
     return _tagger
 
