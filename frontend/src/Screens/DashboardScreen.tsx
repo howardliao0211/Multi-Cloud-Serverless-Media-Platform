@@ -8,12 +8,14 @@ import {
     getCurrentUserId
 } from "../utils";
 import { authFetch } from "../services/api";
+import { record } from "aws-amplify/analytics";
 
 
 function DashboardScreen() {
     const location = useLocation();
     const isDashboardHome = location.pathname === "/dashboard";
-    const [mediaRecords, setMediaRecords] = useState<MediaRecordResponse[]>([]);
+    const [myMediaRecords, setMyMediaRecords] = useState<MediaRecordResponse[]>([]);
+    const [otherPublicMediaRecords, setOtherPublicMediaRecords] = useState<MediaRecordResponse[]>([]);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
 
     const isSplitPage = location.pathname === "/dashboard/delete" || location.pathname === "/dashboard/tags";
@@ -41,12 +43,19 @@ function DashboardScreen() {
                 (record) => record.owner_id === currentUserId
             );
 
-            setMediaRecords(
+            const otherPublicRecords = publicData.media_records.filter(
+                (record) => record.owner_id !== currentUserId
+            );
+
+            setMyMediaRecords(
                 mergeUniqueMediaRecords([
                     ...privateData.media_records,
                     ...myPublicRecords,
                 ])
             );
+
+            setOtherPublicMediaRecords(otherPublicRecords);
+
             setStatus(createStatus("success", ""));
         } catch (error) {
             setStatus(createStatus("error", getErrorMessage(error)));
@@ -74,9 +83,9 @@ function DashboardScreen() {
         }
     }
 
-    function readerMyUpload() {
+    function readerMyUpload(showOthersPublic: boolean) {
         return (
-            <section className="dashboard-content">
+            <main className="dashboard-content">
                 <h1>My Uploads</h1>
                 <p>Welcome to your media dashboard!</p>
 
@@ -86,12 +95,12 @@ function DashboardScreen() {
                     </div>
                 )}
 
-                {mediaRecords.length === 0 && status.type !== "loading" && (
+                {myMediaRecords.length === 0 && status.type !== "loading" && (
                     <p>No uploaded files found.</p>
                 )}
 
                 <section className="media-cards-grid">
-                    {mediaRecords.map((record) => (
+                    {myMediaRecords.map((record) => (
                         <article className="media-card" key={`${record.owner_id}-${record.checksum}-${record.file_name}`}>
                             <div className="media-thumbnail">
                                 {record.thumbnail_presigned_url ? (
@@ -168,7 +177,85 @@ function DashboardScreen() {
                         </article>
                     ))}
                 </section>
-            </section>
+
+                {showOthersPublic && (
+                    <>
+                        <h1 className="section-title">Other's Public</h1>
+
+                        {otherPublicMediaRecords.length === 0 ? (
+                            <p>No public files from other users found.</p>
+                        ) : (
+                            <section className="media-cards-grid">
+                                {
+                                    otherPublicMediaRecords.map((record) => (
+                                        <article
+                                            className="media-card"
+                                            key={`${record.owner_id}-${record.file_name}-${record.full_url ?? ""}`}
+                                        >
+                                            <div className="media-thumbnail">
+                                                {record.thumbnail_presigned_url ? (
+                                                    <img
+                                                        src={record.thumbnail_presigned_url}
+                                                        alt={`${record.file_name} thumbnail`}
+                                                        onClick={() => {
+                                                            if (record.full_presigned_url) {
+                                                                window.open(record.full_presigned_url, "_blank");
+                                                            }
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <span>No thumbnail available</span>
+                                                )}
+                                            </div>
+
+                                            <p>
+                                                Visibility: <strong>{record.visibility}</strong>
+                                            </p>
+
+                                            <div className="media-tags-text">
+                                                {Object.entries(record.tags).length > 0 ? (
+                                                    Object.entries(record.tags).map(([tag, count]) => (
+                                                        <p key={tag}>
+                                                            Tag: {tag}; Count: {count}
+                                                        </p>
+                                                    ))
+                                                ) : (
+                                                    <p>No tags yet</p>
+                                                )}
+                                            </div>
+
+                                            <div className="media-url-actions">
+                                                <button
+                                                    type="button"
+                                                    disabled={!record.full_url}
+                                                    onClick={() => {
+                                                        if (record.full_url) {
+                                                            navigator.clipboard.writeText(record.full_url);
+                                                        }
+                                                    }}
+                                                >
+                                                    Copy Full URL
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    disabled={!record.thumbnail_url}
+                                                    onClick={() => {
+                                                        if (record.thumbnail_url) {
+                                                            navigator.clipboard.writeText(record.thumbnail_url);
+                                                        }
+                                                    }}
+                                                >
+                                                    Copy Thumbnail URL
+                                                </button>
+                                            </div>
+                                        </article>
+                                    ))}
+                            </section>
+                        )}
+                    </>
+                )}
+            </main>
         );
     }
 
@@ -190,17 +277,17 @@ function DashboardScreen() {
             </header>
 
             {isDashboardHome ? (
-                readerMyUpload()
-            ): isSplitPage ? (
+                readerMyUpload(true)
+            ) : isSplitPage ? (
                 <main className="dashboard-split-content">
                     <section className="dashboard-split-pane dashboard-split-left">
-                        {readerMyUpload()}
+                        {readerMyUpload(false)}
                     </section>
 
                     <section className="dashboard-split-pane dashboard-split-right">
                         <Outlet />
                     </section>
-                </main> 
+                </main>
             ) : (
                 <Outlet />
             )}
