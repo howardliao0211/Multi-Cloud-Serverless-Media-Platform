@@ -154,21 +154,6 @@ class QueryTagsRequest(BaseModel):
         return normalized_tags
 
 
-class QueryTagsResult(BaseModel):
-    checksum: str
-    file_name: str
-    visibility: MediaVisibility
-    media_type: Optional[str] = None
-    url: Optional[HttpUrl] = None
-    thumbnail_url: Optional[HttpUrl] = None
-    tags: Dict[str, int] = Field(default_factory=dict)
-
-
-class QueryTagsResponse(BaseModel):
-    count: int
-    results: List[QueryTagsResult] = Field(default_factory=list)
-
-
 class QuerySpeciesRequest(BaseModel):
     species: str
 
@@ -181,22 +166,6 @@ class QuerySpeciesRequest(BaseModel):
             raise ValueError("species must not be empty")
 
         return normalized_species
-
-
-class QuerySpeciesResult(BaseModel):
-    checksum: str
-    file_name: str
-    visibility: MediaVisibility
-    media_type: Optional[str] = None
-    url: Optional[HttpUrl] = None
-    thumbnail_url: Optional[HttpUrl] = None
-    tags: Dict[str, int] = Field(default_factory=dict)
-
-
-class QuerySpeciesResponse(BaseModel):
-    count: int
-    results: List[QuerySpeciesResult] = Field(default_factory=list)
-
 
 class QueryThumbnailUrlRequest(BaseModel):
     thumbnail_url: HttpUrl
@@ -212,14 +181,6 @@ class QueryThumbnailUrlRequest(BaseModel):
         return normalized_thumbnail_url
 
 
-class QueryThumbnailUrlResponse(BaseModel):
-    checksum: str
-    file_name: str
-    visibility: MediaVisibility
-    url: HttpUrl
-    thumbnail_url: HttpUrl
-
-
 class QueryFileResult(BaseModel):
     checksum: str
     file_name: str
@@ -228,12 +189,6 @@ class QueryFileResult(BaseModel):
     url: Optional[HttpUrl] = None
     thumbnail_url: Optional[HttpUrl] = None
     tags: Dict[str, int] = Field(default_factory=dict)
-
-
-class QueryFileResponse(BaseModel):
-    detected_tags: Dict[str, int] = Field(default_factory=dict)
-    count: int
-    results: List[QueryFileResult] = Field(default_factory=list)
 
 
 class GetMediaResponse(BaseModel):
