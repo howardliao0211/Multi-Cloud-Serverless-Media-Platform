@@ -246,8 +246,7 @@ class GetMediaUploadStatus(BaseModel):
 
 
 class ChangeVisibilityRequest(BaseModel):
-    file_name: str
-    checksum: str
+    url: HttpUrl
     visibility: MediaVisibility
 
 

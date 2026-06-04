@@ -181,6 +181,7 @@ def _put_media_record(table, **overrides):
 
     item.update(overrides)
     item["key"] = _build_db_key(item["owner_id"], item["full_key"])
+    item["full_url"] = f"https://test_bucket.s3.test-region.amazonaws.com/{item["full_key"]}"
 
     table.put_item(Item=item)
     return item
@@ -197,22 +198,39 @@ def _delete_media_record(table, item):
         "key": item["key"],
     }
 
-    for _ in range(3):
-        response = table.delete_item(
-            Key=key,
-            ReturnValues="ALL_OLD",
-        )
+    response = table.delete_item(
+        Key=key,
+        ReturnValues="ALL_OLD",
+    )
 
-        deleted_item = response.get("Attributes")
+    deleted_item = response.get("Attributes")
 
-        if deleted_item is None:
-            print(f"No DynamoDB item deleted. Key may not exist: {key}")
-        else:
-            print(f"Deleted DynamoDB item: {key}")
-            break
+    if deleted_item is None:
+        print(f"No DynamoDB item deleted. Key may not exist: {key}")
+    else:
+        print(f"Deleted DynamoDB item: {key}")
 
     return deleted_item
 
+
+def _delete_media_record_by_key(table, key):
+    key = {
+        "key": key,
+    }
+
+    response = table.delete_item(
+        Key=key,
+        ReturnValues="ALL_OLD",
+    )
+
+    deleted_item = response.get("Attributes")
+
+    if deleted_item is None:
+        print(f"No DynamoDB item deleted. Key may not exist: {key}")
+    else:
+        print(f"Deleted DynamoDB item: {key}")
+
+    return deleted_item
 
 def _delete_s3_objects(s3, bucket, *keys):
     objects = [{"Key": key} for key in keys if key]
@@ -380,10 +398,15 @@ def test_tag_video(aws_clients, integration_config, unique_id):
             },
         )
 
-        _invoke_lambda(
-            lambda_client,
-            integration_config["tag_video_function"],
-            _s3_event(bucket, full_key),
+        # Do not invoke tag_image manually here.
+        # The S3 bucket notification triggers tag_image for images/.
+        # Manually invoking it as well creates duplicate concurrent processing
+        # and can race with cleanup, causing intermittent S3 404s in Cloud Run.
+        record = _wait_for_media_status(
+            table,
+            key=record["key"],
+            expected_status="ready",
+            timeout_seconds=60 * 5,
         )
 
         item = _get_media_record(table, record["key"])
@@ -600,10 +623,8 @@ def test_deduplicate_media_in_s3(aws_clients, integration_config, unique_id):
     checksum = f"{unique_id}-dedupe"
     file_name = f"{unique_id}.png"
 
-    created_record = {
-        "checksum": checksum,
-        "file_name": file_name,
-    }
+    full_key = f"images/{checksum}.png"
+    db_key = _build_db_key(user_id, full_key)
 
     try:
         first = _invoke_lambda(
@@ -649,7 +670,7 @@ def test_deduplicate_media_in_s3(aws_clients, integration_config, unique_id):
 
     finally:
         try:
-            _delete_media_record(table, created_record)
+            _delete_media_record_by_key(table, db_key)
         except Exception as e:
             print(f"DynamoDB cleanup failed: {e}")
 
@@ -801,8 +822,7 @@ def test_change_visibility_to_private(aws_clients, integration_config, unique_id
             _api_event(
                 "PATCH",
                 body={
-                    "file_name": f"{unique_id}.png",
-                    "checksum": f"{unique_id}-public",
+                    "url": f"{record["full_url"]}",
                     "visibility": "private",
                 },
                 user_id=integration_config["test_user_id"],
@@ -852,8 +872,7 @@ def test_change_visibility_to_public(aws_clients, integration_config, unique_id)
             _api_event(
                 "PATCH",
                 body={
-                    "file_name": f"{unique_id}.png",
-                    "checksum": f"{unique_id}-private",
+                    "url": f"{record["full_url"]}",
                     "visibility": "public",
                 },
                 user_id=integration_config["test_user_id"],

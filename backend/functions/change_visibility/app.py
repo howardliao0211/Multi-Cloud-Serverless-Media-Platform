@@ -49,8 +49,7 @@ def lambda_handler(event, context):
     media = scan_media_record(
         table, filters={
             "owner_id": current_user,
-            "file_name": request.file_name,
-            "checksum": request.checksum,
+            "full_url": str(request.url)
         }
     )
 
