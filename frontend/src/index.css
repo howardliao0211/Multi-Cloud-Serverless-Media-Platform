@@ -182,6 +182,36 @@ button:disabled {
   text-decoration: none;
 }
 
+.dashboard-split-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(420px, 0.75fr);
+  gap: 7rem;
+  width: min(1500px, 100%);
+  margin: 0 auto;
+  padding: 3rem 4rem;
+  align-items: start;
+}
+
+.dashboard-split-pane {
+  min-width: 0;
+}
+
+.dashboard-split-left .dashboard-content {
+  padding : 0;
+  width: 100%;
+}
+
+.dashboard-split-right {
+  position: sticky;
+  top: 6rem;
+  align-self: start;
+}
+
+.dashboard-split-right .dashboard-content {
+  padding: 0;
+  width: 100%;
+}
+
 .media-cards-grid {
   width: min(100%, 1200px);
   margin: 36px auto 0;
