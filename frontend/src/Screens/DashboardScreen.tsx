@@ -95,7 +95,11 @@ function DashboardScreen() {
                             <article className="media-card" key={`${record.owner_id}-${record.file_name}`}>
                                 <div className="media-thumbnail">
                                     {record.thumbnail_presigned_url ? (
-                                        <img src={record.thumbnail_presigned_url} alt={`${record.file_name} thumbnail`} />
+                                        <img
+                                            src={record.thumbnail_presigned_url}
+                                            alt={`${record.file_name} thumbnail`}
+                                            onClick={() => window.open(record.full_presigned_url, "_blank")}
+                                        />
                                     ) : (
                                         <span>No thumbnail available</span>
                                     )}
