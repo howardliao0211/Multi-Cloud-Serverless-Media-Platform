@@ -171,46 +171,69 @@ function QueryScreen() {
         }
     }
 
-    function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-        if (event.target.files && event.target.files[0]) {
-            setFile(event.target.files[0]);
+    async function handleContentSearch() {
+        if (!file) {
+            setError("Please select a file.");
+            return;
         }
+
+        if (!isValidMediaFile(file)) {
+            setError("Unsupported file type. Please upload JPG, PNG, WEBP, MP4, or MOV.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const data = await authFetch<QueryFileResponse>("/query_file", {
+                method: "POST",
+                body: formData,
+            });
+
+            setDetectedTags(data.detected_tags ?? {});
+            setResults(data.results ?? []);
+            setResultCount(data.count ?? data.results?.length ?? 0);
+        } catch (error) {
+            setError(getErrorMessage(error));
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+        const selectedFile = event.target.files?.[0];
+
+        if (!selectedFile) return;
+
+        if (!isValidMediaFile(selectedFile)) {
+            setError("Unsupported file type. Please upload JPG, PNG, WEBP, MP4, or MOV.");
+            setFile(null);
+            return;
+        }
+
+        setFile(selectedFile);
+        setError(null);
     }
 
     function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
         event.preventDefault();
 
-        if (event.dataTransfer.files && event.dataTransfer.files[0]) {
-            setFile(event.dataTransfer.files[0]);
+        const droppedFile = event.dataTransfer.files?.[0];
+
+        if (!droppedFile) return;
+
+        if (!isValidMediaFile(droppedFile)) {
+            setError("Unsupported file type. Please upload JPG, PNG, WEBP, MP4, or MOV.");
+            setFile(null);
+            return;
         }
-    }
 
-    type UploadResponse = {
-        uploadUrl: string;
-        fileUrl: string;
-    };
-
-    async function handleUpload() {
-        if (!file) return;
-
-        // call upload API for each file
-        console.log("Uploading", file.name);
-
-        const data = await authFetch<UploadResponse>("/upload-url", {
-            method: "POST",
-            body: JSON.stringify({
-                fileName: file.name,
-                fileType: file.type,
-            }),
-        });
-
-        await fetch(data.uploadUrl, {
-            method: "PUT",
-            headers: {
-                "Content-Type": file.type,
-            },
-            body: file,
-        });
+        setFile(droppedFile);
+        setError(null);
     }
 
     return (
@@ -317,14 +340,26 @@ function QueryScreen() {
                 {mode === "content" && (
                     <>
                         <h2>Upload a file to find all database files with matching species:</h2>
-                        <label className="content-dropzone" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
-                            <input ref={fileInputRef} className="file-input-hidden" type="file"
-                                accept="image/*,video/*" onChange={handleFileChange} />
+
+                        <label
+                            className="content-dropzone"
+                            onDrop={handleDrop}
+                            onDragOver={(event) => event.preventDefault()}
+                        >
+                            <input
+                                ref={fileInputRef}
+                                className="file-input-hidden"
+                                type="file"
+                                accept="image/*,video/*"
+                                onChange={handleFileChange}
+                            />
+
                             <div className="upload-icon">📁</div>
 
                             <h2>Drop file here or click to browse</h2>
 
                             <p>Images (.jpg, .png, .webp) or Videos (.mp4, .mov)</p>
+
                             {file && (
                                 <div className="selected-file">
                                     <p className="selected-file-title">Selected file:</p>
@@ -334,12 +369,18 @@ function QueryScreen() {
                         </label>
 
                         <div className="button-row">
-                            <button type="button" onClick={handleUpload} disabled={!file}>
-                                Upload
+                            <button
+                                type="button"
+                                onClick={handleContentSearch}
+                                disabled={!file || isLoading}
+                            >
+                                {isLoading ? "Searching..." : "Search by Content"}
                             </button>
                         </div>
                     </>
                 )}
+
+                {error && <p className="error-message">{error}</p>}
             </section>
         </main>
     );
