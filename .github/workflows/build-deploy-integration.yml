@@ -1,0 +1,109 @@
+name: Build Deploy Integration
+
+on:
+    workflow_dispatch:
+    pull_request:
+        branches:
+            - main
+    push:
+        branches:
+            - main
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_PROFILE: AussieEcoLense
+  AWS_ARCHITECTURE: x86_64
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  GCP_APP_IMAGE_URL: ${{ secrets.GCP_APP_IMAGE_URL }}
+  TEST_VIDEO_PATH: tests/integration/test_video.mp4
+
+jobs:
+  build-deploy-test:
+    name: Build images, deploy functions, run integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate required Google Cloud variables
+        run: |
+          test -n "${{ vars.GCP_PROJECT_ID }}" || (echo "Missing repo variable GCP_PROJECT_ID" && exit 1)
+          test -n "${{ vars.GCP_REGION }}" || (echo "Missing repo variable GCP_REGION" && exit 1)
+          test -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing repo variable GCP_WORKLOAD_IDENTITY_PROVIDER" && exit 1)
+          test -n "${{ vars.GCP_SERVICE_ACCOUNT }}" || (echo "Missing repo variable GCP_SERVICE_ACCOUNT" && exit 1)
+
+      - id: gcp-auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create AWS CLI profile for deployment scripts
+        run: |
+          aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID" --profile "$AWS_PROFILE"
+          aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY" --profile "$AWS_PROFILE"
+          if [ -n "${AWS_SESSION_TOKEN:-}" ]; then
+            aws configure set aws_session_token "$AWS_SESSION_TOKEN" --profile "$AWS_PROFILE"
+          fi
+          aws configure set region "$AWS_REGION" --profile "$AWS_PROFILE"
+
+      - name: Verify cloud identities
+        run: |
+          aws sts get-caller-identity
+          aws sts get-caller-identity --profile "$AWS_PROFILE"
+          gcloud auth list
+          gcloud config set project "$GCP_PROJECT_ID"
+
+      - name: Stage GCP model files
+        run: |
+          mkdir -p gcp/ml_processor/models
+          cp models/model.pt gcp/ml_processor/models/model.pt
+          cp models/mdv5a.pt gcp/ml_processor/models/mdv5a.pt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e tests
+
+      - name: Run build_all_image
+        run: |
+          chmod +x backend/scripts/build_push_all_images.sh
+          bash backend/scripts/build_push_all_images.sh
+
+      - name: Run deploy_all_functions
+        env:
+          LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}
+        run: |
+          chmod +x backend/scripts/deploy_all_functions.sh
+          bash backend/scripts/deploy_all_functions.sh
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration -vv -s

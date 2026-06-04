@@ -34,13 +34,13 @@ export TAG_VIDEO_TAG="${TAG_VIDEO_TAG:-ml-dev}"
 export QUERY_FILE_TAG="${QUERY_FILE_TAG:-ml-dev}"
 
 # ---------- GCP config ----------
-export GCP_PROJECT_ID="${GCP_PROJECT_ID:-hazel-sphinx-490908-u6}"
-export GCP_REGION="${GCP_REGION:-us-east4}"
+export GCP_PROJECT_ID="${GCP_PROJECT_ID:-}"
+export GCP_REGION="${GCP_REGION:-}"
 export GCP_AR_REPO="${GCP_AR_REPO:-aussie-ecolens}"
 
-export GCP_BASE_IMAGE_URI="${GCP_BASE_IMAGE_URI:-${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_AR_REPO}/ml-processor-base:gpu}"
+export GCP_BASE_IMAGE_URL="${GCP_BASE_IMAGE_URL:-${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_AR_REPO}/ml-processor-base:gpu}"
 export GCP_APP_IMAGE_TAG="${GCP_APP_IMAGE_TAG:-real-gpu-e2e-$(date +%Y%m%d%H%M%S)}"
-export GCP_APP_IMAGE_URI="${GCP_APP_IMAGE_URI:-${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_AR_REPO}/ml-processor:${GCP_APP_IMAGE_TAG}}"
+export GCP_APP_IMAGE_URL="${GCP_APP_IMAGE_URL:-${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_AR_REPO}/ml-processor:${GCP_APP_IMAGE_TAG}}"
 
 # ---------- Platform mapping ----------
 case "${AWS_ARCHITECTURE}" in
@@ -182,8 +182,8 @@ echo "AWS Docker platform: ${AWS_DOCKER_PLATFORM}"
 echo "GCP project: ${GCP_PROJECT_ID}"
 echo "GCP region: ${GCP_REGION}"
 echo "GCP Docker platform: ${GCP_DOCKER_PLATFORM}"
-echo "GCP base image: ${GCP_BASE_IMAGE_URI}"
-echo "GCP app image: ${GCP_APP_IMAGE_URI}"
+echo "GCP base image: ${GCP_BASE_IMAGE_URL}"
+echo "GCP app image: ${GCP_APP_IMAGE_URL}"
 
 # ---------- AWS login ----------
 echo ""
@@ -276,21 +276,21 @@ push_image "${QUERY_FILE_REMOTE}"
 # ---------- GCP base image ----------
 build_image \
   "${GCP_DOCKER_PLATFORM}" \
-  "${GCP_BASE_IMAGE_URI}" \
+  "${GCP_BASE_IMAGE_URL}" \
   "${GCP_BASE_DOCKERFILE}" \
   "${GCP_CONTEXT}"
 
-push_image "${GCP_BASE_IMAGE_URI}"
+push_image "${GCP_BASE_IMAGE_URL}"
 
 # ---------- GCP app image ----------
 build_image \
   "${GCP_DOCKER_PLATFORM}" \
-  "${GCP_APP_IMAGE_URI}" \
+  "${GCP_APP_IMAGE_URL}" \
   "${GCP_APP_DOCKERFILE}" \
   "${GCP_CONTEXT}" \
-  --build-arg "BASE_IMAGE=${GCP_BASE_IMAGE_URI}"
+  --build-arg "BASE_IMAGE=${GCP_BASE_IMAGE_URL}"
 
-push_image "${GCP_APP_IMAGE_URI}"
+push_image "${GCP_APP_IMAGE_URL}"
 
 # ---------- Summary ----------
 echo ""
@@ -303,8 +303,8 @@ echo "  tag_video:  ${TAG_VIDEO_REMOTE}"
 echo "  query_file: ${QUERY_FILE_REMOTE}"
 echo ""
 echo "GCP images:"
-echo "  base: ${GCP_BASE_IMAGE_URI}"
-echo "  app:  ${GCP_APP_IMAGE_URI}"
+echo "  base: ${GCP_BASE_IMAGE_URL}"
+echo "  app:  ${GCP_APP_IMAGE_URL}"
 echo ""
 echo "Next deploy commands:"
 echo ""
@@ -315,7 +315,7 @@ echo "  FUNCTION_NAME=query_file IMAGE_TAG=${QUERY_FILE_TAG} AWS_REGION=${AWS_RE
 echo ""
 echo "GCP:"
 echo "  gcloud run deploy aussie-eco-len-us-demo-ml-processor \\"
-echo "    --image ${GCP_APP_IMAGE_URI} \\"
+echo "    --image ${GCP_APP_IMAGE_URL} \\"
 echo "    --region ${GCP_REGION} \\"
 echo "    --project ${GCP_PROJECT_ID} \\"
 echo "    --gpu=1 \\"

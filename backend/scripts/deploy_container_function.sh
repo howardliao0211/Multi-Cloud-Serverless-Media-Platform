@@ -9,6 +9,9 @@ FUNCTION_NAME="${FUNCTION_NAME:-tag_image}"
 if [[ "${FUNCTION_NAME}" == "tag_image" ]]; then
   REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-aussie-ecolens-tag-image}"
   IMAGE_TAG="${IMAGE_TAG:-gcp-ml-dev}"
+elif [[ "${FUNCTION_NAME}" == "tag_video" ]]; then
+  REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-aussie-ecolens-tag-video}"
+  IMAGE_TAG="${IMAGE_TAG:-ml-dev}"
 elif [[ "${FUNCTION_NAME}" == "query_file" ]]; then
   REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-aussie-ecolens-query-file}"
   IMAGE_TAG="${IMAGE_TAG:-ml-dev}"
