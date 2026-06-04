@@ -27,6 +27,36 @@ export async function getMyPublicMedia() {
   });
 }
 
+export const ALLOWED_MEDIA_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "video/mp4",
+  "video/quicktime",
+];
+
+export function isValidMediaFile(file: File): boolean {
+  return ALLOWED_MEDIA_TYPES.includes(file.type);
+}
+
+export function getNormalizedFileName(file: File): string {
+  const parts = file.name.split(".");
+  if (parts.length < 2) return file.name;
+
+  const extension = parts.pop()?.toLowerCase();
+  return `${parts.join(".")}.${extension}`;
+}
+
+export function validateMediaFiles(files: File[]): {
+  validFiles: File[];
+  invalidFiles: File[];
+} {
+  const validFiles = files.filter(isValidMediaFile);
+  const invalidFiles = files.filter((file) => !isValidMediaFile(file));
+
+  return { validFiles, invalidFiles };
+}
+
 export type StatusType = "idle" | "loading" | "success" | "error";
 
 export type StatusMessage = {
