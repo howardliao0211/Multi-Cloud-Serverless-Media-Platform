@@ -26,14 +26,14 @@ function QueryScreen() {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const [results, setResults] = useState<MediaRecordResponse[]>([]);
-    const [detectedTags, setDetectedTags] = useState<Record<string, number>>({});
+    // const [detectedTags, setDetectedTags] = useState<Record<string, number>>({});
     const [resultCount, setResultCount] = useState<number>(0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
     function resetSearchState() {
         setResults([]);
-        setDetectedTags({});
+        // setDetectedTags({});
         setResultCount(0);
         setError(null);
     }
@@ -89,7 +89,7 @@ function QueryScreen() {
 
         setIsLoading(true);
         setError(null);
-        setDetectedTags({});
+        // setDetectedTags({});
 
         try {
             const data = await authFetch<QueryTagsResponse>("/query_tags", {
@@ -116,7 +116,7 @@ function QueryScreen() {
 
         setIsLoading(true);
         setError(null);
-        setDetectedTags({});
+        // setDetectedTags({});
 
         try {
             const data = await authFetch<QuerySpeciesResponse>("/query_species", {
@@ -145,7 +145,7 @@ function QueryScreen() {
 
         setIsLoading(true);
         setError(null);
-        setDetectedTags({});
+        // setDetectedTags({});
 
         try {
             const data = await authFetch<QueryThumbnailUrlResponse>("/query_thumbnail_url", {
@@ -440,7 +440,7 @@ function QueryScreen() {
                                 {Object.entries(record.tags ?? {}).length > 0 ? (
                                     Object.entries(record.tags).map(([tag, count]) => (
                                         <p key={tag}>
-                                            Tag: {tag}; Count: {count}
+                                            {tag} ({count})
                                         </p>
                                     ))
                                 ) : (

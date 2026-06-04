@@ -126,7 +126,7 @@ function DashboardScreen() {
                                     ? (Object.entries(record.tags)
                                         .map(([tag, count]) => (
                                             <p key={tag}>
-                                                Tag: {tag}; Count: {count}
+                                                {tag} ({count})
                                             </p>
                                         ))
                                     ) : (
@@ -216,7 +216,7 @@ function DashboardScreen() {
                                                 {Object.entries(record.tags).length > 0 ? (
                                                     Object.entries(record.tags).map(([tag, count]) => (
                                                         <p key={tag}>
-                                                            Tag: {tag}; Count: {count}
+                                                            {tag} ({count})
                                                         </p>
                                                     ))
                                                 ) : (
