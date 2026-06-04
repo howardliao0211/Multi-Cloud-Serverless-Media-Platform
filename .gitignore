@@ -294,3 +294,6 @@ backend-v2/**/*.pyc
 backend-v2/**/*.pyo
 backend-v2/**/*.dist-info/
 backend-v2/**/*.egg-info/
+
+# local backend v2 environment
+backend-v2/.env
