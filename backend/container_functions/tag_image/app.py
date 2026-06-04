@@ -17,7 +17,8 @@ try:
     import google.auth
     from google.auth import impersonated_credentials
     from google.auth.transport.requests import Request as GoogleAuthRequest
-except ImportError:
+except Exception as exc:
+    print(f"GCP auth import failed: {type(exc).__name__}: {exc!r}")
     google = None
     impersonated_credentials = None
     GoogleAuthRequest = None

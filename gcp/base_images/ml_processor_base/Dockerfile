@@ -19,8 +19,9 @@ RUN pip install --no-cache-dir uv
 
 COPY gcp/ml_processor/pyproject.toml gcp/ml_processor/uv.lock ./
 # The classifier checkpoint was saved from a model object that imports onnx2torch.
-# Install only that module without dependencies to avoid pulling ONNX, which conflicts
-# with MegaDetector's protobuf<=3.20.1 constraint.
+# onnx2torch is required when torch.load unpickles the classifier model.
+# Install it without dependencies, while explicitly installing the ONNX runtime
+# packages needed by the serialized classifier.
 RUN uv sync --frozen --no-dev \
-    && uv pip install --python .venv/bin/python --no-deps onnx2torch==1.5.15 \
+    && uv pip install --python .venv/bin/python --no-deps onnx2torch==1.5.15 'onnx>=1.16,<2' ml_dtypes \
     && rm -rf /tmp/uv-cache /root/.cache/uv

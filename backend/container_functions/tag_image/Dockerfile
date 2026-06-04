@@ -3,7 +3,8 @@ FROM ml_base:latest
 WORKDIR ${LAMBDA_TASK_ROOT}
 
 ENV PYTHONPATH="/opt/python:${LAMBDA_TASK_ROOT}" \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    MPLCONFIGDIR=/tmp/matplotlib
 
 # Create shared package directory
 RUN mkdir -p /opt/python/shared
