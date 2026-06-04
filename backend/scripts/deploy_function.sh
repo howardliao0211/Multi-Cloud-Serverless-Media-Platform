@@ -52,25 +52,40 @@ command -v zip >/dev/null 2>&1 || {
   exit 1
 }
 
-rm -rf "${BUILD_DIR}"
-mkdir -p "${LAYER_BUILD_DIR}/python" "${FUNCTION_BUILD_DIR}"
+# Do NOT delete the whole build directory, because it may contain shared_layer.zip.
+mkdir -p "${BUILD_DIR}"
 
-echo "Building shared layer..."
-python3 -m pip install \
-  --requirement "${SHARED_SOURCE_DIR}/requirements.txt" \
-  --target "${LAYER_BUILD_DIR}/python" \
-  --platform "${PIP_PLATFORM}" \
-  --implementation cp \
-  --python-version "${PYTHON_VERSION}" \
-  --only-binary=:all: \
-  --upgrade
+# Always rebuild only the Lambda function package.
+rm -rf "${FUNCTION_BUILD_DIR}" "${FUNCTION_ZIP}"
+mkdir -p "${FUNCTION_BUILD_DIR}"
 
-cp -R "${SHARED_SOURCE_DIR}" "${LAYER_BUILD_DIR}/python/shared"
+# Build shared layer only when shared_layer.zip does not exist.
+if [[ ! -f "${LAYER_ZIP}" ]]; then
+  echo "Shared layer zip not found. Building shared layer..."
 
-(
-  cd "${LAYER_BUILD_DIR}"
-  zip -qr "${LAYER_ZIP}" python
-)
+  rm -rf "${LAYER_BUILD_DIR}"
+  mkdir -p "${LAYER_BUILD_DIR}/python"
+
+  python3 -m pip install \
+    --requirement "${SHARED_SOURCE_DIR}/requirements.txt" \
+    --target "${LAYER_BUILD_DIR}/python" \
+    --platform "${PIP_PLATFORM}" \
+    --implementation cp \
+    --python-version "${PYTHON_VERSION}" \
+    --only-binary=:all: \
+    --upgrade
+
+  cp -R "${SHARED_SOURCE_DIR}" "${LAYER_BUILD_DIR}/python/shared"
+
+  (
+    cd "${LAYER_BUILD_DIR}"
+    zip -qr "${LAYER_ZIP}" python
+  )
+
+  echo "Built shared layer zip: ${LAYER_ZIP}"
+else
+  echo "Shared layer zip already exists. Reusing: ${LAYER_ZIP}"
+fi
 
 echo "Publishing layer ${LAYER_NAME}..."
 LAYER_VERSION_ARN="$(
@@ -96,6 +111,7 @@ cp "${FUNCTION_SOURCE_DIR}/app.py" "${FUNCTION_BUILD_DIR}/app.py"
 
 if aws lambda get-function --region "${AWS_REGION}" --function-name "${FUNCTION_NAME}" >/dev/null 2>&1; then
   echo "Updating existing Lambda function ${FUNCTION_NAME}..."
+
   aws lambda update-function-code \
     --region "${AWS_REGION}" \
     --function-name "${FUNCTION_NAME}" \
@@ -120,6 +136,7 @@ else
   fi
 
   echo "Creating Lambda function ${FUNCTION_NAME}..."
+
   aws lambda create-function \
     --region "${AWS_REGION}" \
     --function-name "${FUNCTION_NAME}" \
