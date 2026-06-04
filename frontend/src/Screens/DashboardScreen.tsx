@@ -16,6 +16,15 @@ function DashboardScreen() {
     const [mediaRecords, setMediaRecords] = useState<MediaRecordResponse[]>([]);
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
 
+    function mergeUniqueMediaRecords(records: MediaRecordResponse[]) {
+        const map = new Map<string, MediaRecordResponse>();
+
+        records.forEach((record) => {
+            map.set(`${record.checksum}-${record.file_name}`, record);
+        });
+        return Array.from(map.values());
+    }
+
     async function loadMyMedia() {
         const currentUserId = await getCurrentUserId();
 
@@ -30,10 +39,12 @@ function DashboardScreen() {
                 (record) => record.owner_id === currentUserId
             );
 
-            setMediaRecords([
-                ...privateData.media_records,
-                ...myPublicRecords,
-            ]);
+            setMediaRecords(
+                mergeUniqueMediaRecords([
+                    ...privateData.media_records,
+                    ...myPublicRecords,
+                ])
+            );
             setStatus(createStatus("success", ""));
         } catch (error) {
             setStatus(createStatus("error", getErrorMessage(error)));
@@ -41,13 +52,15 @@ function DashboardScreen() {
     }
 
     useEffect(() => {
-        loadMyMedia();
-    }, [location.state]);
+        if (location.pathname === "/dashboard") {
+            void loadMyMedia();
+        }
+    }, [location.pathname]);
 
     async function handleChangeVisibility(url: string, visibility: "private" | "public") {
         try {
             await authFetch("/change_visibility", {
-                method: "POST",
+                method: "PATCH",
                 body: JSON.stringify({
                     url,
                     visibility,
@@ -93,17 +106,17 @@ function DashboardScreen() {
 
                     <section className="media-cards-grid">
                         {mediaRecords.map((record) => (
-                            <article className="media-card" key={`${record.owner_id}-${record.file_name}`}>
+                            <article className="media-card" key={`${record.owner_id}-${record.checksum}-${record.file_name}`}>
                                 <div className="media-thumbnail">
                                     {record.thumbnail_presigned_url ? (
                                         <img
-                                        src={record.thumbnail_presigned_url}
-                                        alt={`${record.file_name} thumbnail`}
-                                        onClick={() => {
-                                            if (record.full_presigned_url) {
-                                            window.open(record.full_presigned_url, "_blank");
-                                            }
-                                        }}
+                                            src={record.thumbnail_presigned_url}
+                                            alt={`${record.file_name} thumbnail`}
+                                            onClick={() => {
+                                                if (record.full_presigned_url) {
+                                                    window.open(record.full_presigned_url, "_blank");
+                                                }
+                                            }}
                                         />
                                     ) : (
                                         <span>No thumbnail available</span>
@@ -127,22 +140,22 @@ function DashboardScreen() {
                                 </div>
 
                                 <div className="media-url-actions">
-                                    <button type="button" 
+                                    <button type="button"
                                         disabled={!record.full_url}
-                                        onClick={() =>{
-                                            if (record.full_url){
+                                        onClick={() => {
+                                            if (record.full_url) {
                                                 navigator.clipboard.writeText(record.full_url);
                                             }
                                         }}
                                     >
                                         Copy Full URL
                                     </button>
-                                    
-                                    <button 
-                                        type="button" 
+
+                                    <button
+                                        type="button"
                                         disabled={!record.thumbnail_url}
                                         onClick={() => {
-                                            if (record.thumbnail_url){
+                                            if (record.thumbnail_url) {
                                                 navigator.clipboard.writeText(record.thumbnail_url);
                                             }
                                         }}
@@ -150,8 +163,8 @@ function DashboardScreen() {
                                         Copy Thumbnail URL
                                     </button>
 
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         disabled={!record.full_url}
                                         onClick={() => {
                                             if (record.full_url) {

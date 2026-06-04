@@ -80,6 +80,7 @@ export type MediaRecordStatus =
 export type MediaRecordResponse = {
   owner_id: string;
   file_name: string;
+  checksum: string;
   visibility: MediaVisibility;
   full_presigned_url?: string | null;
   thumbnail_presigned_url?: string | null;

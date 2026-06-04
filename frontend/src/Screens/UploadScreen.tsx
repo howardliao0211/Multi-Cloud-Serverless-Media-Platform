@@ -243,8 +243,6 @@ function UploadScreen() {
         }
     }
 
-
-
     return (
         <main className="dashboard-content">
             <h1>Upload Media</h1>
