@@ -83,7 +83,7 @@ def lambda_handler(event, context):
     owner_id = get_current_user(event)
     request = parse_request(event)
 
-    request.file_name, file_ext = normalize_file_extension(request.file_name)
+    _, file_ext = normalize_file_extension(request.file_name)
     s3_filename = f"{request.checksum}.{file_ext}"
     s3_key = build_s3_key(s3_filename, request.media_type.value)
     db_key = build_db_key(owner_id, s3_key)
