@@ -62,7 +62,6 @@ then
     --handler "app.lambda_handler" \
     --timeout "$TIMEOUT" \
     --memory-size "$MEMORY" \
-    --architectures "$ARCHITECTURE" \
     --region "$AWS_REGION" \
     --profile "$AWS_PROFILE" >/dev/null
 else
