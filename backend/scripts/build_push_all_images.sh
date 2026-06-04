@@ -103,7 +103,7 @@ require_file() {
   fi
 }
 
-build_image() {
+build_image_docker() {
   local platform="$1"
   local tag="$2"
   local dockerfile="$3"
@@ -112,7 +112,34 @@ build_image() {
 
   echo ""
   echo "============================================================"
-  echo "Building image: ${tag}"
+  echo "Building local Docker image: ${tag}"
+  echo "Platform: ${platform}"
+  echo "Dockerfile: ${dockerfile}"
+  echo "Context: ${context}"
+  echo "============================================================"
+
+  # Use the normal Docker builder for AWS Lambda images because their
+  # Dockerfiles depend on local base images such as ml_base:latest and
+  # lambda_python_base:latest. The buildx docker-container driver may not
+  # see those local images and may try to pull them from Docker Hub.
+  docker build \
+    --platform "${platform}" \
+    -t "${tag}" \
+    -f "${dockerfile}" \
+    "$@" \
+    "${context}"
+}
+
+build_image_buildx() {
+  local platform="$1"
+  local tag="$2"
+  local dockerfile="$3"
+  local context="$4"
+  shift 4
+
+  echo ""
+  echo "============================================================"
+  echo "Building buildx image: ${tag}"
   echo "Platform: ${platform}"
   echo "Dockerfile: ${dockerfile}"
   echo "Context: ${context}"
@@ -230,7 +257,7 @@ ensure_ecr_repo "${QUERY_FILE_REPO}"
 
 # ---------- AWS base images ----------
 # Lightweight Lambda Python base for non-ML container Lambdas.
-build_image \
+build_image_docker \
   "${AWS_DOCKER_PLATFORM}" \
   "${AWS_LAMBDA_PYTHON_BASE_IMAGE_NAME}:latest" \
   "${AWS_LAMBDA_PYTHON_BASE_DOCKERFILE}" \
@@ -240,7 +267,7 @@ build_image \
 # This is local-only because child Dockerfiles use FROM ml_base:latest.
 # If you later want this pushed too, create an ECR repo for it and change
 # child Dockerfiles to FROM <remote-uri>.
-build_image \
+build_image_docker \
   "${AWS_DOCKER_PLATFORM}" \
   "${AWS_BASE_IMAGE_NAME}:latest" \
   "${AWS_BASE_DOCKERFILE}" \
@@ -255,7 +282,7 @@ TAG_IMAGE_REMOTE="${AWS_ECR_REGISTRY}/${TAG_IMAGE_REPO}:${TAG_IMAGE_TAG}"
 TAG_VIDEO_REMOTE="${AWS_ECR_REGISTRY}/${TAG_VIDEO_REPO}:${TAG_VIDEO_TAG}"
 QUERY_FILE_REMOTE="${AWS_ECR_REGISTRY}/${QUERY_FILE_REPO}:${QUERY_FILE_TAG}"
 
-build_image \
+build_image_docker \
   "${AWS_DOCKER_PLATFORM}" \
   "${TAG_IMAGE_LOCAL}" \
   "${TAG_IMAGE_DOCKERFILE}" \
@@ -264,7 +291,7 @@ build_image \
 docker tag "${TAG_IMAGE_LOCAL}" "${TAG_IMAGE_REMOTE}"
 push_image "${TAG_IMAGE_REMOTE}"
 
-build_image \
+build_image_docker \
   "${AWS_DOCKER_PLATFORM}" \
   "${TAG_VIDEO_LOCAL}" \
   "${TAG_VIDEO_DOCKERFILE}" \
@@ -273,7 +300,7 @@ build_image \
 docker tag "${TAG_VIDEO_LOCAL}" "${TAG_VIDEO_REMOTE}"
 push_image "${TAG_VIDEO_REMOTE}"
 
-build_image \
+build_image_docker \
   "${AWS_DOCKER_PLATFORM}" \
   "${QUERY_FILE_LOCAL}" \
   "${QUERY_FILE_DOCKERFILE}" \
@@ -283,7 +310,7 @@ docker tag "${QUERY_FILE_LOCAL}" "${QUERY_FILE_REMOTE}"
 push_image "${QUERY_FILE_REMOTE}"
 
 # ---------- GCP base image ----------
-build_image \
+build_image_buildx \
   "${GCP_DOCKER_PLATFORM}" \
   "${GCP_BASE_IMAGE_URL}" \
   "${GCP_BASE_DOCKERFILE}" \
@@ -292,7 +319,7 @@ build_image \
 push_image "${GCP_BASE_IMAGE_URL}"
 
 # ---------- GCP app image ----------
-build_image \
+build_image_buildx \
   "${GCP_DOCKER_PLATFORM}" \
   "${GCP_APP_IMAGE_URL}" \
   "${GCP_APP_DOCKERFILE}" \
@@ -318,9 +345,9 @@ echo ""
 echo "Next deploy commands:"
 echo ""
 echo "AWS:"
-echo "  FUNCTION_NAME=tag_image IMAGE_TAG=${TAG_IMAGE_TAG} AWS_REGION=${AWS_REGION} bash backend/scripts/deploy_container_function.sh"
-echo "  FUNCTION_NAME=tag_video IMAGE_TAG=${TAG_VIDEO_TAG} AWS_REGION=${AWS_REGION} bash backend/scripts/deploy_container_function.sh"
-echo "  FUNCTION_NAME=query_file IMAGE_TAG=${QUERY_FILE_TAG} AWS_REGION=${AWS_REGION} bash backend/scripts/deploy_container_function.sh"
+echo "  BUILD_AND_PUSH_IMAGE=false FUNCTION_NAME=tag_image IMAGE_TAG=${TAG_IMAGE_TAG} AWS_REGION=${AWS_REGION} bash backend/scripts/deploy_container_function.sh"
+echo "  BUILD_AND_PUSH_IMAGE=false FUNCTION_NAME=tag_video IMAGE_TAG=${TAG_VIDEO_TAG} AWS_REGION=${AWS_REGION} bash backend/scripts/deploy_container_function.sh"
+echo "  BUILD_AND_PUSH_IMAGE=false FUNCTION_NAME=query_file IMAGE_TAG=${QUERY_FILE_TAG} AWS_REGION=${AWS_REGION} bash backend/scripts/deploy_container_function.sh"
 echo ""
 echo "GCP:"
 echo "  gcloud run deploy aussie-eco-len-us-demo-ml-processor \\"
