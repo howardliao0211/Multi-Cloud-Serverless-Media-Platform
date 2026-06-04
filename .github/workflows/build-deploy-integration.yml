@@ -10,89 +10,117 @@ on:
             - main
 
 permissions:
-  contents: read
-  id-token: write
+    contents: read
+    id-token: write
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  AWS_ARCHITECTURE: x86_64
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  GCP_REGION: ${{ vars.GCP_REGION }}
-  GCP_APP_IMAGE_URL: ${{ secrets.GCP_APP_IMAGE_URL }}
-  TEST_VIDEO_PATH: tests/integration/test_video.mp4
+    AWS_REGION: ${{ secrets.AWS_REGION }}
+    AWS_ARCHITECTURE: x86_64
+    GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+    GCP_REGION: ${{ vars.GCP_REGION }}
+    GCP_APP_IMAGE_URL: ${{ secrets.GCP_APP_IMAGE_URL }}
+    TEST_VIDEO_PATH: tests/integration/test_video.mp4
 
 jobs:
-  build-deploy-test:
-    name: Build images, deploy functions, run integration tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
+    build-deploy-test:
+        name: Build images, deploy functions, run integration tests
+        runs-on: ubuntu-latest
+        timeout-minutes: 180
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+                  cache: "pip"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
 
-      - name: Validate required Google Cloud variables
-        run: |
-          test -n "${{ vars.GCP_PROJECT_ID }}" || (echo "Missing repo variable GCP_PROJECT_ID" && exit 1)
-          test -n "${{ vars.GCP_REGION }}" || (echo "Missing repo variable GCP_REGION" && exit 1)
-          test -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing repo variable GCP_WORKLOAD_IDENTITY_PROVIDER" && exit 1)
-          test -n "${{ vars.GCP_SERVICE_ACCOUNT }}" || (echo "Missing repo variable GCP_SERVICE_ACCOUNT" && exit 1)
+            - name: Free runner disk space
+              run: |
+                  echo "Disk before cleanup:"
+                  df -h
 
-      - id: gcp-auth
-        name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+                  # These preinstalled SDKs/toolchains are not needed for this workflow and
+                  # take a lot of space on ubuntu-latest runners.
+                  sudo rm -rf /usr/share/dotnet
+                  sudo rm -rf /usr/local/lib/android
+                  sudo rm -rf /opt/ghc
+                  sudo rm -rf /opt/hostedtoolcache/CodeQL
 
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
+                  # Clear Docker data before the heavy image build starts.
+                  docker system prune -af || true
+                  docker builder prune -af || true
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            aws-region: ${{ secrets.AWS_REGION }}
+                  echo "Disk after cleanup:"
+                  df -h
+                  docker system df || true
 
-      - name: Verify cloud identities
-        run: |
-          aws sts get-caller-identity
-          gcloud auth list
-          gcloud config set project "$GCP_PROJECT_ID"
+            - name: Validate required Google Cloud variables
+              run: |
+                  test -n "${{ vars.GCP_PROJECT_ID }}" || (echo "Missing repo variable GCP_PROJECT_ID" && exit 1)
+                  test -n "${{ vars.GCP_REGION }}" || (echo "Missing repo variable GCP_REGION" && exit 1)
+                  test -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing repo variable GCP_WORKLOAD_IDENTITY_PROVIDER" && exit 1)
+                  test -n "${{ vars.GCP_SERVICE_ACCOUNT }}" || (echo "Missing repo variable GCP_SERVICE_ACCOUNT" && exit 1)
 
-      - name: Stage GCP model files
-        run: |
-          mkdir -p gcp/ml_processor/models
-          cp models/model.pt gcp/ml_processor/models/model.pt
-          cp models/mdv5a.pt gcp/ml_processor/models/mdv5a.pt
+            - id: gcp-auth
+              name: Authenticate to Google Cloud
+              uses: google-github-actions/auth@v3
+              with:
+                  workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
-      - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e tests
+            - name: Set up Google Cloud SDK
+              uses: google-github-actions/setup-gcloud@v3
 
-      - name: Run build_all_image
-        run: |
-          chmod +x backend/scripts/build_push_all_images.sh
-          bash backend/scripts/build_push_all_images.sh
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Run deploy_all_functions
-        env:
-          LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}
-        run: |
-          chmod +x backend/scripts/deploy_all_functions.sh
-          bash backend/scripts/deploy_all_functions.sh
+            - name: Verify cloud identities
+              run: |
+                  aws sts get-caller-identity
+                  gcloud auth list
+                  gcloud config set project "$GCP_PROJECT_ID"
 
-      - name: Run integration tests
-        run: |
-          pytest tests/integration -vv -s
+            - name: Stage GCP model files
+              run: |
+                  mkdir -p gcp/ml_processor/models
+                  cp models/model.pt gcp/ml_processor/models/model.pt
+                  cp models/mdv5a.pt gcp/ml_processor/models/mdv5a.pt
+
+            - name: Install test dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  python -m pip install -e tests
+
+            - name: Run build_all_image
+              run: |
+                  echo "Disk before image build:"
+                  df -h
+                  docker system df || true
+
+                  chmod +x backend/scripts/build_push_all_images.sh
+                  bash backend/scripts/build_push_all_images.sh
+
+                  echo "Disk after image build:"
+                  df -h
+                  docker system df || true
+
+            - name: Run deploy_all_functions
+              env:
+                  LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}
+              run: |
+                  chmod +x backend/scripts/deploy_all_functions.sh
+                  bash backend/scripts/deploy_all_functions.sh
+
+            - name: Run integration tests
+              run: |
+                  pytest tests/integration -vv -s

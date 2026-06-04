@@ -145,11 +145,14 @@ build_image_buildx() {
   echo "Context: ${context}"
   echo "============================================================"
 
+  # For large GCP GPU images, push directly instead of using --load.
+  # --load imports the full image into the local Docker daemon and can easily
+  # exhaust the small disk available on GitHub-hosted runners.
   docker buildx build \
     --platform "${platform}" \
     --provenance=false \
     --sbom=false \
-    --load \
+    --push \
     -t "${tag}" \
     -f "${dockerfile}" \
     "$@" \
@@ -178,6 +181,29 @@ ensure_ecr_repo() {
     "${AWS_CLI_ARGS[@]}" \
     --image-scanning-configuration scanOnPush=true \
     --image-tag-mutability MUTABLE >/dev/null
+}
+
+show_disk_usage() {
+  echo ""
+  echo "Disk usage:"
+  df -h
+  echo ""
+  echo "Docker disk usage:"
+  docker system df || true
+}
+
+cleanup_docker_disk() {
+  echo ""
+  echo "============================================================"
+  echo "Cleaning Docker disk usage"
+  echo "============================================================"
+
+  # Remove unused images, containers, networks, and build cache.
+  # This is important on GitHub-hosted runners because GPU/ML images are huge.
+  docker system prune -af || true
+  docker builder prune -af || true
+
+  show_disk_usage
 }
 
 # ---------- Preflight ----------
@@ -227,6 +253,7 @@ echo "GCP region: ${GCP_REGION}"
 echo "GCP Docker platform: ${GCP_DOCKER_PLATFORM}"
 echo "GCP base image: ${GCP_BASE_IMAGE_URL}"
 echo "GCP app image: ${GCP_APP_IMAGE_URL}"
+show_disk_usage
 
 # ---------- AWS login ----------
 echo ""
@@ -309,6 +336,10 @@ build_image_docker \
 docker tag "${QUERY_FILE_LOCAL}" "${QUERY_FILE_REMOTE}"
 push_image "${QUERY_FILE_REMOTE}"
 
+# AWS images are now pushed to ECR. Free the runner's small Docker disk before
+# building large GCP GPU images.
+cleanup_docker_disk
+
 # ---------- GCP base image ----------
 build_image_buildx \
   "${GCP_DOCKER_PLATFORM}" \
@@ -316,7 +347,7 @@ build_image_buildx \
   "${GCP_BASE_DOCKERFILE}" \
   "${GCP_CONTEXT}"
 
-push_image "${GCP_BASE_IMAGE_URL}"
+# build_image_buildx uses --push, so no separate docker push is needed.
 
 # ---------- GCP app image ----------
 build_image_buildx \
@@ -326,7 +357,7 @@ build_image_buildx \
   "${GCP_CONTEXT}" \
   --build-arg "BASE_IMAGE=${GCP_BASE_IMAGE_URL}"
 
-push_image "${GCP_APP_IMAGE_URL}"
+# build_image_buildx uses --push, so no separate docker push is needed.
 
 # ---------- Summary ----------
 echo ""
