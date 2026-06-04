@@ -157,8 +157,8 @@ function QueryScreen() {
                 file_name: data.file_name,
                 visibility: data.visibility,
                 media_type: null,
-                url: data.url,
-                thumbnail_url: data.thumbnail_url,
+                full_presigned_url: data.full_presigned_url,
+                thumbnail_presigned_url: data.thumbnail_presigned_url,
                 tags: {},
             };
 
@@ -390,9 +390,9 @@ function QueryScreen() {
 
                     <div className="selected-tags">
                         {Object.entries(detectedTags).map(([tag, count]) => (
-                        <span key={tag} className="tag-pill">
-                            {tag} : {count} x
-                        </span>
+                            <span key={tag} className="tag-pill">
+                                {tag} : {count} x
+                            </span>
                         ))}
                     </div>
                 </section>
@@ -409,12 +409,55 @@ function QueryScreen() {
 
                 {!isLoading && !error && resultCount > 0 && (
                     <p>
-                        {resultCount} result{resultCount === 1 ? "": "s"} found.
+                        {resultCount} result{resultCount === 1 ? "" : "s"} found.
                     </p>
                 )}
 
+                <div className="media-cards-grid">
+                    {results.map((result) => {
+                        const preThumbUrl = result.thumbnail_presigned_url ?? result.full_presigned_url ?? "";
+                        const preFullUrl = result.thumbnail_presigned_url ?? preThumbUrl;
+
+                        return (
+                            <article
+                                key={`${result.checksum}-${result.file_name}`}
+                                className="media-card"
+                            >
+                                <div className="media-thumbnail">
+                                    {preThumbUrl ? (
+                                        <img
+                                            src={preThumbUrl}
+                                            alt={`${result.file_name} thumbnail`}
+                                            onClick={() => {
+                                                if (preFullUrl) {
+                                                    window.open(preFullUrl, "_blank");
+                                                }
+                                            }}
+                                        />
+                                    ) : (
+                                        <span>No thumbnail available</span>
+                                    )}
+                                </div>
+
+                                <p>
+                                    File: <strong>{result.file_name}</strong>
+                                </p>
+
+                                <p>
+                                    Visibility: <strong>{result.visibility}</strong>
+                                </p>
+
+                                {result.media_type && (
+                                    <p>
+                                        Type: <strong>{result.media_type}</strong>
+                                    </p>
+                                )}
+                            </article>
+                        );
+                    })}
+                </div>
             </section>
-        </main>
+        </main >
     );
 }
 export default QueryScreen;

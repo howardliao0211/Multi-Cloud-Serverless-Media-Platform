@@ -117,8 +117,8 @@ export type QueryMediaResult = {
   file_name: string;
   visibility: MediaVisibility;
   media_type?: string | null;
-  url?: string | null;
-  thumbnail_url?: string | null;
+  full_presigned_url?: string | null;
+  thumbnail_presigned_url?: string | null;
   tags: Record<string, number>;
 };
 
@@ -136,8 +136,8 @@ export type QueryThumbnailUrlResponse = {
   checksum: string;
   file_name: string;
   visibility: MediaVisibility;
-  url: string;
-  thumbnail_url: string;
+  full_presigned_url?: string | null;
+  thumbnail_presigned_url?: string | null;
 };
 
 export type QueryFileResponse = {
