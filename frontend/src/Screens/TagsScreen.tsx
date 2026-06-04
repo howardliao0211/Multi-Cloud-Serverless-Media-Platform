@@ -3,7 +3,6 @@ import { useState } from "react";
 function TagsScreen(){
     const [tagUrlText, setTagUrlText] = useState<string>("");
     const [tagText, setTagText] = useState<string>("");
-    const [deleteUrlText, setDeleteUrlText] = useState<string>("");
     const [operation, setOperation] = useState<1 | 0>(1);
     
     function handleTagChange(event: React.ChangeEvent<HTMLInputElement>){
@@ -25,7 +24,7 @@ function TagsScreen(){
 
     return(
         <main className="dashboard-content">
-            <h1>Manage Tags and Files</h1>
+            <h1>Manage Tags</h1>
 
             <section className="search-card">
                 <h2>Bulk Tag Modification</h2>
@@ -43,13 +42,6 @@ function TagsScreen(){
                 <button className="button-row" type="button" onClick={handleApplyChanges}>Apply Changes</button>
             </section>
 
-            <section className="search-card">
-                <h2>⚠️ Delete Files</h2>
-                <p>Files, thumbnails, and all database entries will be permanently removed.</p>
-                <p>File URLs to delete (one per line)</p>
-                <textarea value={deleteUrlText} onChange={(event) => setDeleteUrlText(event.target.value)} placeholder="https://s3.amazonaws.com/bucket/file.jpg" />
-                <button className="button-row" type="button">Delete Files</button>
-            </section>
         </main>
     );
 }

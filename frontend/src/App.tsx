@@ -11,6 +11,7 @@ import UploadScreen from "./Screens/UploadScreen.tsx";
 import QueryScreen from "./Screens/QueryScreen.tsx";
 import TagsScreen from "./Screens/TagsScreen.tsx";
 import NotificationScreen from "./Screens/NotificationScreen.tsx";
+import DeleteScreen from "./Screens/DeleteScreen.tsx";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -95,9 +96,10 @@ function App() {
           </ProtectedRoute>
         }
       >
+        <Route path="tags" element={<TagsScreen />} />
+        <Route path="delete" element={<DeleteScreen />} />
         <Route path="upload" element={<UploadScreen />} />
         <Route path="search" element={<QueryScreen />} />
-        <Route path="tags" element={<TagsScreen />} />
         <Route path="notifications" element={<NotificationScreen />} />
         <Route path="account" element={<AccountScreen />} />
       </Route>

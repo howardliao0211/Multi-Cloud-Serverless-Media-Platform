@@ -67,9 +67,10 @@ function DashboardScreen() {
                     <h1>Aussie EcoLens</h1>
                 </NavLink>
                 <nav className="dashboard-nav">
+                    <NavLink to="/dashboard/delete">Delete</NavLink>
+                    <NavLink to="/dashboard/tags">Tags</NavLink>
                     <NavLink to="/dashboard/upload">Upload</NavLink>
                     <NavLink to="/dashboard/search">Search</NavLink>
-                    <NavLink to="/dashboard/tags">Tags</NavLink>
                     <NavLink to="/dashboard/notifications">Notifications</NavLink>
                     <NavLink to="/dashboard/account">Account</NavLink>
                 </nav>
