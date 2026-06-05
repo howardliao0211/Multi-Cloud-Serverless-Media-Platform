@@ -78,7 +78,9 @@ class MediaRecordResponse(BaseModel):
     error_message: Optional[str]
 
     @classmethod
-    def from_media_record(cls, media_record: MediaRecord, s3, bucket_name, expires_seconds=300):
+    def from_media_record(
+        cls, media_record: MediaRecord, s3, bucket_name, expires_seconds=300
+    ):
         full_presigned_url = s3.generate_presigned_url(
             ClientMethod="get_object",
             Params={
@@ -194,11 +196,7 @@ class EditTagsRequest(BaseModel):
     @field_validator("urls")
     @classmethod
     def validate_urls(cls, urls: List[str]) -> List[str]:
-        normalized_urls = [
-            url.strip()
-            for url in urls
-            if url.strip()
-        ]
+        normalized_urls = [url.strip() for url in urls if url.strip()]
 
         if not normalized_urls:
             raise ValueError("urls must not be empty")
@@ -212,7 +210,8 @@ class EditTagsRequest(BaseModel):
 
         for tag_count in tags:
             if len(tag_count) != 1:
-                raise ValueError("each tag count must contain exactly one species")
+                raise ValueError(
+                    "each tag count must contain exactly one species")
 
             raw_tag, raw_count = next(iter(tag_count.items()))
             tag = raw_tag.strip().lower()
@@ -253,11 +252,7 @@ class DeleteFileRequest(BaseModel):
     @field_validator("urls")
     @classmethod
     def validate_urls(cls, urls: List[str]) -> List[str]:
-        normalized_urls = [
-            url.strip()
-            for url in urls
-            if url.strip()
-        ]
+        normalized_urls = [url.strip() for url in urls if url.strip()]
 
         if not normalized_urls:
             raise ValueError("urls must not be empty")
@@ -284,3 +279,18 @@ class DeleteFileResponse(BaseModel):
 class MediaUploadStatusResponse(BaseModel):
     upload_status: MediaRecordStatus
     error_message: Optional[str]
+
+
+class SNSSubscribeRequest(BaseModel):
+    email: str
+    tags: List[str]
+
+
+class SNSSubscribeResponse(BaseModel):
+    email: str
+    tags: List[str]
+    subscription_arn: Optional[str]
+
+
+class SNSUnsubscribeRequest(BaseModel):
+    email: str

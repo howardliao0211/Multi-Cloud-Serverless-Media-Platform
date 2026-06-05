@@ -2,7 +2,6 @@ from http import HTTPMethod, HTTPStatus
 from typing import Iterable, Literal
 import json
 
-
 FRONTEND_ORIGIN = "https://dqgriz8bwuql1.cloudfront.net"
 
 
@@ -10,23 +9,16 @@ def get_current_user(event):
     return event["requestContext"]["authorizer"]["jwt"]["claims"]["sub"]
 
 
-def build_s3_key(
-    key_name: str,
-    media_type: Literal["image", "video"]
-) -> str:
+def build_s3_key(key_name: str, media_type: Literal["image", "video"]) -> str:
     assert media_type in ("image", "video")
     return f"{media_type}s/{key_name}"
 
 
-def build_thumbnail_s3_key(
-    key_name: str
-) -> str:
+def build_thumbnail_s3_key(key_name: str) -> str:
     return f"thumbnails/{key_name}"
 
 
-def build_db_key(
-    owner_id: str, s3_key: str
-):
+def build_db_key(owner_id: str, s3_key: str):
     return f"OWNER#{owner_id}#KEY#{s3_key}"
 
 
@@ -51,7 +43,8 @@ def build_response_message(
 if __name__ == "__main__":
     print(
         build_response_message(
-            HTTPStatus.OK, {"message": "Hello World"}, [
-                HTTPMethod.POST, HTTPMethod.OPTIONS]
+            HTTPStatus.OK,
+            {"message": "Hello World"},
+            [HTTPMethod.POST, HTTPMethod.OPTIONS],
         )
     )
