@@ -50,20 +50,22 @@ def find_user_media_by_url(
     return None
 
 
-def normalize_requested_tag_deltas(
-    tag_deltas: list[dict[str, int]],
+def build_requested_tag_deltas(
+    request: EditTagsRequest,
 ) -> tuple[dict[str, int], list[str]]:
     valid_tag_deltas: dict[str, int] = {}
     invalid_tags: list[str] = []
+    direction = 1 if request.operation_key == 1 else -1
 
-    for tag_delta in tag_deltas:
-        raw_tag, delta = next(iter(tag_delta.items()))
+    for tag_count in request.tags:
+        raw_tag, count = next(iter(tag_count.items()))
         normalized_tag = normalize_species_tag(raw_tag)
 
         if normalized_tag is None:
             invalid_tags.append(raw_tag)
             continue
 
+        delta = count * direction
         valid_tag_deltas[normalized_tag] = (
             valid_tag_deltas.get(normalized_tag, 0) + delta
         )
@@ -96,7 +98,7 @@ def apply_tag_deltas_to_media(
 def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResponse:
     results: list[EditTagsResult] = []
     updated_count = 0
-    valid_tag_deltas, invalid_tags = normalize_requested_tag_deltas(request.tags)
+    valid_tag_deltas, invalid_tags = build_requested_tag_deltas(request)
     media_records = scan_media_record(table)
 
     for url in request.urls:

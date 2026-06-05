@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from shared.utils import build_db_key
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -189,6 +189,7 @@ class ChangeVisibilityRequest(BaseModel):
 class EditTagsRequest(BaseModel):
     urls: List[str]
     tags: List[Dict[str, int]]
+    operation_key: Literal[0, 1]
 
     @field_validator("urls")
     @classmethod
@@ -207,29 +208,29 @@ class EditTagsRequest(BaseModel):
     @field_validator("tags")
     @classmethod
     def validate_tags(cls, tags: List[Dict[str, int]]) -> List[Dict[str, int]]:
-        normalized_tag_deltas: List[Dict[str, int]] = []
+        normalized_tags: List[Dict[str, int]] = []
 
-        for tag_delta in tags:
-            if len(tag_delta) != 1:
-                raise ValueError("each tag delta must contain exactly one species")
+        for tag_count in tags:
+            if len(tag_count) != 1:
+                raise ValueError("each tag count must contain exactly one species")
 
-            raw_tag, raw_delta = next(iter(tag_delta.items()))
+            raw_tag, raw_count = next(iter(tag_count.items()))
             tag = raw_tag.strip().lower()
 
             if not tag:
                 raise ValueError("tag names must not be empty")
 
-            delta = int(raw_delta)
+            count = int(raw_count)
 
-            if delta == 0:
-                raise ValueError("tag deltas must not be zero")
+            if count < 1:
+                raise ValueError("tag counts must be at least 1")
 
-            normalized_tag_deltas.append({tag: delta})
+            normalized_tags.append({tag: count})
 
-        if not normalized_tag_deltas:
+        if not tags:
             raise ValueError("tags must not be empty")
 
-        return normalized_tag_deltas
+        return normalized_tags
 
 
 class EditTagsResult(BaseModel):
