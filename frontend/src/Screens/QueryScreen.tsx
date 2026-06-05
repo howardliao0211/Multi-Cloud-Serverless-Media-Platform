@@ -26,14 +26,14 @@ function QueryScreen() {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const [results, setResults] = useState<MediaRecordResponse[]>([]);
-    // const [detectedTags, setDetectedTags] = useState<Record<string, number>>({});
+    const [detectedTags, setDetectedTags] = useState<Record<string, number>>({});
     const [resultCount, setResultCount] = useState<number>(0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
     function resetSearchState() {
         setResults([]);
-        // setDetectedTags({});
+        setDetectedTags({});
         setResultCount(0);
         setError(null);
     }
@@ -89,7 +89,7 @@ function QueryScreen() {
 
         setIsLoading(true);
         setError(null);
-        // setDetectedTags({});
+        setDetectedTags({});
 
         try {
             const data = await authFetch<QueryTagsResponse>("/query_tags", {
@@ -116,7 +116,7 @@ function QueryScreen() {
 
         setIsLoading(true);
         setError(null);
-        // setDetectedTags({});
+        setDetectedTags({});
 
         try {
             const data = await authFetch<QuerySpeciesResponse>("/query_species", {
@@ -145,7 +145,7 @@ function QueryScreen() {
 
         setIsLoading(true);
         setError(null);
-        // setDetectedTags({});
+        setDetectedTags({});
 
         try {
             const data = await authFetch<QueryThumbnailUrlResponse>("/query_thumbnail_url", {
@@ -191,7 +191,7 @@ function QueryScreen() {
                 }),
             });
 
-            // setDetectedTags(data.detected_tags ?? {});
+            setDetectedTags(data.detected_tags ?? {});
             setResults(data.media_records ?? []);
             setResultCount(data.media_records?.length ?? 0);
         } catch (error) {
@@ -380,7 +380,7 @@ function QueryScreen() {
                 {error && <p className="error-message">{error}</p>}
             </section>
 
-            {/* {Object.keys(detectedTags).length > 0 && (
+            {Object.keys(detectedTags).length > 0 && (
                 <section className="search-card">
                     <h2>Detected Tags</h2>
 
@@ -392,7 +392,7 @@ function QueryScreen() {
                         ))}
                     </div>
                 </section>
-            )} */}
+            )}
 
             <section className="search-card">
                 <h2>Results</h2>

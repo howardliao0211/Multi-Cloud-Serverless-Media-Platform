@@ -168,7 +168,7 @@ export type QueryTagsResponse = GetMediaResponse;
 export type QuerySpeciesResponse = GetMediaResponse;
 
 export type QueryFileResponse = {
-  // detected_tags: Record<string, number>;
+  detected_tags: Record<string, number>;
   media_records: MediaRecordResponse[];
 };
 
