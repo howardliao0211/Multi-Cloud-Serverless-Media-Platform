@@ -4,16 +4,6 @@ from shared.utils import build_db_key
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class Subscription(BaseModel):
-    email: str
-    tag: str
-
-
-class SubscriptionResponse(BaseModel):
-    email: str
-    tags: List[str]
-
-
 class MediaType(str, Enum):
     image = "image"
     video = "video"
@@ -219,7 +209,8 @@ class EditTagsRequest(BaseModel):
 
         for tag_delta in tags:
             if len(tag_delta) != 1:
-                raise ValueError("each tag delta must contain exactly one species")
+                raise ValueError(
+                    "each tag delta must contain exactly one species")
 
             raw_tag, raw_delta = next(iter(tag_delta.items()))
             tag = raw_tag.strip().lower()
@@ -294,5 +285,11 @@ class SNSSubscribeRequest(BaseModel):
     tags: List[str]
 
 
-class UnsubscribeRequest(BaseModel):
+class SNSSubscribeResponse(BaseModel):
+    email: str
+    tags: List[str]
+    subscription_arn: Optional[str]
+
+
+class SNSUnsubscribeRequest(BaseModel):
     email: str

@@ -1,13 +1,11 @@
 import json
-import os
-from typing import Literal
 from http import HTTPMethod, HTTPStatus
 
-from shared.schemas import SNSSubscribeRequest, Subscription, SubscriptionResponse
-from shared.aws_resources import subscribe_email_to_tags, get_sub_table
+from shared.schemas import SNSSubscribeRequest, SNSSubscribeResponse
+from shared.aws_resources import get_sns_and_topic_arn
 from shared.utils import build_response_message
 
-sub_table = get_sub_table()
+sns, topic_arn = get_sns_and_topic_arn()
 
 
 def parse_request(
@@ -20,17 +18,32 @@ def parse_request(
 def subscribe_email_to_tags(
     email: str,
     tags: list[str],
-    subscription_table,
-) -> SubscriptionResponse:
-
+    sns_client,
+    topic_arn: str,
+):
     email = email.strip().lower()
-    tags = [tag.lower().strip() for tag in tags]
+    tags = [tag.strip().lower() for tag in tags]
 
-    for tag in tags:
-        sub = Subscription(tag=tag, email=email)
-        subscription_table.put_item(Item=sub.model_dump("json"))
+    filter_policy = {
+        "tag": tags
+    }
 
-    return SubscriptionResponse(email=email, tags=tags)
+    response = sns_client.subscribe(
+        TopicArn=topic_arn,
+        Protocol="email",
+        Endpoint=email,
+        ReturnSubscriptionArn=True,
+        Attributes={
+            "FilterPolicy": json.dumps(filter_policy),
+            "FilterPolicyScope": "MessageAttributes",
+        },
+    )
+
+    return SNSSubscribeResponse(
+        email=email,
+        tags=tags,
+        subscription_arn=response.get("SubscriptionArn")
+    )
 
 
 def lambda_handler(event, context):
@@ -47,10 +60,10 @@ def lambda_handler(event, context):
     request = parse_request(event)
     email = request.email
     tags = request.tags
-    res = subscribe_email_to_tags(email, tags, sub_table)
+    res = subscribe_email_to_tags(email, tags, sns, topic_arn)
 
     return build_response_message(
         status_code=HTTPStatus.OK,
-        body={res.model_dump("json")},
+        body=res.model_dump(mode="json"),
         allow_http_methods=[HTTPMethod.POST],
     )

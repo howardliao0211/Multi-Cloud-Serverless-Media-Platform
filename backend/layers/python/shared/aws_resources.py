@@ -10,20 +10,17 @@ from urllib.parse import quote
 from shared.schemas import (
     MediaRecord,
     MediaRecordStatus,
-    Subscription,
-    SubscriptionResponse,
 )
 
 BUCKET_NAME = "aussie-eco-len-bucket-12345"
 TABLE_NAME = "aussie-eco-len-media"
-SUB_TABLE_NAME = "media-sub-table"
 REGION_NAME = "us-east-1"
 SNS_TOPIC_ARN = "arn:aws:sns:us-east-1:539913718279:image-tag-notifications"
 
 
-def get_sub_table():
-    dynamodb = boto3.resource("dynamodb")
-    return dynamodb.Table(SUB_TABLE_NAME)
+def get_sns_and_topic_arn():
+    sns = boto3.client("sns")
+    return sns, SNS_TOPIC_ARN
 
 
 def get_bucket_and_name():

@@ -6,6 +6,7 @@ ROLE_NAME="${ROLE_NAME:-aussie-eco-len-lambda-role}"
 
 MEDIA_TABLE_NAME="${MEDIA_TABLE_NAME:-aussie-eco-len-media}"
 BUCKET_NAME="${BUCKET_NAME:-aussie-eco-len-bucket-12345}"
+SNS_TOPIC_NAME="${SNS_TOPIC_NAME:-image-tag-notifications}"
 
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 
@@ -13,6 +14,7 @@ echo "Account ID: ${ACCOUNT_ID}"
 echo "Creating/updating Lambda role: ${ROLE_NAME}"
 echo "Media table: ${MEDIA_TABLE_NAME}"
 echo "Bucket: ${BUCKET_NAME}"
+echo "SNS topic: ${SNS_TOPIC_NAME}"
 
 cat > /tmp/lambda-trust-policy.json <<'EOF'
 {
@@ -53,14 +55,16 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
   "Version": "2012-10-17",
   "Statement": [
     {
-        "Sid": "AllowSubscribeToImageTagNotifications",
-        "Effect": "Allow",
-        "Action": [
-            "sns:Subscribe",
-            "sns:SetSubscriptionAttributes",
-            "sns:ListSubscriptionsByTopic"
-        ],
-        "Resource": "arn:aws:sns:us-east-1:539913718279:image-tag-notifications"
+      "Sid": "SNSImageTagNotificationsAccess",
+      "Effect": "Allow",
+      "Action": [
+        "sns:Subscribe",
+        "sns:SetSubscriptionAttributes",
+        "sns:ListSubscriptionsByTopic",
+        "sns:Unsubscribe",
+        "sns:Publish"
+      ],
+      "Resource": "arn:aws:sns:${AWS_REGION}:${ACCOUNT_ID}:${SNS_TOPIC_NAME}"
     },
     {
       "Sid": "DynamoDBMediaTableAccess",
@@ -74,6 +78,17 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
         "dynamodb:Scan"
       ],
       "Resource": "arn:aws:dynamodb:${AWS_REGION}:${ACCOUNT_ID}:table/${MEDIA_TABLE_NAME}"
+    },
+    {
+      "Sid": "DynamoDBStreamReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:DescribeStream",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:ListStreams"
+      ],
+      "Resource": "arn:aws:dynamodb:${AWS_REGION}:${ACCOUNT_ID}:table/${MEDIA_TABLE_NAME}/stream/*"
     },
     {
       "Sid": "S3UploadedMediaReadAccess",
@@ -113,7 +128,8 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
           "s3:prefix": [
             "images/*",
             "videos/*",
-            "thumbnails/*"
+            "thumbnails/*",
+            "models/*"
           ]
         }
       }
@@ -122,7 +138,7 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
 }
 EOF
 
-echo "Adding inline S3/DynamoDB policy..."
+echo "Adding inline Lambda application policy..."
 aws iam put-role-policy \
   --role-name "${ROLE_NAME}" \
   --policy-name aussie-eco-len-lambda-policy \

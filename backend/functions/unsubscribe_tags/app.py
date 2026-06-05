@@ -1,62 +1,82 @@
 import json
 import os
-from typing import Literal
+from typing import Optional
 from http import HTTPMethod, HTTPStatus
 
-from shared.schemas import UnsubscribeRequest, SubscriptionResponse
-from shared.aws_resources import subscribe_email_to_tags, get_sub_table
+from shared.schemas import SNSUnsubscribeRequest
+from shared.aws_resources import get_sns_and_topic_arn
 from shared.utils import build_response_message
 
-sub_table = get_sub_table()
+sns, topic_arn = get_sns_and_topic_arn()
 
 
 def parse_request(
     event: dict,
-) -> UnsubscribeRequest | None:
+) -> SNSUnsubscribeRequest | None:
     body = event.get("body")
-    return UnsubscribeRequest(**json.loads(body))
+    return SNSUnsubscribeRequest(**json.loads(body))
 
 
-def unsubscribe_email(
+def find_subscription_arn_by_email(
     email: str,
-    subscription_table,
-) -> SubscriptionResponse:
+    sns_client,
+    topic_arn: str,
+) -> Optional[str]:
     email = email.strip().lower()
-
-    deleted_tags = []
-    last_evaluated_key = None
+    next_token = None
 
     while True:
-        scan_kwargs = {"FilterExpression": Attr("email").eq(email)}
+        kwargs = {
+            "TopicArn": topic_arn,
+        }
 
-        if last_evaluated_key:
-            scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
+        if next_token:
+            kwargs["NextToken"] = next_token
 
-        response = subscription_table.scan(**scan_kwargs)
+        response = sns_client.list_subscriptions_by_topic(**kwargs)
 
-        items = response.get("Items", [])
+        for sub in response.get("Subscriptions", []):
+            protocol = sub.get("Protocol")
+            endpoint = sub.get("Endpoint", "").strip().lower()
+            subscription_arn = sub.get("SubscriptionArn")
 
-        for item in items:
-            tag = item["tag"]
+            if (
+                protocol == "email"
+                and endpoint == email
+                and subscription_arn
+                and subscription_arn != "PendingConfirmation"
+            ):
+                return subscription_arn
 
-            subscription_table.delete_item(
-                Key={
-                    "tag": tag,
-                    "email": email,
-                }
-            )
+        next_token = response.get("NextToken")
 
-            deleted_tags.append(tag)
-
-        last_evaluated_key = response.get("LastEvaluatedKey")
-
-        if not last_evaluated_key:
+        if not next_token:
             break
 
-    return SubscriptionResponse(
+    return None
+
+
+def unsubscribe_email_from_tags(
+    email: str,
+    sns_client,
+    topic_arn: str,
+) -> bool:
+    email = email.strip().lower()
+
+    subscription_arn = find_subscription_arn_by_email(
         email=email,
-        tags=deleted_tags,
+        sns_client=sns_client,
+        topic_arn=topic_arn,
     )
+
+    if subscription_arn is None:
+        return False
+
+    sns_client.unsubscribe(
+        SubscriptionArn=subscription_arn,
+    )
+
+    return True
 
 
 def lambda_handler(event, context):
@@ -72,10 +92,17 @@ def lambda_handler(event, context):
 
     request = parse_request(event)
     email = request.email
-    res = unsubscribe_email(email, sub_table)
+    res = unsubscribe_email_from_tags(email, sns, topic_arn)
 
-    return build_response_message(
-        status_code=HTTPStatus.OK,
-        body={res.model_dump("json")},
-        allow_http_methods=[HTTPMethod.POST],
-    )
+    if res is not True:
+        return build_response_message(
+            status_code=HTTPStatus.BAD_REQUEST,
+            body={"message": f"{email} does not have any subscription"},
+            allow_http_methods=[HTTPMethod.POST],
+        )
+    else:
+        return build_response_message(
+            status_code=HTTPStatus.OK,
+            body={"message": f"Unsubscribe tags for {email}"},
+            allow_http_methods=[HTTPMethod.POST],
+        )
