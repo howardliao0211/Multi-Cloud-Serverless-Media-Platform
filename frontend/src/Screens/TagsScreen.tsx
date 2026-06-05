@@ -1,6 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { authFetch } from "../services/api";
 import { getErrorMessage, type EditTagsResponse } from "../utils";
+
+type DashboardOutletContext = {
+    selectedUrls: string[];
+    setSelectedUrls: React.Dispatch<React.SetStateAction<string[]>>;
+}
 
 function TagsScreen() {
     const [tagUrlText, setTagUrlText] = useState<string>("");
@@ -13,6 +19,11 @@ function TagsScreen() {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+    const { selectedUrls, setSelectedUrls, } = useOutletContext<DashboardOutletContext>();
+
+    useEffect(() => {
+        setTagUrlText(selectedUrls.join("\n"));
+    }, [selectedUrls]);
 
     function handleAddTag() {
         const normalizedName = tagName.trim().toLowerCase();
@@ -113,6 +124,8 @@ function TagsScreen() {
             }
 
             if (data.updated_count > 0) {
+                setSelectedUrls([]);
+                setTagUrlText("");
                 setTagQueries([]);
                 setTagName("");
                 setTagCount(1);
@@ -132,7 +145,17 @@ function TagsScreen() {
             <section className="search-card">
                 <h2>Bulk Tag Modification</h2>
                 <p>File URLs (one per line):</p>
-                <textarea value={tagUrlText} onChange={(event) => setTagUrlText(event.target.value)} placeholder="https://s3.amazonaws.com/bucket/file1.jpg" />
+                <textarea value={tagUrlText} onChange={(event) => {
+                    const value = event.target.value;
+
+                    setTagUrlText(value);
+
+                    setSelectedUrls(
+                        Array.from(
+                            new Set(value.split("\n").map((url) => url.trim()).filter(Boolean))
+                        )
+                    );
+                }} placeholder="https://s3.amazonaws.com/bucket/file1.jpg" />
                 <p>Tag and Count:</p>
 
                 <div className="search-row">
@@ -171,14 +194,14 @@ function TagsScreen() {
                 <p>Operation</p>
                 <div className="button-operator">
                     <button type="button"
-                        className={operation === 1 ? "active" : ""}
+                        className={`add-operation ${operation === 1 ? "active" : ""}`}
                         onClick={() => setOperation(1)}
                         disabled={isLoading}>
                         + Add Tags
                     </button>
 
                     <button type="button"
-                        className={operation === 0 ? "active" : ""}
+                        className={`remove-operation ${operation === 0 ? "active" : ""}`}
                         onClick={() => setOperation(0)}
                         disabled={isLoading}>
                         - Remove Tags

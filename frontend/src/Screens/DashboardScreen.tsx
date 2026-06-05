@@ -18,6 +18,15 @@ function DashboardScreen() {
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
 
     const isSplitPage = location.pathname === "/dashboard/delete" || location.pathname === "/dashboard/tags";
+    const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
+
+    function handleToggleSelectedUrl(url: string) {
+        setSelectedUrls((prev) =>
+            prev.includes(url)
+                ? prev.filter((selectedUrls) => selectedUrls !== url)
+                : [...prev, url]
+        );
+    }
 
     function mergeUniqueMediaRecords(records: MediaRecordResponse[]) {
         const map = new Map<string, MediaRecordResponse>();
@@ -136,13 +145,19 @@ function DashboardScreen() {
                             <div className="media-url-actions">
                                 <button type="button"
                                     disabled={!record.full_url}
+                                    className={record.full_url && selectedUrls.includes(record.full_url)
+                                        ? "selected"
+                                        : ""
+                                    }
                                     onClick={() => {
                                         if (record.full_url) {
-                                            navigator.clipboard.writeText(record.full_url);
+                                           handleToggleSelectedUrl(record.full_url);
                                         }
                                     }}
                                 >
-                                    Select
+                                    {record.full_url && selectedUrls.includes(record.full_url)
+                                        ? "Selected"
+                                        : "Select"}
                                 </button>
 
                                 <button
@@ -284,11 +299,19 @@ function DashboardScreen() {
                     </section>
 
                     <section className="dashboard-split-pane dashboard-split-right">
-                        <Outlet />
+                        <Outlet 
+                            context={{
+                                selectedUrls,
+                                setSelectedUrls,
+                            }}/>
                     </section>
                 </main>
             ) : (
-                <Outlet />
+                <Outlet 
+                    context={{
+                        selectedUrls,
+                        setSelectedUrls,
+                    }}/>
             )}
 
             <footer className="dashboard-footer">
