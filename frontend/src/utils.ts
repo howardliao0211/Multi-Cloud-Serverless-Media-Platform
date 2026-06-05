@@ -183,3 +183,18 @@ export type QueryFileResponse = {
 export type QueryThumbnailUrlResponse = {
   media_records: MediaRecordResponse[];
 };
+
+export type SNSSubscribeRequest = {
+  email: string;
+  tags: string[];
+}
+
+export type SNSSubscribeResponse = {
+  email: string;
+  tags: string[];
+  subscription_arn?: string | null;
+}
+
+export type SNSUnsubscribeRequest = {
+  email: string;
+}
