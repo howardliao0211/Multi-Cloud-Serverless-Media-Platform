@@ -4,6 +4,16 @@ from shared.utils import build_db_key
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+class Subscription(BaseModel):
+    email: str
+    tag: str
+
+
+class SubscriptionResponse(BaseModel):
+    email: str
+    tags: List[str]
+
+
 class MediaType(str, Enum):
     image = "image"
     video = "video"
@@ -78,7 +88,9 @@ class MediaRecordResponse(BaseModel):
     error_message: Optional[str]
 
     @classmethod
-    def from_media_record(cls, media_record: MediaRecord, s3, bucket_name, expires_seconds=300):
+    def from_media_record(
+        cls, media_record: MediaRecord, s3, bucket_name, expires_seconds=300
+    ):
         full_presigned_url = s3.generate_presigned_url(
             ClientMethod="get_object",
             Params={
@@ -193,11 +205,7 @@ class EditTagsRequest(BaseModel):
     @field_validator("urls")
     @classmethod
     def validate_urls(cls, urls: List[str]) -> List[str]:
-        normalized_urls = [
-            url.strip()
-            for url in urls
-            if url.strip()
-        ]
+        normalized_urls = [url.strip() for url in urls if url.strip()]
 
         if not normalized_urls:
             raise ValueError("urls must not be empty")
@@ -252,11 +260,7 @@ class DeleteFileRequest(BaseModel):
     @field_validator("urls")
     @classmethod
     def validate_urls(cls, urls: List[str]) -> List[str]:
-        normalized_urls = [
-            url.strip()
-            for url in urls
-            if url.strip()
-        ]
+        normalized_urls = [url.strip() for url in urls if url.strip()]
 
         if not normalized_urls:
             raise ValueError("urls must not be empty")
@@ -283,3 +287,12 @@ class DeleteFileResponse(BaseModel):
 class MediaUploadStatusResponse(BaseModel):
     upload_status: MediaRecordStatus
     error_message: Optional[str]
+
+
+class SNSSubscribeRequest(BaseModel):
+    email: str
+    tags: List[str]
+
+
+class UnsubscribeRequest(BaseModel):
+    email: str

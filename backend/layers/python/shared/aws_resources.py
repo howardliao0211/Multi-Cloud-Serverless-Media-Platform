@@ -1,23 +1,34 @@
 import pydantic
 import boto3
+import json
 from pathlib import Path
 from boto3.dynamodb.conditions import Attr
 from botocore.config import Config
 from typing import Literal, Tuple, Any, Optional, List
 from enum import Enum
 from urllib.parse import quote
-from shared.schemas import MediaRecord, MediaRecordStatus
+from shared.schemas import (
+    MediaRecord,
+    MediaRecordStatus,
+    Subscription,
+    SubscriptionResponse,
+)
 
 BUCKET_NAME = "aussie-eco-len-bucket-12345"
 TABLE_NAME = "aussie-eco-len-media"
+SUB_TABLE_NAME = "media-sub-table"
 REGION_NAME = "us-east-1"
+SNS_TOPIC_ARN = "arn:aws:sns:us-east-1:539913718279:image-tag-notifications"
+
+
+def get_sub_table():
+    dynamodb = boto3.resource("dynamodb")
+    return dynamodb.Table(SUB_TABLE_NAME)
 
 
 def get_bucket_and_name():
     s3 = boto3.client(
-        "s3",
-        region_name="us-east-1",
-        config=Config(signature_version="s3v4")
+        "s3", region_name="us-east-1", config=Config(signature_version="s3v4")
     )
     return s3, BUCKET_NAME
 
@@ -31,7 +42,7 @@ def get_s3_object_head_and_url(s3_key: str) -> Tuple[dict, str]:
     """
     Return the S3 object's head and permanent object URL.
 
-    Head = 
+    Head =
     {
         "ContentLength": 123456,
         "ContentType": "image/jpeg",
@@ -56,9 +67,7 @@ def get_s3_object_head_and_url(s3_key: str) -> Tuple[dict, str]:
 
     encoded_key = quote(s3_key, safe="/")
 
-    object_url = (
-        f"https://{bucket_name}.s3.{REGION_NAME}.amazonaws.com/{encoded_key}"
-    )
+    object_url = f"https://{bucket_name}.s3.{REGION_NAME}.amazonaws.com/{encoded_key}"
 
     return head, object_url
 
@@ -148,19 +157,14 @@ def download_s3_file(s3, bucket: str, s3_key: str, local_path: str) -> None:
 def create_new_media_record(table, media: MediaRecord):
     table.put_item(
         Item=media.model_dump(mode="json"),
-        ConditionExpression=(
-            "attribute_not_exists(#key) "
-        ),
+        ConditionExpression=("attribute_not_exists(#key) "),
         ExpressionAttributeNames={
             "#key": "key",
         },
     )
 
 
-def is_media_record_processing(
-    table,
-    key
-) -> bool:
+def is_media_record_processing(table, key) -> bool:
     """
     Check whether this media record should be processed.
 

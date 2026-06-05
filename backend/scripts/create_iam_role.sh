@@ -53,6 +53,16 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
   "Version": "2012-10-17",
   "Statement": [
     {
+        "Sid": "AllowSubscribeToImageTagNotifications",
+        "Effect": "Allow",
+        "Action": [
+            "sns:Subscribe",
+            "sns:SetSubscriptionAttributes",
+            "sns:ListSubscriptionsByTopic"
+        ],
+        "Resource": "arn:aws:sns:us-east-1:539913718279:image-tag-notifications"
+    },
+    {
       "Sid": "DynamoDBMediaTableAccess",
       "Effect": "Allow",
       "Action": [
