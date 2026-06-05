@@ -71,7 +71,7 @@ function DashboardScreen() {
     }
 
     useEffect(() => {
-        if (location.pathname === "/dashboard") {
+        if (location.pathname === "/dashboard" || isSplitPage) {
             void loadMyMedia();
         }
     }, [location.pathname]);
@@ -151,7 +151,7 @@ function DashboardScreen() {
                                     }
                                     onClick={() => {
                                         if (record.full_url) {
-                                           handleToggleSelectedUrl(record.full_url);
+                                            handleToggleSelectedUrl(record.full_url);
                                         }
                                     }}
                                 >
@@ -299,19 +299,19 @@ function DashboardScreen() {
                     </section>
 
                     <section className="dashboard-split-pane dashboard-split-right">
-                        <Outlet 
+                        <Outlet
                             context={{
                                 selectedUrls,
                                 setSelectedUrls,
-                            }}/>
+                            }} />
                     </section>
                 </main>
             ) : (
-                <Outlet 
+                <Outlet
                     context={{
                         selectedUrls,
                         setSelectedUrls,
-                    }}/>
+                    }} />
             )}
 
             <footer className="dashboard-footer">

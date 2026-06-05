@@ -12,22 +12,58 @@ from shared.aws_resources import (
     scan_media_record,
 )
 from shared.query_utils import parse_json_request
-from shared.schemas import DeleteFileRequest, DeleteFileResponse, DeleteFileResult, MediaRecord
-from shared.utils import build_response_message, get_current_user
+from shared.schemas import (
+    DeleteFileRequest,
+    DeleteFileResponse,
+    DeleteFileResult,
+    MediaRecord,
+)
+from shared.utils import (
+    build_response_message,
+    get_current_user,
+)
 
 
 s3, bucket_name = get_bucket_and_name()
 table = get_table()
 
 
+def get_http_method(event: dict) -> str:
+    """
+    Supports both:
+
+    API Gateway REST API v1:
+        event["httpMethod"]
+
+    API Gateway HTTP API v2:
+        event["requestContext"]["http"]["method"]
+    """
+    method = event.get("httpMethod")
+
+    if method:
+        return str(method).upper()
+
+    method = (
+        event
+        .get("requestContext", {})
+        .get("http", {})
+        .get("method", "")
+    )
+
+    return str(method).upper()
+
+
 def parse_request(event: dict) -> DeleteFileRequest:
     return parse_json_request(event, DeleteFileRequest)
 
 
-def media_matches_url(media_record: MediaRecord, url: str) -> bool:
+def media_matches_url(
+    media_record: MediaRecord,
+    url: str,
+) -> bool:
     return url in {
-        media_record.full_url,
-        media_record.thumbnail_url,
+        str(media_record.full_url) if media_record.full_url else None,
+        str(media_record.thumbnail_url) if media_record.thumbnail_url else None,
     }
 
 
@@ -47,7 +83,10 @@ def find_user_media_by_url(
     url: str,
     current_user: str,
 ) -> tuple[Optional[MediaRecord], bool]:
-    matching_records = find_media_records_by_url(media_records, url)
+    matching_records = find_media_records_by_url(
+        media_records,
+        url,
+    )
 
     for media_record in matching_records:
         if media_record.owner_id == current_user:
@@ -65,14 +104,18 @@ def is_s3_key_referenced(
         return False
 
     return any(
-        getattr(media_record, field_name) == s3_key
+        getattr(media_record, field_name, None) == s3_key
         for media_record in media_records
     )
 
 
-def delete_files(request: DeleteFileRequest, current_user: str) -> DeleteFileResponse:
+def delete_files(
+    request: DeleteFileRequest,
+    current_user: str,
+) -> DeleteFileResponse:
     results: list[DeleteFileResult] = []
     deleted_count = 0
+
     media_records = scan_media_record(table)
 
     for url in request.urls:
@@ -113,26 +156,29 @@ def delete_files(request: DeleteFileRequest, current_user: str) -> DeleteFileRes
             media_record.full_key,
             "full_key",
         )
-        
+
         should_delete_thumbnail_object = not is_s3_key_referenced(
             remaining_records,
             media_record.thumbnail_key,
             "thumbnail_key",
         )
 
-        delete_media_record_from_db(table, media_record.key)
+        delete_media_record_from_db(
+            table,
+            media_record.key,
+        )
 
         removed_full_object = False
         removed_thumbnail_object = False
 
-        if should_delete_full_object:
+        if should_delete_full_object and media_record.full_key:
             removed_full_object = delete_s3_object_if_exists(
                 s3,
                 bucket_name,
                 media_record.full_key,
             )
 
-        if should_delete_thumbnail_object:
+        if should_delete_thumbnail_object and media_record.thumbnail_key:
             removed_thumbnail_object = delete_s3_object_if_exists(
                 s3,
                 bucket_name,
@@ -162,35 +208,79 @@ def delete_files(request: DeleteFileRequest, current_user: str) -> DeleteFileRes
 
 
 def lambda_handler(event, context):
-    allow_methods = [HTTPMethod.POST, HTTPMethod.OPTIONS]
+    allow_methods = [
+        HTTPMethod.POST,
+        HTTPMethod.OPTIONS,
+    ]
 
-    if event.get("httpMethod") == "OPTIONS":
+    http_method = get_http_method(event)
+
+    print(
+        json.dumps(
+            {
+                "http_method": http_method,
+                "request_context": event.get("requestContext"),
+            },
+            default=str,
+        )
+    )
+
+    if http_method == HTTPMethod.OPTIONS.value:
         return build_response_message(
             status_code=HTTPStatus.OK,
             body={"message": "OK"},
             allow_http_methods=allow_methods,
         )
 
-    if event.get("httpMethod") != "POST":
+    if http_method != HTTPMethod.POST.value:
         return build_response_message(
-            status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "Unsupported HTTP method"},
+            status_code=HTTPStatus.METHOD_NOT_ALLOWED,
+            body={
+                "message": "Unsupported HTTP method",
+                "received_method": http_method,
+            },
             allow_http_methods=allow_methods,
         )
 
     try:
         request = parse_request(event)
         current_user = get_current_user(event)
-        response = delete_files(request, current_user)
+
+        response = delete_files(
+            request,
+            current_user,
+        )
 
         return build_response_message(
             status_code=HTTPStatus.OK,
             body=response.model_dump(mode="json"),
             allow_http_methods=allow_methods,
         )
-    except (json.JSONDecodeError, ValidationError, ValueError) as error:
+
+    except (
+        json.JSONDecodeError,
+        ValidationError,
+        ValueError,
+    ) as error:
+        print(f"Invalid delete file request: {error}")
+
         return build_response_message(
             status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "Invalid delete file request", "error": str(error)},
+            body={
+                "message": "Invalid delete file request",
+                "error": str(error),
+            },
+            allow_http_methods=allow_methods,
+        )
+
+    except Exception as error:
+        print(f"Unexpected delete file error: {error}")
+
+        return build_response_message(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            body={
+                "message": "Failed to delete media",
+                "error": str(error),
+            },
             allow_http_methods=allow_methods,
         )

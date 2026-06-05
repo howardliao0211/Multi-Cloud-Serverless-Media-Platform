@@ -163,15 +163,6 @@ export type DeleteFileResponse = {
   results: DeleteFileResult[];
 };
 
-export async function deleteMediaFiles(
-  request: DeleteFileRequest
-): Promise<DeleteFileResponse> {
-  return authFetch<DeleteFileResponse>("/delete_file", {
-    method: "DELETE",
-    body: JSON.stringify(request),
-  });
-}
-
 export type QueryTagsResponse = GetMediaResponse;
 
 export type QuerySpeciesResponse = GetMediaResponse;

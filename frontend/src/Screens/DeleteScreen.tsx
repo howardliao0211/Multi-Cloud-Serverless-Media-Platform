@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { authFetch } from "../services/api";
-import { getErrorMessage, type DeleteFileResponse, type EditTagsResponse } from "../utils";
+import { getErrorMessage, type DeleteFileResponse} from "../utils";
 
 type DashboardOutletContext = {
     selectedUrls: string[];
