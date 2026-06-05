@@ -224,7 +224,7 @@ function DashboardScreen() {
                                             </div>
 
                                             <div className="media-url-actions">
-                                                <button
+                                                {/* <button
                                                     type="button"
                                                     disabled={!record.full_url}
                                                     onClick={() => {
@@ -234,7 +234,7 @@ function DashboardScreen() {
                                                     }}
                                                 >
                                                     Select
-                                                </button>
+                                                </button> */}
 
                                                 <button
                                                     type="button"

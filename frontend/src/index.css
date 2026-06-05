@@ -105,6 +105,15 @@ button:disabled {
   flex: 1;
 }
 
+.apply-changes-row {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.apply-changes-row button {
+  width: 100%;
+}
+
 @media (max-width: 1024px) {
   h1 {
     font-size: 36px;
