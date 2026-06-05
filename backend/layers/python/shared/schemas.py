@@ -290,6 +290,7 @@ class SNSSubscribeResponse(BaseModel):
     email: str
     tags: List[str]
     subscription_arn: Optional[str]
+    message: str
 
 
 class SNSUnsubscribeRequest(BaseModel):
