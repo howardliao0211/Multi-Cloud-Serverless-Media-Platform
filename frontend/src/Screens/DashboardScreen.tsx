@@ -142,7 +142,7 @@ function DashboardScreen() {
                                         }
                                     }}
                                 >
-                                    Copy Full URL
+                                    Select
                                 </button>
 
                                 <button
@@ -233,7 +233,7 @@ function DashboardScreen() {
                                                         }
                                                     }}
                                                 >
-                                                    Copy Full URL
+                                                    Select
                                                 </button>
 
                                                 <button

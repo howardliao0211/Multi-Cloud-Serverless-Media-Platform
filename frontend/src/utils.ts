@@ -112,6 +112,66 @@ export function getMediaType(file: File): "image" | "video" {
   throw new Error("Unsupported file type.");
 }
 
+export type TagCount = Record<string, number>;
+
+export type EditTagsRequest = {
+  urls: string[];
+  tags: TagCount[];
+  operation: 0 | 1;
+};
+
+export type EditTagsResult = {
+  url: string;
+  updated: boolean;
+  checksum?: string | null;
+  file_name?: string | null;
+  tags: Record<string, number>;
+  message?: string | null;
+};
+
+export type EditTagsResponse = {
+  updated_count: number;
+  results: EditTagsResult[];
+};
+
+export async function editMediaTags(
+  request: EditTagsRequest
+): Promise<EditTagsResponse> {
+  return authFetch<EditTagsResponse>("/edit_tags", {
+    method: "PATCH",
+    body: JSON.stringify(request),
+  });
+}
+
+export type DeleteFileRequest = {
+  urls: string[];
+};
+
+export type DeleteFileResult = {
+  url: string;
+  deleted: boolean;
+  checksum?: string | null;
+  file_name?: string | null;
+  removed_db_entry: boolean;
+  removed_full_object: boolean;
+  removed_thumbnail_object: boolean;
+  message?: string | null;
+};
+
+export type DeleteFileResponse = {
+  deleted_count: number;
+  results: DeleteFileResult[];
+};
+
+export async function deleteMediaFiles(
+  request: DeleteFileRequest
+): Promise<DeleteFileResponse> {
+  return authFetch<DeleteFileResponse>("/delete_file", {
+    method: "DELETE",
+    body: JSON.stringify(request),
+  });
+}
+
 export type QueryTagsResponse = GetMediaResponse;
 
 export type QuerySpeciesResponse = GetMediaResponse;
