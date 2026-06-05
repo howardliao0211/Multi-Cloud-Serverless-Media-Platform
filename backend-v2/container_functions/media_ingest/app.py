@@ -12,7 +12,7 @@ from shared.gcp_ml_client import call_gcp_ml_processor, generate_presigned_get_u
 from shared.media_type import infer_media_type_from_content_type, infer_media_type_from_key
 from shared.ml_contracts import GcpMlRequest, ProcessMlResultEvent
 from shared.ml_result_processor import process_ml_result_payload
-from shared.thumbnailing import create_and_upload_image_thumbnail
+from shared.thumbnailing import create_and_upload_image_thumbnail, create_and_upload_video_thumbnail
 from shared.utils import build_db_key
 
 
@@ -89,11 +89,15 @@ def _infer_file_type(head: dict[str, Any], key: str) -> tuple[str, str]:
 
 
 def _create_thumbnail_if_supported(bucket: str, key: str, media_type: str) -> tuple[str | None, str | None]:
-    if media_type != "image":
-        return None, None
+    if media_type == "image":
+        image_bytes = _read_s3_object_bytes(bucket, key)
+        return create_and_upload_image_thumbnail(bucket, key, image_bytes)
 
-    image_bytes = _read_s3_object_bytes(bucket, key)
-    return create_and_upload_image_thumbnail(bucket, key, image_bytes)
+    if media_type == "video":
+        video_bytes = _read_s3_object_bytes(bucket, key)
+        return create_and_upload_video_thumbnail(bucket, key, video_bytes)
+
+    return None, None
 
 
 def _invoke_process_ml_result(payload: dict[str, Any]) -> dict[str, Any]:
