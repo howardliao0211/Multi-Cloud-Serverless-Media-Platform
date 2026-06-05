@@ -24,6 +24,7 @@ function QueryScreen() {
     const [species, setSpecies] = useState<string>("");
     const [tagQueries, setTagQueries] = useState<{ name: string; count: number }[]>([]);
     const { selectedUrl, setSelectedUrl } = useOutletContext<DashboardOutletContext>();
+    const [copiedFullUrl, setCopiedFullUrl] = useState<string>("");
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -469,11 +470,9 @@ function QueryScreen() {
                                     <span>No thumbnail available</span>
                                 )}
                             </div>
-
                             <p>
                                 File Name: <strong>{record.file_name}</strong>
                             </p>
-
                             <p>
                                 Visibility: <strong>{record.visibility}</strong>
                             </p>
@@ -489,19 +488,47 @@ function QueryScreen() {
                                     <p>No tags yet</p>
                                 )}
                             </div>
-                            <button
-                                type="button"
-                                disabled={!record.thumbnail_url}
-                                onClick={() => {
-                                    if (record.thumbnail_url) {
-                                        void handleUseThumbnailUrl(record.thumbnail_url);
-                                    }
-                                }}
-                            >
-                                {record.thumbnail_url === selectedUrl
-                                    ? "Copied"
-                                    : "Copy Thumbnail URL"}
-                            </button>
+
+                            <div className="media-url-actions">
+                                {mode !== "thumbnail" && (
+                                    <button
+                                        type="button"
+                                        disabled={!record.thumbnail_url}
+                                        onClick={() => {
+                                            if (record.thumbnail_url) {
+                                                void handleUseThumbnailUrl(record.thumbnail_url);
+                                            }
+                                        }}
+                                    >
+                                        {record.thumbnail_url === selectedUrl
+                                            ? "Copied to Search"
+                                            : "Copy Thumbnail URL"}
+                                    </button>
+                                )}
+
+                                <button
+                                    type="button"
+                                    disabled={!record.full_url}
+                                    onClick={async () => {
+                                        if (!record.full_url) return;
+
+                                        try {
+                                            await navigator.clipboard.writeText(record.full_url);
+                                            setCopiedFullUrl(record.full_url);
+
+                                            window.setTimeout(() => {
+                                                setCopiedFullUrl("");
+                                            }, 2000);
+                                        } catch (error) {
+                                            setError(getErrorMessage(error));
+                                        }
+                                    }}
+                                >
+                                    {record.full_url === copiedFullUrl
+                                        ? "Copied Successfully"
+                                        : "Copy Full URL"}
+                                </button>
+                            </div>
                         </article>
                     ))}
                 </section>

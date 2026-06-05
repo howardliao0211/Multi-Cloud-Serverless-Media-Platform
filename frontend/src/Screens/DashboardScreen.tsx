@@ -182,7 +182,9 @@ function DashboardScreen() {
                                         }
                                     }}
                                 >
-                                    Copy Thumbnail URL
+                                    {record.thumbnail_url && selectedUrl.includes(record.thumbnail_url)
+                                        ? "Copied to Search"
+                                        : "Copy Thumbnail URL"}
                                 </button>
 
                                 <button
@@ -252,28 +254,18 @@ function DashboardScreen() {
                                             </div>
 
                                             <div className="media-url-actions">
-                                                {/* <button
-                                                    type="button"
-                                                    disabled={!record.full_url}
-                                                    onClick={() => {
-                                                        if (record.full_url) {
-                                                            navigator.clipboard.writeText(record.full_url);
-                                                        }
-                                                    }}
-                                                >
-                                                    Select
-                                                </button> */}
-
                                                 <button
                                                     type="button"
                                                     disabled={!record.thumbnail_url}
                                                     onClick={() => {
                                                         if (record.thumbnail_url) {
-                                                            navigator.clipboard.writeText(record.thumbnail_url);
+                                                            void handleCopyThumbnailUrl(record.thumbnail_url);
                                                         }
                                                     }}
                                                 >
-                                                    Copy Thumbnail URL
+                                                    {record.thumbnail_url && selectedUrl.includes(record.thumbnail_url)
+                                                        ? "Copied to Search"
+                                                        : "Copy Thumbnail URL"}
                                                 </button>
                                             </div>
                                         </article>
