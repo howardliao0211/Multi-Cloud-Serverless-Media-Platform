@@ -15,6 +15,14 @@ export function getErrorMessage(error: unknown): string {
   return "Something went wrong.";
 }
 
+export type DashboardOutletContext = {
+    selectedUrls: string[];
+    setSelectedUrls: React.Dispatch<React.SetStateAction<string[]>>;
+
+    selectedUrl: string;
+    setSelectedUrl: React.Dispatch<React.SetStateAction<string>>;
+};
+
 export async function getMyPrivateMedia() {
   return authFetch<GetMediaResponse>("/get_private_media", {
     method: "GET",

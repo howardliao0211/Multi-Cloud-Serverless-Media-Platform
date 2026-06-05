@@ -1,9 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { authFetch } from "../services/api";
 
 import {
     getErrorMessage,
     isValidMediaFile,
+    type DashboardOutletContext,
     type MediaRecordResponse,
     type QueryTagsResponse,
     type QuerySpeciesResponse,
@@ -21,7 +23,7 @@ function QueryScreen() {
     const [tagCount, setTagCount] = useState<number>(1);
     const [species, setSpecies] = useState<string>("");
     const [tagQueries, setTagQueries] = useState<{ name: string; count: number }[]>([]);
-    const [thumbUrl, setThumbUrl] = useState<string>("");
+    const { selectedUrl, setSelectedUrl } = useOutletContext<DashboardOutletContext>();
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -135,10 +137,20 @@ function QueryScreen() {
         }
     }
 
-    async function handleThumbnailSearch() {
-        const normalizedThumbUrl = thumbUrl.trim();
+    useEffect(() => {
+        if (!selectedUrl) return;
 
-        if (!normalizedThumbUrl) {
+        setMode("thumbnail");
+        setResults([]);
+        setDetectedTags({});
+        setResultCount(0);
+        setError(null);
+    }, [selectedUrl]);
+
+    async function handleThumbnailSearch() {
+        const normalizedThumbnailUrl = selectedUrl.trim();
+
+        if (!normalizedThumbnailUrl) {
             setError("Please enter a thumbnail URL.");
             return;
         }
@@ -148,19 +160,45 @@ function QueryScreen() {
         setDetectedTags({});
 
         try {
-            const data = await authFetch<QueryThumbnailUrlResponse>("/query_thumbnail_url", {
-                method: "POST",
-                body: JSON.stringify({
-                    thumbnail_url: normalizedThumbUrl,
-                }),
-            });
+            const data = await authFetch<QueryThumbnailUrlResponse>(
+                "/query_thumbnail_url",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        thumbnail_url: normalizedThumbnailUrl,
+                    }),
+                }
+            );
 
-            setResults(data.media_records ?? []);
-            setResultCount(data.media_records?.length ?? 0);
+            const records = data.media_records ?? [];
+
+            setResults(records);
+            setResultCount(records.length);
+
+            if (records.length === 0) {
+                setError("No media found for this thumbnail URL.");
+            }
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
             setIsLoading(false);
+        }
+    }
+
+    async function handleUseThumbnailUrl(thumbnailUrl: string) {
+        try {
+            await navigator.clipboard.writeText(thumbnailUrl);
+
+            setSelectedUrl(thumbnailUrl);
+            setMode("thumbnail");
+            setError(null);
+
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
+        } catch (error) {
+            setError(getErrorMessage(error));
         }
     }
 
@@ -177,11 +215,11 @@ function QueryScreen() {
 
         setIsLoading(true);
         setError(null);
-        
+
         try {
             const hash = await calculateFileHash(file);
             const mediaType = getMediaType(file);
-            
+
             const data = await authFetch<QueryFileResponse>("/query_file", {
                 method: "POST",
                 body: JSON.stringify({
@@ -323,12 +361,16 @@ function QueryScreen() {
                     <>
                         <h2>Enter thumbnail URL to get full-size image:</h2>
                         <div className="search-row">
-                            <input value={thumbUrl}
-                                onChange={(event) => setThumbUrl(event.target.value)}
+                            <textarea value={selectedUrl}
+                                onChange={(event) => setSelectedUrl(event.target.value)}
                                 placeholder="https://.../thumbnail.jpg" />
                         </div>
                         <br />
-                        <button type="button" onClick={handleThumbnailSearch} disabled={isLoading}>
+                        <button
+                            type="button"
+                            onClick={() => void handleThumbnailSearch()}
+                            disabled={isLoading || !selectedUrl.trim()}
+                        >
                             {isLoading ? "Searching..." : "Search"}
                         </button>
                     </>
@@ -447,6 +489,19 @@ function QueryScreen() {
                                     <p>No tags yet</p>
                                 )}
                             </div>
+                            <button
+                                type="button"
+                                disabled={!record.thumbnail_url}
+                                onClick={() => {
+                                    if (record.thumbnail_url) {
+                                        void handleUseThumbnailUrl(record.thumbnail_url);
+                                    }
+                                }}
+                            >
+                                {record.thumbnail_url === selectedUrl
+                                    ? "Copied"
+                                    : "Copy Thumbnail URL"}
+                            </button>
                         </article>
                     ))}
                 </section>

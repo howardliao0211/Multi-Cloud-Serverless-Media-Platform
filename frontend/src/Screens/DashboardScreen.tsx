@@ -19,6 +19,14 @@ function DashboardScreen() {
 
     const isSplitPage = location.pathname === "/dashboard/delete" || location.pathname === "/dashboard/tags";
     const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
+    const [selectedUrl, setSelectedUrl] = useState<string>("");
+
+    const outletContext = {
+        selectedUrls,
+        setSelectedUrls,
+        selectedUrl,
+        setSelectedUrl,
+    };
 
     function handleToggleSelectedUrl(url: string) {
         setSelectedUrls((prev) =>
@@ -89,6 +97,11 @@ function DashboardScreen() {
         } catch (error) {
             setStatus(createStatus("error", getErrorMessage(error)));
         }
+    }
+
+    async function handleCopyThumbnailUrl(thumbnailUrl: string) {
+        await navigator.clipboard.writeText(thumbnailUrl);
+        setSelectedUrl(thumbnailUrl);
     }
 
     function readerMyUpload(showOthersPublic: boolean) {
@@ -165,7 +178,7 @@ function DashboardScreen() {
                                     disabled={!record.thumbnail_url}
                                     onClick={() => {
                                         if (record.thumbnail_url) {
-                                            navigator.clipboard.writeText(record.thumbnail_url);
+                                            void handleCopyThumbnailUrl(record.thumbnail_url);
                                         }
                                     }}
                                 >
@@ -300,18 +313,12 @@ function DashboardScreen() {
 
                     <section className="dashboard-split-pane dashboard-split-right">
                         <Outlet
-                            context={{
-                                selectedUrls,
-                                setSelectedUrls,
-                            }} />
+                            context={outletContext} />
                     </section>
                 </main>
             ) : (
                 <Outlet
-                    context={{
-                        selectedUrls,
-                        setSelectedUrls,
-                    }} />
+                    context={outletContext} />
             )}
 
             <footer className="dashboard-footer">
