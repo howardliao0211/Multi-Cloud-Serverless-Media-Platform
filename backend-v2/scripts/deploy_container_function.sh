@@ -9,6 +9,7 @@ AWS_PROFILE="${AWS_PROFILE:-AussieEcoLense}"
 AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-539913718279}"
 LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-arn:aws:iam::539913718279:role/aussie-eco-len-lambda-role}"
 PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
+NO_CACHE_FLAG="${DOCKER_NO_CACHE:+--no-cache}"
 TIMEOUT="${LAMBDA_TIMEOUT:-120}"
 MEMORY="${LAMBDA_MEMORY:-2048}"
 
@@ -34,6 +35,7 @@ aws ecr get-login-password \
     --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
 docker buildx build \
+  $NO_CACHE_FLAG \
   --platform "$PLATFORM" \
   --provenance=false \
   --sbom=false \

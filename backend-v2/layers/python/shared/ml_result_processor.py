@@ -66,9 +66,11 @@ def _build_update_expression(values: dict[str, Any]) -> tuple[str, dict[str, str
 def update_media_record_from_ml_result(event: ProcessMlResultEvent) -> dict[str, Any]:
     table = get_table()
 
+    normalized_gcp_result = normalize_gcp_result_shape(event.gcp_result)
+
     gcp_result = GcpMlResult(
         raw=event.gcp_result,
-        **event.gcp_result,
+        **normalized_gcp_result,
     )
 
     db_key = build_db_key(event.owner_id, event.key)
@@ -113,6 +115,27 @@ def update_media_record_from_ml_result(event: ProcessMlResultEvent) -> dict[str,
     )
 
     return response.get("Attributes", {})
+
+
+
+def normalize_gcp_result_shape(result: dict) -> dict:
+    """Accept the existing GCP/v1 result shape and normalize it for v2 storage."""
+    normalized = dict(result or {})
+
+    if normalized.get("status") == "success":
+        normalized["status"] = "ok"
+
+    tags = normalized.get("tags")
+    if isinstance(tags, list):
+        normalized["tags"] = {str(tag): 1 for tag in tags}
+
+    if normalized.get("provider") is None:
+        normalized["provider"] = "gcp_cloud_run"
+
+    if normalized.get("model_name") is None:
+        normalized["model_name"] = "gcp_image_tagger"
+
+    return normalized
 
 
 def process_ml_result_payload(payload: dict[str, Any]) -> dict[str, Any]:

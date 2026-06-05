@@ -167,6 +167,7 @@ def handle_s3_object(bucket: str, key: str) -> dict[str, Any]:
 
         gcp_request = GcpMlRequest(
             request_id=str(uuid.uuid4()),
+            checksum=metadata["checksum"],
             bucket=bucket,
             key=key,
             media_type=media_type,

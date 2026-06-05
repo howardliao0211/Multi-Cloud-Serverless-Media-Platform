@@ -8,9 +8,20 @@ import os
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 import boto3
+
+try:
+    import google.auth as google_auth
+    from google.auth import impersonated_credentials
+    from google.auth.transport.requests import Request as GoogleAuthRequest
+except Exception as exc:
+    print(f"GCP auth import failed: {type(exc).__name__}: {exc!r}")
+    google_auth = None
+    impersonated_credentials = None
+    GoogleAuthRequest = None
 
 from shared.ml_contracts import GcpMlRequest
 
@@ -56,6 +67,69 @@ def _canonical_body(payload: dict[str, Any]) -> bytes:
     return json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
 
 
+_cached_google_id_token: str | None = None
+
+
+def get_google_id_token() -> str | None:
+    """
+    Return a Google-signed ID token for Cloud Run IAM.
+
+    This mirrors the v1 tag_image path:
+    AWS Lambda -> WIF credentials file -> impersonate GCP service account
+    -> mint ID token with Cloud Run URL as audience.
+    """
+    global _cached_google_id_token
+
+    if _cached_google_id_token:
+        return _cached_google_id_token
+
+    if google_auth is None or impersonated_credentials is None or GoogleAuthRequest is None:
+        print("GCP auth disabled: google-auth imports unavailable")
+        return None
+
+    credentials_file = os.environ.get(
+        "GCP_WIF_CREDENTIALS_FILE",
+        "/var/task/auth/gcp_wif_credentials.json",
+    )
+    invoker_service_account = os.environ.get("GCP_INVOKER_SERVICE_ACCOUNT", "")
+    audience = os.environ.get("GCP_CLOUD_RUN_AUDIENCE") or os.environ.get("GCP_ML_PROCESSOR_URL", "")
+
+    if not invoker_service_account:
+        print("GCP auth disabled: GCP_INVOKER_SERVICE_ACCOUNT is not configured")
+        return None
+
+    if not audience:
+        print("GCP auth disabled: GCP_CLOUD_RUN_AUDIENCE/GCP_ML_PROCESSOR_URL is not configured")
+        return None
+
+    if not Path(credentials_file).exists():
+        print(f"GCP auth disabled: WIF credentials file not found: {credentials_file}")
+        return None
+
+    source_credentials, _ = google_auth.load_credentials_from_file(
+        credentials_file,
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+
+    impersonated = impersonated_credentials.Credentials(
+        source_credentials=source_credentials,
+        target_principal=invoker_service_account,
+        target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+
+    target_credentials = impersonated_credentials.IDTokenCredentials(
+        target_credentials=impersonated,
+        target_audience=audience.rstrip("/"),
+        include_email=True,
+    )
+
+    target_credentials.refresh(GoogleAuthRequest())
+    _cached_google_id_token = target_credentials.token
+    print("GCP auth enabled: minted Google ID token for Cloud Run")
+    return _cached_google_id_token
+
+
+
 def sign_request(payload: dict[str, Any], secret: str | None = None) -> dict[str, str]:
     timestamp = str(int(time.time()))
     body = _canonical_body(payload)
@@ -70,8 +144,8 @@ def sign_request(payload: dict[str, Any], secret: str | None = None) -> dict[str
 
     return {
         "Content-Type": "application/json",
-        "X-AEL-Timestamp": timestamp,
-        "X-AEL-Signature": signature,
+        "X-Timestamp": timestamp,
+        "X-Signature": signature,
     }
 
 
@@ -84,10 +158,27 @@ def call_gcp_ml_processor(
         raise RuntimeError("Missing GCP_ML_PROCESSOR_URL")
 
     url = endpoint.rstrip("/") + "/process-media"
-    payload = request.model_dump()
+    payload = {
+        "request_id": request.request_id,
+        "hash": request.checksum,
+        "media_type": request.media_type,
+        "inputs": [
+            {
+                "source": "original",
+                "url": str(request.input_url),
+                "timestamp_sec": None,
+            }
+        ],
+    }
     body = _canonical_body(payload)
 
     headers = sign_request(payload)
+
+    google_id_token = get_google_id_token()
+    if google_id_token:
+        headers["Authorization"] = f"Bearer {google_id_token}"
+    else:
+        print("Calling GCP ML processor without Google Authorization header")
 
     req = urllib.request.Request(
         url=url,

@@ -11,6 +11,7 @@ MlStatus = Literal["ok", "failed"]
 
 class GcpMlRequest(BaseModel):
     request_id: str
+    checksum: str
     bucket: str
     key: str
     media_type: MediaType
