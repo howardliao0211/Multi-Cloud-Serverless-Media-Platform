@@ -3,7 +3,7 @@ import json
 from decimal import Decimal
 from typing import Any
 
-from shared.schemas import MediaRecordStatus
+from shared.schemas import MediaRecordStatus, MediaVisibility
 from shared.aws_resources import get_sns_and_topic_arn
 
 sns, topic_arn = get_sns_and_topic_arn()
@@ -122,6 +122,11 @@ def lambda_handler(event, context):
         upload_status = new_image.get("upload_status")
         if upload_status != MediaRecordStatus.ready.value:
             # only ready entries have tags
+            continue
+
+        visibility = new_image.get("visibility")
+        if visibility != MediaVisibility.public.value:
+            # only public entries should notify the users
             continue
 
         old_tags = get_tags(old_image)
