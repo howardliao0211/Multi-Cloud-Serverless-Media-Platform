@@ -27,18 +27,6 @@ export async function getCurrentUserEmail(): Promise<string> {
   return email;
 }
 
-export async function getCurrentUserEmail(): Promise<string> {
-  const attributes = await fetchUserAttributes();
-
-  const email = attributes.email;
-
-  if (!email) {
-    throw new Error("User email not found.");
-  }
-
-  return email;
-}
-
 /**
  * Converts an unknown caught value into a user-friendly error message.
  * 
