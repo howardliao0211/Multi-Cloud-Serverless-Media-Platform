@@ -52,9 +52,7 @@ def set_subscription_filter_policy(
     tags: list[str],
     sns_client,
 ):
-    filter_policy = {
-        "tag": tags
-    }
+    filter_policy = {"tag": tags}
 
     sns_client.set_subscription_attributes(
         SubscriptionArn=subscription_arn,
@@ -99,7 +97,10 @@ def subscription_state(subscription_arn: str | None) -> str:
     if value == "deleted":
         return "deleted"
 
-    if subscription_arn.startswith("arn:aws:sns:") and len(subscription_arn.split(":")) >= 6:
+    if (
+        subscription_arn.startswith("arn:aws:sns:")
+        and len(subscription_arn.split(":")) >= 6
+    ):
         return "confirmed"
 
     return "invalid"
@@ -112,11 +113,7 @@ def subscribe_email_to_tags(
     topic_arn: str,
 ):
     email = email.strip().lower()
-    tags = [
-        tag.strip().lower()
-        for tag in tags
-        if tag and tag.strip()
-    ]
+    tags = [tag.strip().lower() for tag in tags if tag and tag.strip()]
 
     existing_sub = find_subscription_by_email(
         email=email,
@@ -214,8 +211,12 @@ def lambda_handler(event, context):
         topic_arn=topic_arn,
     )
 
+    status = (
+        HTTPStatus.OK if res.subscription_arn is not None else HTTPStatus.BAD_REQUEST
+    )
+
     return build_response_message(
-        status_code=HTTPStatus.OK,
+        status_code=status,
         body=res.model_dump(mode="json"),
         allow_http_methods=[HTTPMethod.POST],
     )

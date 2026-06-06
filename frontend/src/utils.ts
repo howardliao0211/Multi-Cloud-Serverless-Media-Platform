@@ -1,4 +1,4 @@
-import { getCurrentUser } from "aws-amplify/auth";
+import { getCurrentUser, fetchUserAttributes } from "aws-amplify/auth";
 import { authFetch } from "./services/api";
 
 /**
@@ -13,6 +13,30 @@ export async function getCurrentUserId(): Promise<string> {
     throw new Error("User ID not found.");
   }
   return user.userId;
+}
+
+export async function getCurrentUserEmail(): Promise<string> {
+  const attributes = await fetchUserAttributes();
+
+  const email = attributes.email;
+
+  if (!email) {
+    throw new Error("User email not found.");
+  }
+
+  return email;
+}
+
+export async function getCurrentUserEmail(): Promise<string> {
+  const attributes = await fetchUserAttributes();
+
+  const email = attributes.email;
+
+  if (!email) {
+    throw new Error("User email not found.");
+  }
+
+  return email;
 }
 
 /**
@@ -245,8 +269,27 @@ export type SNSSubscribeResponse = {
   email: string;
   tags: string[];
   subscription_arn?: string | null;
+  message: string;
 }
 
 export type SNSUnsubscribeRequest = {
   email: string;
+}
+
+
+export type SNSGetSubscriptionRequest = {
+  email: string;
+}
+
+export type SubscriptionStatus =
+  | "none"
+  | "pending"
+  | "deleted"
+  | "confirmed"
+  | "invalid";
+
+export type SNSGetSubscriptionResponse = {
+  email: string;
+  tags: string[];
+  state: SubscriptionStatus;
 }

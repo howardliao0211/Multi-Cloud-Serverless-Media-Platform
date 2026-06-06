@@ -295,3 +295,21 @@ class SNSSubscribeResponse(BaseModel):
 
 class SNSUnsubscribeRequest(BaseModel):
     email: str
+
+
+class SNSGetSubscriptionRequest(BaseModel):
+    email: str
+
+
+class SubscriptionStatus(str, Enum):
+    none = "none"
+    pending = "pending"
+    deleted = "deleted"
+    confirmed = "confirmed"
+    invalid = "invalid"
+
+
+class SNSGetSubscriptionResponse(BaseModel):
+    email: str
+    tags: List[str]
+    state: SubscriptionStatus
