@@ -15,18 +15,11 @@ export async function getCurrentUserId(): Promise<string> {
   return user.userId;
 }
 
-export async function getCurrentUserEmail(): Promise<string> {
-  const attributes = await fetchUserAttributes();
-
-  const email = attributes.email;
-
-  if (!email) {
-    throw new Error("User email not found.");
-  }
-
-  return email;
-}
-
+/**
+ * Authentication helpers
+ * 
+ * @returns the Cognito Email of the currently authenticated user.
+ */
 export async function getCurrentUserEmail(): Promise<string> {
   const attributes = await fetchUserAttributes();
 

@@ -9,7 +9,18 @@ import {
 } from "../utils";
 import { authFetch } from "../services/api";
 
-
+/**
+ * Main authenticated dashboard layout.
+ * 
+ * This component:
+ * -Displays the current user's uploads.
+ * -Displays public media uploaded by other users on the dashboard home page.
+ * -Provides shared media selection state to nested Delete and Tags pages.
+ * -Supports changing media visibility.
+ * -Passes shared state and refresh functions through React Router Outlet context.
+ * 
+ * @returns The dashboard layout and the currently selected nested page. 
+ */
 function DashboardScreen() {
     const location = useLocation();
     const isDashboardHome = location.pathname === "/dashboard";
