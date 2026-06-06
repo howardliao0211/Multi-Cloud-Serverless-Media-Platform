@@ -11,7 +11,7 @@ from shared.schemas import (
     QueryFileUploadUrlRequest,
     QueryFileUploadUrlResponse,
 )
-from shared.utils import build_response_message, get_current_user
+from shared.utils import build_response_message, get_current_user, get_http_method
 
 
 s3, bucket_name = get_bucket_and_name()
@@ -49,6 +49,19 @@ def build_query_upload_key(owner_id: str, suffix: str) -> str:
     return f"{QUERY_UPLOAD_PREFIX}/{owner_id}/{uuid4().hex}{suffix}"
 
 
+def build_upload_headers(
+    request: QueryFileUploadUrlRequest,
+    owner_id: str,
+) -> dict[str, str]:
+    return {
+        "Content-Type": request.content_type,
+        "x-amz-meta-owner_id": owner_id,
+        "x-amz-meta-file_name": request.file_name,
+        "x-amz-meta-media_type": request.media_type.value,
+        "x-amz-meta-purpose": "query_file",
+    }
+
+
 def generate_query_upload_url(
     query_key: str,
     request: QueryFileUploadUrlRequest,
@@ -73,15 +86,16 @@ def generate_query_upload_url(
 
 def lambda_handler(event, context):
     allow_methods = [HTTPMethod.POST, HTTPMethod.OPTIONS]
+    http_method = get_http_method(event)
 
-    if event.get("httpMethod") == "OPTIONS":
+    if http_method == "OPTIONS":
         return build_response_message(
             status_code=HTTPStatus.OK,
             body={"message": "OK"},
             allow_http_methods=allow_methods,
         )
 
-    if event.get("httpMethod") != "POST":
+    if http_method != "POST":
         return build_response_message(
             status_code=HTTPStatus.BAD_REQUEST,
             body={"message": "Unsupported HTTP method"},
@@ -94,11 +108,13 @@ def lambda_handler(event, context):
         suffix = validate_query_media(request)
         query_key = build_query_upload_key(current_user, suffix)
         upload_url = generate_query_upload_url(query_key, request, current_user)
+        upload_headers = build_upload_headers(request, current_user)
 
         response = QueryFileUploadUrlResponse(
             upload_url=upload_url,
             query_key=query_key,
             expires_in=URL_EXPIRES_SECONDS,
+            upload_headers=upload_headers,
         )
 
         return build_response_message(

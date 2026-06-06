@@ -9,8 +9,9 @@ import {
     type QueryTagsResponse,
     type QuerySpeciesResponse,
     type QueryThumbnailUrlResponse,
+    type QueryFileUploadUrlResponse,
     type QueryFileResponse,
-    calculateFileHash,
+    type QueryFileResult,
     getMediaType,
 } from "../utils";
 
@@ -31,6 +32,25 @@ type DashboardOutletContext = {
  * -content: Detects species from an uploaded file and finds matching media.
  */
 type SearchMode = "tags" | "species" | "thumbnail" | "content";
+type SearchResultRecord = MediaRecordResponse | QueryFileResult;
+
+function getResultFullUrl(record: SearchResultRecord): string | null | undefined {
+    return "media_type" in record
+        ? record.full_presigned_url ?? record.url
+        : record.full_presigned_url ?? record.full_url;
+}
+
+function getResultPermanentFullUrl(record: SearchResultRecord): string | null | undefined {
+    return "media_type" in record ? record.url : record.full_url;
+}
+
+function getResultThumbnailUrl(record: SearchResultRecord): string | null | undefined {
+    return record.thumbnail_presigned_url ?? record.thumbnail_url;
+}
+
+function getResultPermanentThumbnailUrl(record: SearchResultRecord): string | null | undefined {
+    return record.thumbnail_url;
+}
 
 /**
  * Provides multiple search methods for wildlife media.
@@ -64,7 +84,7 @@ function QueryScreen() {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     // Search response and UI feedback state.
-    const [results, setResults] = useState<MediaRecordResponse[]>([]);
+    const [results, setResults] = useState<SearchResultRecord[]>([]);
     const [detectedTags, setDetectedTags] = useState<Record<string, number>>({});
     const [resultCount, setResultCount] = useState<number>(0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -309,21 +329,40 @@ function QueryScreen() {
         setError(null);
 
         try {
-            const hash = await calculateFileHash(file);
             const mediaType = getMediaType(file);
+
+            const uploadInfo = await authFetch<QueryFileUploadUrlResponse>(
+                "/query_file/upload_url",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        file_name: file.name,
+                        media_type: mediaType,
+                        content_type: file.type,
+                    }),
+                }
+            );
+
+            const uploadResponse = await fetch(uploadInfo.upload_url, {
+                method: "PUT",
+                headers: uploadInfo.upload_headers,
+                body: file,
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error(`Query file upload failed: ${uploadResponse.status}`);
+            }
 
             const data = await authFetch<QueryFileResponse>("/query_file", {
                 method: "POST",
                 body: JSON.stringify({
-                    file_name: file.name,
-                    checksum: hash,
-                    media_type: mediaType,
+                    query_key: uploadInfo.query_key,
                 }),
-            });
+            }, true);
 
             setDetectedTags(data.detected_tags ?? {});
-            setResults(data.media_records ?? []);
-            setResultCount(data.media_records?.length ?? 0);
+            setResults(data.results ?? []);
+            setResultCount(data.count ?? data.results?.length ?? 0);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -554,16 +593,23 @@ function QueryScreen() {
                 )}
 
                 <section className="media-cards-grid">
-                    {results.map((record) => (
-                        <article className="media-card" key={`${record.owner_id}-${record.file_name}-${record.full_url ?? ""}`} >
+                    {results.map((record) => {
+                        const fullUrl = getResultFullUrl(record);
+                        const permanentFullUrl = getResultPermanentFullUrl(record);
+                        const thumbnailUrl = getResultThumbnailUrl(record);
+                        const permanentThumbnailUrl = getResultPermanentThumbnailUrl(record);
+                        const ownerKey = "owner_id" in record ? record.owner_id : "query";
+
+                        return (
+                        <article className="media-card" key={`${ownerKey}-${record.file_name}-${permanentFullUrl ?? ""}`} >
                             <div className="media-thumbnail">
-                                {record.thumbnail_presigned_url ? (
+                                {thumbnailUrl ? (
                                     <img
-                                        src={record.thumbnail_presigned_url}
+                                        src={thumbnailUrl}
                                         alt={`${record.file_name} thumbnail`}
                                         onClick={() => {
-                                            if (record.full_presigned_url) {
-                                                window.open(record.full_presigned_url, "_blank");
+                                            if (fullUrl) {
+                                                window.open(fullUrl, "_blank");
                                             }
                                         }}
                                     />
@@ -600,14 +646,14 @@ function QueryScreen() {
                                     {mode !== "thumbnail" && (
                                         <button
                                             type="button"
-                                            disabled={!record.thumbnail_url}
+                                            disabled={!permanentThumbnailUrl}
                                             onClick={() => {
-                                                if (record.thumbnail_url) {
-                                                    void handleUseThumbnailUrl(record.thumbnail_url);
+                                                if (permanentThumbnailUrl) {
+                                                    void handleUseThumbnailUrl(permanentThumbnailUrl);
                                                 }
                                             }}
                                         >
-                                            {record.thumbnail_url === selectedUrl
+                                            {permanentThumbnailUrl === selectedUrl
                                                 ? "Copied to Search"
                                                 : "Copy Thumbnail URL"}
                                         </button>
@@ -615,13 +661,13 @@ function QueryScreen() {
 
                                     <button
                                         type="button"
-                                        disabled={!record.full_url}
+                                        disabled={!permanentFullUrl}
                                         onClick={async () => {
-                                            if (!record.full_url) return;
+                                            if (!permanentFullUrl) return;
 
                                             try {
-                                                await navigator.clipboard.writeText(record.full_url);
-                                                setCopiedFullUrl(record.full_url);
+                                                await navigator.clipboard.writeText(permanentFullUrl);
+                                                setCopiedFullUrl(permanentFullUrl);
 
                                                 window.setTimeout(() => {
                                                     setCopiedFullUrl("");
@@ -631,14 +677,15 @@ function QueryScreen() {
                                             }
                                         }}
                                     >
-                                        {record.full_url === copiedFullUrl
+                                        {permanentFullUrl === copiedFullUrl
                                             ? "Copied Successfully"
                                             : "Copy Full URL"}
                                     </button>
                                 </div>
                             </div>
                         </article>
-                    ))}
+                        );
+                    })}
                 </section>
             </section>
         </main >

@@ -9,6 +9,10 @@ def get_current_user(event):
     return event["requestContext"]["authorizer"]["jwt"]["claims"]["sub"]
 
 
+def get_http_method(event) -> str | None:
+    return event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method")
+
+
 def build_s3_key(key_name: str, media_type: Literal["image", "video"]) -> str:
     assert media_type in ("image", "video")
     return f"{media_type}s/{key_name}"

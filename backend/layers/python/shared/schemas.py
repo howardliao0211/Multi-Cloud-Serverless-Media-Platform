@@ -194,6 +194,7 @@ class QueryFileUploadUrlResponse(BaseModel):
     upload_url: str
     query_key: str
     expires_in: int
+    upload_headers: Dict[str, str] = Field(default_factory=dict)
 
 
 class QueryFileRequest(BaseModel):
@@ -217,6 +218,8 @@ class QueryFileResult(BaseModel):
     media_type: MediaType
     url: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    full_presigned_url: Optional[str] = None
+    thumbnail_presigned_url: Optional[str] = None
     tags: Dict[str, int] = Field(default_factory=dict)
 
 

@@ -241,9 +241,29 @@ export type QueryTagsResponse = GetMediaResponse;
 
 export type QuerySpeciesResponse = GetMediaResponse;
 
+export type QueryFileUploadUrlResponse = {
+  upload_url: string;
+  query_key: string;
+  expires_in: number;
+  upload_headers: Record<string, string>;
+};
+
+export type QueryFileResult = {
+  checksum: string;
+  file_name: string;
+  visibility: MediaVisibility;
+  media_type: "image" | "video" | null;
+  url?: string | null;
+  thumbnail_url?: string | null;
+  full_presigned_url?: string | null;
+  thumbnail_presigned_url?: string | null;
+  tags: Record<string, number>;
+};
+
 export type QueryFileResponse = {
   detected_tags: Record<string, number>;
-  media_records: MediaRecordResponse[];
+  count: number;
+  results: QueryFileResult[];
 };
 
 export type QueryThumbnailUrlResponse = {

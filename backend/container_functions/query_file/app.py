@@ -1,4 +1,5 @@
 import cv2
+import traceback
 
 from http import HTTPMethod, HTTPStatus
 from contextlib import contextmanager
@@ -12,6 +13,7 @@ from typing import List
 from pydantic import ValidationError
 
 from shared.aws_resources import (
+    delete_s3_object_if_exists,
     download_s3_file,
     get_bucket_and_name,
     get_table,
@@ -30,8 +32,9 @@ from shared.schemas import (
     QueryFileRequest,
     QueryFileResponse,
     QueryFileResult,
+    MediaRecordResponse,
 )
-from shared.utils import build_response_message, get_current_user
+from shared.utils import build_response_message, get_current_user, get_http_method
 
 
 s3, bucket_name = get_bucket_and_name()
@@ -109,6 +112,13 @@ def get_query_object_metadata(query_key: str, current_user: str) -> tuple[str, s
     return file_name, content_type
 
 
+def cleanup_query_upload(query_key: str) -> None:
+    try:
+        delete_s3_object_if_exists(s3, bucket_name, query_key)
+    except Exception as error:
+        print(f"Failed to clean query upload {query_key}: {error}")
+
+
 def infer_uploaded_media_type(file_name: str, content_type: str) -> str:
     content_family = content_type.split("/")[0].lower()
 
@@ -142,6 +152,12 @@ def media_matches_detected_tags(
 def shape_query_result(media_record: MediaRecord) -> QueryFileResult:
     media_type = infer_media_type(media_record)
     thumbnail_url = media_record.thumbnail_url if media_type == "image" else None
+    presigned = MediaRecordResponse.from_media_record(
+        media_record,
+        s3,
+        bucket_name,
+        300,
+    )
 
     return QueryFileResult(
         checksum=media_record.checksum,
@@ -150,6 +166,8 @@ def shape_query_result(media_record: MediaRecord) -> QueryFileResult:
         media_type=media_type,
         url=media_record.full_url,
         thumbnail_url=thumbnail_url,
+        full_presigned_url=presigned.full_presigned_url,
+        thumbnail_presigned_url=presigned.thumbnail_presigned_url,
         tags=normalize_tag_counts(media_record.tags),
     )
 
@@ -251,20 +269,23 @@ def detect_query_file_tags(
 
 def lambda_handler(event, context):
     allow_methods = [HTTPMethod.POST, HTTPMethod.OPTIONS]
+    http_method = get_http_method(event)
 
-    if event.get("httpMethod") == "OPTIONS":
+    if http_method == "OPTIONS":
         return build_response_message(
             status_code=HTTPStatus.OK,
             body={"message": "OK"},
             allow_http_methods=allow_methods,
         )
 
-    if event.get("httpMethod") != "POST":
+    if http_method != "POST":
         return build_response_message(
             status_code=HTTPStatus.BAD_REQUEST,
             body={"message": "Unsupported HTTP method"},
             allow_http_methods=allow_methods,
         )
+
+    request = None
 
     try:
         current_user = get_current_user(event)
@@ -303,3 +324,15 @@ def lambda_handler(event, context):
             body={"message": "Invalid query file request", "error": str(error)},
             allow_http_methods=allow_methods,
         )
+    except Exception as error:
+        print("Unhandled query_file error")
+        print(traceback.format_exc())
+
+        return build_response_message(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            body={"message": "Query file processing failed", "error": str(error)},
+            allow_http_methods=allow_methods,
+        )
+    finally:
+        if request is not None:
+            cleanup_query_upload(request.query_key)
