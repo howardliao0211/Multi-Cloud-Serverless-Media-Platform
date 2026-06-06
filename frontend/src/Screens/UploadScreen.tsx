@@ -44,6 +44,17 @@ type MediaUploadStatusResponse = {
     error_message?: string | null;
 };
 
+const STATUS_PROGRESS: Record<FileUploadStatus, number> = {
+    waiting: 0,
+    pending: 10,
+    uploading: 20,
+    uploaded: 40,
+    processing: 70,
+    ready: 100,
+    failed: 100,
+    duplicate: 100,
+};
+
 /**
  * Provides a multi-file media upload interface.
  *
@@ -56,7 +67,8 @@ type MediaUploadStatusResponse = {
 function UploadScreen() {
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", "")); const [visibility, setVisibility] = useState<"private" | "public">("private");
+    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
+    const [visibility, setVisibility] = useState<"private" | "public">("private");
     const [fileStatuses, setFileStatuses] = useState<FileUploadItem[]>([]);
     const [overallProgress, setOverallProgress] = useState<number>(0);
 
@@ -123,41 +135,60 @@ function UploadScreen() {
     }
 
     /**
-     * Updates one file's status and recalculates overall progress.
-     *
-     * When every file reaches a final state, a summary is displayed and the
-     * user is redirected to the dashboard.
-     *
-     * @param fileName name of the file being updated.
-     * @param status new upload or processing status.
-     */
+ * Updates one file's status and recalculates overall progress.
+ *
+ * When every file reaches a final state, a completion summary is displayed.
+ *
+ * @param fileName - Name of the file being updated.
+ * @param nextStatus - New upload or processing status.
+ */
     function updateFileStatus(
         fileName: string,
-        status: FileUploadStatus
+        nextStatus: FileUploadStatus
     ): void {
-        setFileStatuses((current) => {
-            const updated = current.map((item) =>
-                item.name === fileName
-                    ? { ...item, status }
-                    : item
-            );
+        setFileStatuses((currentStatuses) => {
+            const updatedStatuses = currentStatuses.map((item) => {
+                if (item.name !== fileName) {
+                    return item;
+                }
 
-            const totalProgress = updated.reduce(
+                const currentProgress =
+                    STATUS_PROGRESS[item.status];
+
+                const nextProgress =
+                    STATUS_PROGRESS[nextStatus];
+
+                // Prevent an upload from moving back to an earlier stage.
+                if (nextProgress < currentProgress) {
+                    return item;
+                }
+
+                return {
+                    ...item,
+                    status: nextStatus,
+                };
+            });
+
+            const totalProgress = updatedStatuses.reduce(
                 (sum, item) =>
-                    sum + getProgress(item.status),
+                    sum + STATUS_PROGRESS[item.status],
                 0
             );
 
             const averageProgress =
-                updated.length > 0
+                updatedStatuses.length > 0
                     ? Math.round(
-                        totalProgress / updated.length
+                        totalProgress /
+                        updatedStatuses.length
                     )
                     : 0;
 
-            setOverallProgress(averageProgress);
+            // Prevent the overall progress bar from moving backwards.
+            setOverallProgress((previousProgress) =>
+                Math.max(previousProgress, averageProgress)
+            );
 
-            const finishedCount = updated.filter(
+            const finishedCount = updatedStatuses.filter(
                 (item) =>
                     item.status === "ready" ||
                     item.status === "failed" ||
@@ -165,18 +196,18 @@ function UploadScreen() {
             ).length;
 
             if (
-                updated.length > 0 &&
-                finishedCount === updated.length
+                updatedStatuses.length > 0 &&
+                finishedCount === updatedStatuses.length
             ) {
-                const readyCount = updated.filter(
+                const readyCount = updatedStatuses.filter(
                     (item) => item.status === "ready"
                 ).length;
 
-                const failedCount = updated.filter(
+                const failedCount = updatedStatuses.filter(
                     (item) => item.status === "failed"
                 ).length;
 
-                const duplicateCount = updated.filter(
+                const duplicateCount = updatedStatuses.filter(
                     (item) => item.status === "duplicate"
                 ).length;
 
@@ -197,30 +228,8 @@ function UploadScreen() {
                 }
             }
 
-            return updated;
+            return updatedStatuses;
         });
-    }
-
-    /**
-     * Calculates the overall completed-file percentage.
-     *
-     * @param doneCount - Number of files in a final state.
-     * @param totalCount - Total number of selected files.
-     */
-    function updateOverallProgress(
-        doneCount: number,
-        totalCount: number
-    ): void {
-        if (totalCount === 0) {
-            setOverallProgress(0);
-            return;
-        }
-
-        setOverallProgress(
-            Math.round(
-                (doneCount / totalCount) * 100
-            )
-        );
     }
 
     /**
@@ -232,24 +241,7 @@ function UploadScreen() {
     function getProgress(
         currentStatus: FileUploadStatus
     ): number {
-        switch (currentStatus) {
-            case "waiting":
-                return 0;
-            case "pending":
-                return 10;
-            case "uploading":
-                return 20;
-            case "uploaded":
-                return 40;
-            case "processing":
-                return 70;
-            case "ready":
-            case "duplicate":
-            case "failed":
-                return 100;
-            default:
-                return 0;
-        }
+        return STATUS_PROGRESS[currentStatus];
     }
 
     /**
@@ -299,6 +291,8 @@ function UploadScreen() {
                 if (pollCount > maxPolls) {
                     window.clearInterval(intervalId);
 
+                    updateFileStatus(fileName, "failed");
+                    
                     setStatus(
                         createStatus(
                             "error",
@@ -369,34 +363,24 @@ function UploadScreen() {
 
         try {
             for (const file of files) {
-                updateFileStatus(
-                    file.name,
-                    "uploading"
+                updateFileStatus(file.name, "pending");
+
+                const userId = await getCurrentUserId();
+                const checksum = await calculateFileHash(file);
+                const mediaType = getMediaType(file);
+
+                const data = await authFetch<UploadResponse>(
+                    "/get_signed_url",
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            file_name: file.name,
+                            checksum,
+                            media_type: mediaType,
+                            visibility,
+                        }),
+                    }
                 );
-
-                const userId =
-                    await getCurrentUserId();
-
-                const checksum =
-                    await calculateFileHash(file);
-
-                const mediaType =
-                    getMediaType(file);
-
-                const data =
-                    await authFetch<UploadResponse>(
-                        "/get_signed_url",
-                        {
-                            method: "POST",
-                            body: JSON.stringify({
-                                file_name: file.name,
-                                checksum,
-                                media_type: mediaType,
-                                visibility,
-                            }),
-                        }
-                    );
-
                 if (data.duplicate) {
                     updateFileStatus(
                         file.name,
@@ -415,6 +399,8 @@ function UploadScreen() {
                         "Upload URL was not returned."
                     );
                 }
+
+                updateFileStatus(file.name, "uploading");
 
                 const uploadResponse =
                     await fetch(data.upload_url, {
@@ -496,7 +482,7 @@ function UploadScreen() {
             <div className="button-row">
                 <button type="button"
                     onClick={handleUpload}
-                    disabled={files.length === 0 || status.type === "error"}
+                    disabled={files.length === 0 || status.type === "loading"}
                 >
                     Upload
                 </button>
