@@ -11,6 +11,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+BUILD_VERSION = "video-support-v2-debug"
+
+import cv2
 import requests
 from shared.model import ImageTagger
 
@@ -206,18 +209,18 @@ def get_tagger() -> ImageTagger:
     return _tagger
 
 
-def download_input_to_temp_file(url: str) -> Path:
+def download_input_to_temp_file(url: str, suffix: str = ".jpg") -> Path:
     response = requests.get(url, timeout=60)
     response.raise_for_status()
 
-    fd, path = tempfile.mkstemp(suffix=".jpg")
+    fd, path = tempfile.mkstemp(suffix=suffix)
     os.close(fd)
 
     temp_path = Path(path)
     temp_path.write_bytes(response.content)
 
     if temp_path.stat().st_size == 0:
-        raise ValueError("Downloaded input image is empty")
+        raise ValueError("Downloaded input media is empty")
 
     return temp_path
 
@@ -263,9 +266,83 @@ def real_image_inference(inputs):
     }
 
 
+def real_video_inference(inputs):
+    tagger = get_tagger()
+
+    all_tags = Counter()
+    detections = []
+
+    for item in inputs:
+        url = item.get("url")
+        if not url:
+            raise ValueError("Input item is missing url")
+
+        source = item.get("source", "unknown")
+        local_video_path = download_input_to_temp_file(url, suffix=".mp4")
+
+        cap = cv2.VideoCapture(str(local_video_path))
+        if not cap.isOpened():
+            local_video_path.unlink(missing_ok=True)
+            raise ValueError(f"Cannot open video: {local_video_path}")
+
+        try:
+            fps = cap.get(cv2.CAP_PROP_FPS) or 0
+            frame_interval = max(int(round(fps)), 1) if fps > 0 else 30
+
+            frame_count = 0
+            sampled_count = 0
+            max_sampled_frames = int(os.getenv("GCP_VIDEO_MAX_SAMPLED_FRAMES", "12"))
+
+            while sampled_count < max_sampled_frames:
+                success, frame = cap.read()
+                if not success:
+                    break
+
+                if frame_count % frame_interval == 0:
+                    timestamp_sec = None
+                    if fps > 0:
+                        timestamp_sec = round(frame_count / fps, 3)
+
+                    result = tagger.tag_image(frame)
+                    item_tags = result.get("tags", {})
+                    all_tags.update(item_tags)
+
+                    for detection in result.get("detections", []):
+                        detections.append({
+                            **detection,
+                            "source": source,
+                            "timestamp_sec": timestamp_sec,
+                        })
+
+                    sampled_count += 1
+
+                frame_count += 1
+
+            if sampled_count == 0:
+                raise ValueError("No frames were extracted from video")
+        finally:
+            cap.release()
+            try:
+                local_video_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    return {
+        "tags": sorted(all_tags.keys()),
+        "tag_counts": dict(all_tags),
+        "detections": detections,
+    }
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlparse(self.path).path
+
+        if path == "/debug-version":
+            return json_response(self, 200, {
+                "build_version": BUILD_VERSION,
+                "video_support": True,
+            })
 
         if path in ["/", "/health"]:
             return json_response(self, 200, {
@@ -313,10 +390,12 @@ class Handler(BaseHTTPRequestHandler):
             if not inputs:
                 return json_response(self, 400, {"error": "At least one input is required"})
 
-            if media_type != "image":
-                return json_response(self, 400, {"error": "GCP image processor currently supports image only"})
-
-            inference_result = real_image_inference(inputs)
+            if media_type == "image":
+                inference_result = real_image_inference(inputs)
+            elif media_type == "video":
+                inference_result = real_video_inference(inputs)
+            else:
+                return json_response(self, 400, {"error": "media_type must be image or video"})
 
             return json_response(self, 200, {
                 "request_id": request_id,
