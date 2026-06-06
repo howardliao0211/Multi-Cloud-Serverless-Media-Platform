@@ -5,6 +5,7 @@ import { authFetch } from "../services/api";
 import {
     getErrorMessage,
     isValidMediaFile,
+    type DashboardOutletContext,
     type MediaRecordResponse,
     type QueryTagsResponse,
     type QuerySpeciesResponse,
@@ -12,15 +13,8 @@ import {
     type QueryFileResponse,
     calculateFileHash,
     getMediaType,
+    maskOwnerId,
 } from "../utils";
-
-/**
- * Shared values provided by DashboardScreen through React Router Outlet context. 
- */
-type DashboardOutletContext = {
-    selectedUrl: string;
-    setSelectedUrl: React.Dispatch<React.SetStateAction<string>>;
-}
 
 /**
  * Supported media search methods.
@@ -50,15 +44,15 @@ function QueryScreen() {
     const [tagName, setTagName] = useState<string>("");
     const [tagCount, setTagCount] = useState<number>(1);
     const [tagQueries, setTagQueries] = useState<{ name: string; count: number }[]>([]);
-    
+
     // Species search input.
     const [species, setSpecies] = useState<string>("");
-    
+
     // Shared thumbnail URL stored by DashboardScreen.
     const { selectedUrl, setSelectedUrl } = useOutletContext<DashboardOutletContext>();
-    
+
     const [copiedFullUrl, setCopiedFullUrl] = useState<string>("");
-    
+
     // File-content search state.
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -93,13 +87,13 @@ function QueryScreen() {
         resetSearchState();
     }
 
-    
-     /**
-     * Adds a normalised tag and minimum count to the tag query.
-     *
-     * Adding an existing tag replaces its previous count instead of creating
-     * a duplicate entry.
-     */
+
+    /**
+    * Adds a normalised tag and minimum count to the tag query.
+    *
+    * Adding an existing tag replaces its previous count instead of creating
+    * a duplicate entry.
+    */
     function handleAddTag() {
         const normalizedName = tagName.trim().toLowerCase();
         const normalizedCount = Math.max(1, Number(tagCount) || 1);
@@ -186,6 +180,16 @@ function QueryScreen() {
             return;
         }
 
+        const containsMultipleSpecies =
+            normalizedSpecies.includes(",") ||
+            normalizedSpecies.includes(";") ||
+            normalizedSpecies.includes("\n");
+
+        if (containsMultipleSpecies) {
+            setError("Please enter only one species.");
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
         setDetectedTags({});
@@ -212,7 +216,7 @@ function QueryScreen() {
      * a thumbnail URL through Outlet context.
      */
     useEffect(() => {
-        if (!selectedUrl) return;
+        if (!selectedUrl.trim()) return;
 
         setMode("thumbnail");
         setResults([]);
@@ -447,7 +451,7 @@ function QueryScreen() {
                             <input
                                 value={species}
                                 onChange={(event) => setSpecies(event.target.value)}
-                                placeholder="Enter species name (eg. koala)"
+                                placeholder="Enter one species name (eg. koala)"
                             />
                         </div>
 
@@ -576,13 +580,14 @@ function QueryScreen() {
                                     File Name:
                                     <strong>{record.file_name}</strong>
                                 </p>
+
+                                <p>
+                                    Owner: <strong>{maskOwnerId(record.owner_id)}</strong>
+                                </p>
+
                                 <p>
                                     Visibility: <strong>{record.visibility}</strong>
                                 </p>
-
-
-
-
 
                                 <div className="media-tags-text">
                                     {Object.entries(record.tags ?? {}).length > 0 ? (

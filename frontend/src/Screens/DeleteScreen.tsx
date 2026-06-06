@@ -1,16 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { authFetch } from "../services/api";
-import { getErrorMessage, type DeleteFileResponse } from "../utils";
-
-/**
- * Shared values provided by DashboardScreen through React Router Outlet context. 
- */
-type DashboardOutletContext = {
-    selectedUrls: string[];
-    setSelectedUrls: React.Dispatch<React.SetStateAction<string[]>>;
-    refreshMyMedia: () => Promise<void>;
-}
+import { getErrorMessage, type DashboardOutletContext, type DeleteFileResponse } from "../utils";
 
 /**
  * Provides a bulk file deletion interface.

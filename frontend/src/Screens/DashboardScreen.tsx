@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import {
     createStatus, getErrorMessage, getMyPrivateMedia, getMyPublicMedia,
     type StatusMessage, type MediaRecordResponse,
-    getCurrentUserId
+    getCurrentUserId,
+    maskOwnerId
 } from "../utils";
 import { authFetch } from "../services/api";
 
@@ -312,6 +313,10 @@ function DashboardScreen() {
                                             </div>
 
                                             <p>
+                                                Owner: <strong>{maskOwnerId(record.owner_id)}</strong>
+                                            </p>
+                                            
+                                            <p>   
                                                 Visibility: <strong>{record.visibility}</strong>
                                             </p>
 

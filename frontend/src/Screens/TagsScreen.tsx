@@ -1,16 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { authFetch } from "../services/api";
-import { getErrorMessage, type EditTagsResponse } from "../utils";
-
-/**
- * Shared values provided by DashboardScreen through React Router Outlet context.
- */
-type DashboardOutletContext = {
-    selectedUrls: string[];
-    setSelectedUrls: React.Dispatch<React.SetStateAction<string[]>>;
-    refreshMyMedia: () => Promise<void>;
-}
+import { getErrorMessage, type DashboardOutletContext, type EditTagsResponse } from "../utils";
 
 /**
  * Provides a bulk interface for adding or removing tags from media files.

@@ -1,5 +1,6 @@
 import { getCurrentUser, fetchUserAttributes } from "aws-amplify/auth";
 import { authFetch } from "./services/api";
+import type { Dispatch, SetStateAction } from "react";
 
 /**
  * Authentication helpers
@@ -33,6 +34,20 @@ export async function getCurrentUserEmail(): Promise<string> {
 }
 
 /**
+ * Masks an owner ID before displaying it in the UI.
+ *
+ * @param ownerId - The original owner ID.
+ * @returns The first five characters followed by four asterisks.
+ */
+export function maskOwnerId(ownerId: string): string {
+  if (!ownerId) {
+    return "Unknown";
+  }
+
+  return `${ownerId.slice(0, 5)}****`;
+}
+
+/**
  * Converts an unknown caught value into a user-friendly error message.
  * 
  * @param error the value caught from a try/catch block.
@@ -42,6 +57,24 @@ export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Something went wrong.";
 }
+
+/**
+ * Shared values and actions provided by DashboardScreen through
+ * React Router's Outlet context.
+ *
+ * Nested dashboard pages use this context to share selected media URLs,
+ * prepare a thumbnail URL for search, and refresh the dashboard media list
+ * after a successful update or deletion.
+ */
+export type DashboardOutletContext = {
+    selectedUrls: string[]; //Permanent full-media URLs currently selected for bulk operations
+    setSelectedUrls: Dispatch<SetStateAction<string[]>>; //Updates the shared list of selected full-media URLs.
+
+    selectedUrl: string; //Permanent thumbnail URL prepared for thumbnail-based search.
+    setSelectedUrl: Dispatch<SetStateAction<string>>; //Updates the shared thumbnail URL used by the search page.
+
+    refreshMyMedia: () => Promise<void>; //Reloads the current user's media records in DashboardScreen.
+};
 
 /**
  * Media retrieval helpers.
