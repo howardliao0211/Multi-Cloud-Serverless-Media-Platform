@@ -7,6 +7,7 @@ import pytest
 from botocore.config import Config
 from boto3.dynamodb.conditions import Attr
 
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
@@ -91,6 +92,7 @@ def _cleanup_integration_test_media_records(table, test_user_id: str):
         f"Deleted={deleted_count}, skipped={skipped_count}"
     )
 
+
 @pytest.fixture(scope="session")
 def integration_config():
     return {
@@ -104,6 +106,7 @@ def integration_config():
         "tag_video_function": "tag_video",
         "get_upload_status_function": "get_upload_status",
         "query_tags_function": "query_tags",
+        "delete_file_function": "delete_file",
         "test_user_id": "integration-test-user",
         "test_video_path": os.getenv("TEST_VIDEO_PATH", "./integration/test_video.mp4")
     }

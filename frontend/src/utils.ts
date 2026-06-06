@@ -1,6 +1,11 @@
-import { getCurrentUser } from "aws-amplify/auth";
+import { getCurrentUser, fetchUserAttributes } from "aws-amplify/auth";
 import { authFetch } from "./services/api";
 
+/**
+ * Authentication helpers
+ * 
+ * @returns the Cognito ID of the currently authenticated user.
+ */
 export async function getCurrentUserId(): Promise<string> {
   const user = await getCurrentUser();
 
@@ -10,23 +15,60 @@ export async function getCurrentUserId(): Promise<string> {
   return user.userId;
 }
 
+/**
+ * Authentication helpers
+ * 
+ * @returns the Cognito Email of the currently authenticated user.
+ */
+export async function getCurrentUserEmail(): Promise<string> {
+  const attributes = await fetchUserAttributes();
+
+  const email = attributes.email;
+
+  if (!email) {
+    throw new Error("User email not found.");
+  }
+
+  return email;
+}
+
+/**
+ * Converts an unknown caught value into a user-friendly error message.
+ * 
+ * @param error the value caught from a try/catch block.
+ * @returns the original error message when the value is an Error; otherwise, a generic fallback message.
+ */
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Something went wrong.";
 }
 
+/**
+ * Media retrieval helpers.
+ * 
+ * @returns private media belonging to the current user.
+ */
 export async function getMyPrivateMedia() {
   return authFetch<GetMediaResponse>("/get_private_media", {
     method: "GET",
   });
 }
 
+/**
+ * Media retrieval helpers.
+ * 
+ * @returns all publicly accessible media.
+ * the caller can filter the returned records by owener ID when required. 
+ */
 export async function getMyPublicMedia() {
   return authFetch<GetMediaResponse>("/get_public_media", {
     method: "GET",
   });
 }
 
+/**
+ * File validation and normalisation
+ */
 export const ALLOWED_MEDIA_TYPES = [
   "image/jpeg",
   "image/png",
@@ -35,10 +77,22 @@ export const ALLOWED_MEDIA_TYPES = [
   "video/quicktime",
 ];
 
+/**
+ * Checks whether a file has one of the supported MIME types.
+ * 
+ * @param file the file that uploaded by the current user.
+ * @returns true if the file is supported, otherwise false.
+ */
 export function isValidMediaFile(file: File): boolean {
   return ALLOWED_MEDIA_TYPES.includes(file.type);
 }
 
+/**
+ * Normalises the file extemsion to lowercase.
+ * 
+ * @param file the original browser File object.
+ * @returns the file name withe a lowercase extension.
+ */
 export function getNormalizedFileName(file: File): string {
   const parts = file.name.split(".");
   if (parts.length < 2) return file.name;
@@ -47,6 +101,12 @@ export function getNormalizedFileName(file: File): string {
   return `${parts.join(".")}.${extension}`;
 }
 
+/**
+ * Separates a collection of files into valid and invalid media files.
+ * 
+ * @param files the files to validate.
+ * @returns an object containing valid files and invalid files.
+ */
 export function validateMediaFiles(files: File[]): {
   validFiles: File[];
   invalidFiles: File[];
@@ -57,6 +117,9 @@ export function validateMediaFiles(files: File[]): {
   return { validFiles, invalidFiles };
 }
 
+/**
+ * Status types
+ */
 export type StatusType = "idle" | "loading" | "success" | "error";
 
 export type StatusMessage = {
@@ -64,10 +127,20 @@ export type StatusMessage = {
   text: string;
 };
 
+/**
+ * Creates a consistent status object for UI feedback.
+ * 
+ * @param type 
+ * @param text 
+ * @returns 
+ */
 export function createStatus(type: StatusType, text: string): StatusMessage {
   return {type, text};
 }
 
+/**
+ * Media types.
+ */
 export type MediaVisibility = "private" | "public";
 
 export type MediaRecordStatus =
@@ -112,36 +185,104 @@ export function getMediaType(file: File): "image" | "video" {
   throw new Error("Unsupported file type.");
 }
 
-export type QueryMediaResult = {
-  checksum: string;
-  file_name: string;
-  visibility: MediaVisibility;
-  media_type?: string | null;
-  full_presigned_url?: string | null;
-  thumbnail_presigned_url?: string | null;
+/**
+ * Bull tag editing.
+ */
+export type TagCount = Record<string, number>;
+
+export type EditTagsRequest = {
+  urls: string[];
+  tags: TagCount[];
+  // 1 adds tags and 0 removes tags.
+  operation_key: 0 | 1;
+};
+
+export type EditTagsResult = {
+  url: string;
+  updated: boolean;
+  checksum?: string | null;
+  file_name?: string | null;
   tags: Record<string, number>;
+  message?: string | null;
 };
 
-export type QueryTagsResponse = {
-  count: number;
-  results: QueryMediaResult[];
+export type EditTagsResponse = {
+  updated_count: number;
+  results: EditTagsResult[];
 };
 
-export type QuerySpeciesResponse = {
-  count: number;
-  results: QueryMediaResult[];
+/**
+ * Bulk file deletion
+ */
+export type DeleteFileRequest = {
+  urls: string[];
 };
 
-export type QueryThumbnailUrlResponse = {
-  checksum: string;
-  file_name: string;
-  visibility: MediaVisibility;
-  full_presigned_url?: string | null;
-  thumbnail_presigned_url?: string | null;
+export type DeleteFileResult = {
+  url: string;
+  deleted: boolean;
+  checksum?: string | null;
+  file_name?: string | null;
+  removed_db_entry: boolean;
+  removed_full_object: boolean;
+  removed_thumbnail_object: boolean;
+  message?: string | null;
 };
+
+export type DeleteFileResponse = {
+  deleted_count: number;
+  results: DeleteFileResult[];
+};
+
+/**
+ * Search responses
+ */
+export type QueryTagsResponse = GetMediaResponse;
+
+export type QuerySpeciesResponse = GetMediaResponse;
 
 export type QueryFileResponse = {
   detected_tags: Record<string, number>;
-  count: number;
-  results: QueryMediaResult[];
+  media_records: MediaRecordResponse[];
 };
+
+export type QueryThumbnailUrlResponse = {
+  media_records: MediaRecordResponse[];
+};
+
+/**
+ * SNS notification types
+ */
+export type SNSSubscribeRequest = {
+  email: string;
+  tags: string[];
+}
+
+export type SNSSubscribeResponse = {
+  email: string;
+  tags: string[];
+  subscription_arn?: string | null;
+  message: string;
+}
+
+export type SNSUnsubscribeRequest = {
+  email: string;
+}
+
+
+export type SNSGetSubscriptionRequest = {
+  email: string;
+}
+
+export type SubscriptionStatus =
+  | "none"
+  | "pending"
+  | "deleted"
+  | "confirmed"
+  | "invalid";
+
+export type SNSGetSubscriptionResponse = {
+  email: string;
+  tags: string[];
+  state: SubscriptionStatus;
+}

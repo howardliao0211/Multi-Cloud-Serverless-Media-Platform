@@ -4,11 +4,14 @@ import { useNavigate } from "react-router-dom";
 
 function AccountScreen(){
     const navigate = useNavigate();
+
+    // Store the signed-in user's Cognito profile attributes.
     const [email, setEmail] = useState<string>(""); 
     const [firstName, setFirstName] = useState<string>(""); 
     const [lastName, setLastName] = useState<string>("");
 
     useEffect(() => {
+        // Load the current user's attributes once when the page is mounted.
         async function loadUserInfo() {
             const attributes = await fetchUserAttributes();
 
@@ -19,6 +22,7 @@ function AccountScreen(){
         loadUserInfo();
     }, []);
 
+    // Sign the user out of Cagnito and return them to the loading page.
     async function handleSignOut() {
         await signOut();
         navigate("/");
@@ -31,6 +35,7 @@ function AccountScreen(){
             <section className="account-card">
                 <div className="account-profile">
                     <div className="account-avatar">
+                        {/* Display the user's first initial as a simple profile avatar. */}
                         {firstName ? firstName[0].toUpperCase() : "?"}
                     </div>
 

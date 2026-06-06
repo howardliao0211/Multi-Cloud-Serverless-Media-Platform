@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 from shared.utils import build_db_key
-from pydantic import BaseModel, Field, field_validator, model_validator, HttpUrl
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class MediaType(str, Enum):
@@ -30,10 +30,10 @@ class MediaRecord(BaseModel):
     full_key: str
     visibility: MediaVisibility
 
-    full_url: Optional[HttpUrl] = None
+    full_url: Optional[str] = None
     file_type: Optional[str] = None
     thumbnail_key: Optional[str] = None
-    thumbnail_url: Optional[HttpUrl] = None
+    thumbnail_url: Optional[str] = None
 
     tags: Dict[str, int] = Field(default_factory=dict)
 
@@ -67,18 +67,20 @@ class MediaRecordResponse(BaseModel):
     file_name: str
     visibility: MediaVisibility
 
-    full_url: Optional[HttpUrl]
-    thumbnail_url: Optional[HttpUrl]
+    full_url: Optional[str]
+    thumbnail_url: Optional[str]
 
-    full_presigned_url: Optional[HttpUrl]
-    thumbnail_presigned_url: Optional[HttpUrl]
+    full_presigned_url: Optional[str]
+    thumbnail_presigned_url: Optional[str]
 
     tags: Dict[str, int]
     upload_status: MediaRecordStatus
     error_message: Optional[str]
 
     @classmethod
-    def from_media_record(cls, media_record: MediaRecord, s3, bucket_name, expires_seconds):
+    def from_media_record(
+        cls, media_record: MediaRecord, s3, bucket_name, expires_seconds=300
+    ):
         full_presigned_url = s3.generate_presigned_url(
             ClientMethod="get_object",
             Params={
@@ -123,7 +125,7 @@ class UploadUrlRequest(BaseModel):
 
 class UploadUrlResponse(BaseModel):
     duplicate: bool
-    upload_url: Optional[HttpUrl] = None
+    upload_url: Optional[str] = None
     expires_in: Optional[int] = None
 
 
@@ -167,28 +169,9 @@ class QuerySpeciesRequest(BaseModel):
 
         return normalized_species
 
+
 class QueryThumbnailUrlRequest(BaseModel):
-    thumbnail_url: HttpUrl
-
-    @field_validator("thumbnail_url")
-    @classmethod
-    def validate_thumbnail_url(cls, thumbnail_url: HttpUrl) -> HttpUrl:
-        normalized_thumbnail_url = thumbnail_url.strip()
-
-        if not normalized_thumbnail_url:
-            raise ValueError("thumbnail_url must not be empty")
-
-        return normalized_thumbnail_url
-
-
-class QueryFileResult(BaseModel):
-    checksum: str
-    file_name: str
-    visibility: MediaVisibility
-    media_type: Optional[str] = None
-    url: Optional[HttpUrl] = None
-    thumbnail_url: Optional[HttpUrl] = None
-    tags: Dict[str, int] = Field(default_factory=dict)
+    thumbnail_url: str
 
 
 class GetMediaResponse(BaseModel):
@@ -201,23 +184,19 @@ class GetMediaUploadStatus(BaseModel):
 
 
 class ChangeVisibilityRequest(BaseModel):
-    url: HttpUrl
+    url: str
     visibility: MediaVisibility
 
 
 class EditTagsRequest(BaseModel):
     urls: List[str]
-    tags: List[str]
-    operation: Literal[0, 1]
+    tags: List[Dict[str, int]]
+    operation_key: Literal[0, 1]
 
     @field_validator("urls")
     @classmethod
     def validate_urls(cls, urls: List[str]) -> List[str]:
-        normalized_urls = [
-            url.strip()
-            for url in urls
-            if url.strip()
-        ]
+        normalized_urls = [url.strip() for url in urls if url.strip()]
 
         if not normalized_urls:
             raise ValueError("urls must not be empty")
@@ -226,21 +205,35 @@ class EditTagsRequest(BaseModel):
 
     @field_validator("tags")
     @classmethod
-    def validate_tags(cls, tags: List[str]) -> List[str]:
-        normalized_tags = [
-            tag.strip().lower()
-            for tag in tags
-            if tag.strip()
-        ]
+    def validate_tags(cls, tags: List[Dict[str, int]]) -> List[Dict[str, int]]:
+        normalized_tags: List[Dict[str, int]] = []
 
-        if not normalized_tags:
+        for tag_count in tags:
+            if len(tag_count) != 1:
+                raise ValueError(
+                    "each tag count must contain exactly one species")
+
+            raw_tag, raw_count = next(iter(tag_count.items()))
+            tag = raw_tag.strip().lower()
+
+            if not tag:
+                raise ValueError("tag names must not be empty")
+
+            count = int(raw_count)
+
+            if count < 1:
+                raise ValueError("tag counts must be at least 1")
+
+            normalized_tags.append({tag: count})
+
+        if not tags:
             raise ValueError("tags must not be empty")
 
-        return list(dict.fromkeys(normalized_tags))
+        return normalized_tags
 
 
 class EditTagsResult(BaseModel):
-    url: HttpUrl
+    url: str
     updated: bool
     checksum: Optional[str] = None
     file_name: Optional[str] = None
@@ -259,11 +252,7 @@ class DeleteFileRequest(BaseModel):
     @field_validator("urls")
     @classmethod
     def validate_urls(cls, urls: List[str]) -> List[str]:
-        normalized_urls = [
-            url.strip()
-            for url in urls
-            if url.strip()
-        ]
+        normalized_urls = [url.strip() for url in urls if url.strip()]
 
         if not normalized_urls:
             raise ValueError("urls must not be empty")
@@ -272,7 +261,7 @@ class DeleteFileRequest(BaseModel):
 
 
 class DeleteFileResult(BaseModel):
-    url: HttpUrl
+    url: str
     deleted: bool
     checksum: Optional[str] = None
     file_name: Optional[str] = None
@@ -290,3 +279,37 @@ class DeleteFileResponse(BaseModel):
 class MediaUploadStatusResponse(BaseModel):
     upload_status: MediaRecordStatus
     error_message: Optional[str]
+
+
+class SNSSubscribeRequest(BaseModel):
+    email: str
+    tags: List[str]
+
+
+class SNSSubscribeResponse(BaseModel):
+    email: str
+    tags: List[str]
+    subscription_arn: Optional[str]
+    message: str
+
+
+class SNSUnsubscribeRequest(BaseModel):
+    email: str
+
+
+class SNSGetSubscriptionRequest(BaseModel):
+    email: str
+
+
+class SubscriptionStatus(str, Enum):
+    none = "none"
+    pending = "pending"
+    deleted = "deleted"
+    confirmed = "confirmed"
+    invalid = "invalid"
+
+
+class SNSGetSubscriptionResponse(BaseModel):
+    email: str
+    tags: List[str]
+    state: SubscriptionStatus

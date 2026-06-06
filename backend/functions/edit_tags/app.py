@@ -40,115 +40,80 @@ def find_user_media_by_url(
     media_records: list[MediaRecord],
     url: str,
     current_user: str,
-) -> tuple[Optional[MediaRecord], bool]:
+) -> Optional[MediaRecord]:
     matching_records = find_media_records_by_url(media_records, url)
 
     for media_record in matching_records:
         if media_record.owner_id == current_user:
-            return media_record, True
+            return media_record
 
-    return None, bool(matching_records)
+    return None
 
 
-def normalize_requested_species(tags: list[str]) -> tuple[list[str], list[str]]:
-    valid_tags: list[str] = []
+def build_requested_tag_deltas(
+    request: EditTagsRequest,
+) -> tuple[dict[str, int], list[str]]:
+    valid_tag_deltas: dict[str, int] = {}
     invalid_tags: list[str] = []
+    direction = 1 if request.operation_key == 1 else -1
 
-    for tag in tags:
-        normalized_tag = normalize_species_tag(tag)
+    for tag_count in request.tags:
+        raw_tag, count = next(iter(tag_count.items()))
+        normalized_tag = normalize_species_tag(raw_tag)
 
         if normalized_tag is None:
-            invalid_tags.append(tag)
+            invalid_tags.append(raw_tag)
             continue
 
-        valid_tags.append(normalized_tag)
+        delta = count * direction
+        valid_tag_deltas[normalized_tag] = (
+            valid_tag_deltas.get(normalized_tag, 0) + delta
+        )
 
-    return list(dict.fromkeys(valid_tags)), invalid_tags
+    return {
+        tag: delta
+        for tag, delta in valid_tag_deltas.items()
+        if delta != 0
+    }, invalid_tags
 
 
-def add_tags_to_media(media_record: MediaRecord, tags: list[str]) -> dict[str, int]:
+def apply_tag_deltas_to_media(
+    media_record: MediaRecord,
+    tag_deltas: dict[str, int],
+) -> dict[str, int]:
     updated_tags = dict(media_record.tags)
 
-    for tag in tags:
-        updated_tags[tag] = updated_tags.get(tag, 0) + 1
+    for tag, delta in tag_deltas.items():
+        next_count = updated_tags.get(tag, 0) + delta
 
-    return updated_tags
-
-
-def remove_tags_from_media(media_record: MediaRecord, tags: list[str]) -> dict[str, int]:
-    updated_tags = dict(media_record.tags)
-
-    for tag in tags:
-        if tag not in updated_tags:
+        if next_count <= 0:
+            updated_tags.pop(tag, None)
             continue
 
-        updated_tags[tag] -= 1
-
-        if updated_tags[tag] <= 0:
-            updated_tags.pop(tag)
+        updated_tags[tag] = next_count
 
     return updated_tags
-
-
-def build_add_tags_result(
-    url: str,
-    media_record: MediaRecord,
-    tags: dict[str, int],
-) -> EditTagsResult:
-    return EditTagsResult(
-        url=url,
-        updated=True,
-        checksum=media_record.checksum,
-        file_name=media_record.file_name,
-        tags=tags,
-        message="tags added",
-    )
-
-
-def build_remove_tags_result(
-    url: str,
-    media_record: MediaRecord,
-    tags: dict[str, int],
-) -> EditTagsResult:
-    return EditTagsResult(
-        url=url,
-        updated=True,
-        checksum=media_record.checksum,
-        file_name=media_record.file_name,
-        tags=tags,
-        message="tags removed",
-    )
 
 
 def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResponse:
     results: list[EditTagsResult] = []
     updated_count = 0
-    valid_tags, invalid_tags = normalize_requested_species(request.tags)
+    valid_tag_deltas, invalid_tags = build_requested_tag_deltas(request)
     media_records = scan_media_record(table)
 
     for url in request.urls:
-        media_record, media_exists = find_user_media_by_url(
+        media_record = find_user_media_by_url(
             media_records,
             url,
             current_user,
         )
-
-        if not media_exists:
-            results.append(
-                EditTagsResult(
-                    url=url,
-                    updated=False,
-                    message="media not found",
-                )
-            )
-            continue
 
         if media_record is None:
             results.append(
                 EditTagsResult(
                     url=url,
                     updated=False,
-                    message="forbidden: media is owned by another user",
+                    message="media not found",
                 )
             )
             continue
@@ -166,12 +131,28 @@ def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResp
             )
             continue
 
-        if request.operation == 1:
-            updated_tags = add_tags_to_media(media_record, valid_tags)
-            result = build_add_tags_result(url, media_record, updated_tags)
-        else:
-            updated_tags = remove_tags_from_media(media_record, valid_tags)
-            result = build_remove_tags_result(url, media_record, updated_tags)
+        if not valid_tag_deltas:
+            results.append(
+                EditTagsResult(
+                    url=url,
+                    updated=False,
+                    checksum=media_record.checksum,
+                    file_name=media_record.file_name,
+                    tags=media_record.tags,
+                    message="no tag changes requested",
+                )
+            )
+            continue
+
+        updated_tags = apply_tag_deltas_to_media(media_record, valid_tag_deltas)
+        result = EditTagsResult(
+            url=url,
+            updated=True,
+            checksum=media_record.checksum,
+            file_name=media_record.file_name,
+            tags=updated_tags,
+            message="tags updated",
+        )
 
         update_media_record_in_db(
             table,
@@ -195,13 +176,6 @@ def lambda_handler(event, context):
         return build_response_message(
             status_code=HTTPStatus.OK,
             body={"message": "OK"},
-            allow_http_methods=allow_methods,
-        )
-
-    if event.get("httpMethod") != "POST":
-        return build_response_message(
-            status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "Unsupported HTTP method"},
             allow_http_methods=allow_methods,
         )
 

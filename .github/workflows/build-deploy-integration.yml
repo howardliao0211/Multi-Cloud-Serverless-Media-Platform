@@ -114,6 +114,11 @@ jobs:
                   df -h
                   docker system df || true
 
+            - name: Sync Lambda IAM role policy
+              run: |
+                  chmod +x backend/scripts/create_iam_role.sh
+                  bash backend/scripts/create_iam_role.sh
+
             - name: Run deploy_all_functions
               env:
                   LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}

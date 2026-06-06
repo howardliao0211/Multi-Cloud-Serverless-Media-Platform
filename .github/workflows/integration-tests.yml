@@ -47,6 +47,11 @@ jobs:
                     pip install -r backend/requirements.txt
                   fi
 
+            - name: Sync Lambda IAM role policy
+              run: |
+                  chmod +x backend/scripts/create_iam_role.sh
+                  bash backend/scripts/create_iam_role.sh
+
             - name: Run integration tests
               run: |
                   pytest tests/integration -vv -s

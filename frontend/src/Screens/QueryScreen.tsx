@@ -1,13 +1,18 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { authFetch } from "../services/api";
+
 import {
     getErrorMessage,
     isValidMediaFile,
+    type DashboardOutletContext,
+    type MediaRecordResponse,
     type QueryTagsResponse,
     type QuerySpeciesResponse,
     type QueryThumbnailUrlResponse,
     type QueryFileResponse,
-    type QueryMediaResult,
+    calculateFileHash,
+    getMediaType,
 } from "../utils";
 
 type SearchMode = "tags" | "species" | "thumbnail" | "content";
@@ -18,11 +23,12 @@ function QueryScreen() {
     const [tagCount, setTagCount] = useState<number>(1);
     const [species, setSpecies] = useState<string>("");
     const [tagQueries, setTagQueries] = useState<{ name: string; count: number }[]>([]);
-    const [thumbUrl, setThumbUrl] = useState<string>("");
+    const { selectedUrl, setSelectedUrl } = useOutletContext<DashboardOutletContext>();
+    const [copiedFullUrl, setCopiedFullUrl] = useState<string>("");
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    const [results, setResults] = useState<QueryMediaResult[]>([]);
+    const [results, setResults] = useState<MediaRecordResponse[]>([]);
     const [detectedTags, setDetectedTags] = useState<Record<string, number>>({});
     const [resultCount, setResultCount] = useState<number>(0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -94,8 +100,8 @@ function QueryScreen() {
                 body: JSON.stringify({ tags }),
             });
 
-            setResults(data.results ?? []);
-            setResultCount(data.count ?? data.results?.length ?? 0);
+            setResults(data.media_records ?? []);
+            setResultCount(data.media_records?.length ?? 0);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -123,8 +129,8 @@ function QueryScreen() {
                 }),
             });
 
-            setResults(data.results ?? []);
-            setResultCount(data.count ?? data.results?.length ?? 0);
+            setResults(data.media_records ?? []);
+            setResultCount(data.media_records?.length ?? 0);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -132,10 +138,20 @@ function QueryScreen() {
         }
     }
 
-    async function handleThumbnailSearch() {
-        const normalizedThumbUrl = thumbUrl.trim();
+    useEffect(() => {
+        if (!selectedUrl) return;
 
-        if (!normalizedThumbUrl) {
+        setMode("thumbnail");
+        setResults([]);
+        setDetectedTags({});
+        setResultCount(0);
+        setError(null);
+    }, [selectedUrl]);
+
+    async function handleThumbnailSearch() {
+        const normalizedThumbnailUrl = selectedUrl.trim();
+
+        if (!normalizedThumbnailUrl) {
             setError("Please enter a thumbnail URL.");
             return;
         }
@@ -145,25 +161,24 @@ function QueryScreen() {
         setDetectedTags({});
 
         try {
-            const data = await authFetch<QueryThumbnailUrlResponse>("/query_thumbnail_url", {
-                method: "POST",
-                body: JSON.stringify({
-                    thumbnail_url: normalizedThumbUrl,
-                }),
-            });
+            const data = await authFetch<QueryThumbnailUrlResponse>(
+                "/query_thumbnail_url",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        thumbnail_url: normalizedThumbnailUrl,
+                    }),
+                }
+            );
 
-            const result: QueryMediaResult = {
-                checksum: data.checksum,
-                file_name: data.file_name,
-                visibility: data.visibility,
-                media_type: null,
-                full_presigned_url: data.full_presigned_url,
-                thumbnail_presigned_url: data.thumbnail_presigned_url,
-                tags: {},
-            };
+            const records = data.media_records ?? [];
 
-            setResults([result]);
-            setResultCount(1);
+            setResults(records);
+            setResultCount(records.length);
+
+            if (records.length === 0) {
+                setError("No media found for this thumbnail URL.");
+            }
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -171,7 +186,23 @@ function QueryScreen() {
         }
     }
 
-    //modified leter FORMDATA -> UPLOAD
+    async function handleUseThumbnailUrl(thumbnailUrl: string) {
+        try {
+            await navigator.clipboard.writeText(thumbnailUrl);
+
+            setSelectedUrl(thumbnailUrl);
+            setMode("thumbnail");
+            setError(null);
+
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
+        } catch (error) {
+            setError(getErrorMessage(error));
+        }
+    }
+
     async function handleContentSearch() {
         if (!file) {
             setError("Please select a file.");
@@ -183,21 +214,25 @@ function QueryScreen() {
             return;
         }
 
-        const formData = new FormData();
-        formData.append("file", file);
-
         setIsLoading(true);
         setError(null);
 
         try {
+            const hash = await calculateFileHash(file);
+            const mediaType = getMediaType(file);
+
             const data = await authFetch<QueryFileResponse>("/query_file", {
                 method: "POST",
-                body: formData,
+                body: JSON.stringify({
+                    file_name: file.name,
+                    checksum: hash,
+                    media_type: mediaType,
+                }),
             });
 
             setDetectedTags(data.detected_tags ?? {});
-            setResults(data.results ?? []);
-            setResultCount(data.count ?? data.results?.length ?? 0);
+            setResults(data.media_records ?? []);
+            setResultCount(data.media_records?.length ?? 0);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -327,12 +362,16 @@ function QueryScreen() {
                     <>
                         <h2>Enter thumbnail URL to get full-size image:</h2>
                         <div className="search-row">
-                            <input value={thumbUrl}
-                                onChange={(event) => setThumbUrl(event.target.value)}
+                            <textarea value={selectedUrl}
+                                onChange={(event) => setSelectedUrl(event.target.value)}
                                 placeholder="https://.../thumbnail.jpg" />
                         </div>
                         <br />
-                        <button type="button" onClick={handleThumbnailSearch} disabled={isLoading}>
+                        <button
+                            type="button"
+                            onClick={() => void handleThumbnailSearch()}
+                            disabled={isLoading || !selectedUrl.trim()}
+                        >
                             {isLoading ? "Searching..." : "Search"}
                         </button>
                     </>
@@ -413,49 +452,93 @@ function QueryScreen() {
                     </p>
                 )}
 
-                <div className="media-cards-grid">
-                    {results.map((result) => {
-                        const preThumbUrl = result.thumbnail_presigned_url ?? result.full_presigned_url ?? "";
-                        const preFullUrl = result.thumbnail_presigned_url ?? preThumbUrl;
+                <section className="media-cards-grid">
+                    {results.map((record) => (
+                        <article className="media-card" key={`${record.owner_id}-${record.file_name}-${record.full_url ?? ""}`} >
+                            <div className="media-thumbnail">
+                                {record.thumbnail_presigned_url ? (
+                                    <img
+                                        src={record.thumbnail_presigned_url}
+                                        alt={`${record.file_name} thumbnail`}
+                                        onClick={() => {
+                                            if (record.full_presigned_url) {
+                                                window.open(record.full_presigned_url, "_blank");
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <span>No thumbnail available</span>
+                                )}
+                            </div>
+                            <div className="media-card-body">
+                                <p className="media-file-name">
+                                    File Name:
+                                    <strong>{record.file_name}</strong>
+                                </p>
+                                <p>
+                                    Visibility: <strong>{record.visibility}</strong>
+                                </p>
 
-                        return (
-                            <article
-                                key={`${result.checksum}-${result.file_name}`}
-                                className="media-card"
-                            >
-                                <div className="media-thumbnail">
-                                    {preThumbUrl ? (
-                                        <img
-                                            src={preThumbUrl}
-                                            alt={`${result.file_name} thumbnail`}
-                                            onClick={() => {
-                                                if (preFullUrl) {
-                                                    window.open(preFullUrl, "_blank");
-                                                }
-                                            }}
-                                        />
+
+
+
+
+                                <div className="media-tags-text">
+                                    {Object.entries(record.tags ?? {}).length > 0 ? (
+                                        Object.entries(record.tags).map(([tag, count]) => (
+                                            <p key={tag}>
+                                                {tag} ({count})
+                                            </p>
+                                        ))
                                     ) : (
-                                        <span>No thumbnail available</span>
+                                        <p>No tags yet</p>
                                     )}
                                 </div>
 
-                                <p>
-                                    File: <strong>{result.file_name}</strong>
-                                </p>
+                                <div className="media-url-actions">
+                                    {mode !== "thumbnail" && (
+                                        <button
+                                            type="button"
+                                            disabled={!record.thumbnail_url}
+                                            onClick={() => {
+                                                if (record.thumbnail_url) {
+                                                    void handleUseThumbnailUrl(record.thumbnail_url);
+                                                }
+                                            }}
+                                        >
+                                            {record.thumbnail_url === selectedUrl
+                                                ? "Copied to Search"
+                                                : "Copy Thumbnail URL"}
+                                        </button>
+                                    )}
 
-                                <p>
-                                    Visibility: <strong>{result.visibility}</strong>
-                                </p>
+                                    <button
+                                        type="button"
+                                        disabled={!record.full_url}
+                                        onClick={async () => {
+                                            if (!record.full_url) return;
 
-                                {result.media_type && (
-                                    <p>
-                                        Type: <strong>{result.media_type}</strong>
-                                    </p>
-                                )}
-                            </article>
-                        );
-                    })}
-                </div>
+                                            try {
+                                                await navigator.clipboard.writeText(record.full_url);
+                                                setCopiedFullUrl(record.full_url);
+
+                                                window.setTimeout(() => {
+                                                    setCopiedFullUrl("");
+                                                }, 2000);
+                                            } catch (error) {
+                                                setError(getErrorMessage(error));
+                                            }
+                                        }}
+                                    >
+                                        {record.full_url === copiedFullUrl
+                                            ? "Copied Successfully"
+                                            : "Copy Full URL"}
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
+                    ))}
+                </section>
             </section>
         </main >
     );

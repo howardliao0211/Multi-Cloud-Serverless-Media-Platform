@@ -103,7 +103,6 @@ def _get_media_record(table, key):
     return response.get("Item")
 
 
-
 def _wait_for_media_status(
     table,
     key: str,
@@ -139,22 +138,6 @@ def _wait_for_media_status(
         f"Last status: {last_status!r}. "
         f"Last item: {last_item}"
     )
-
-def _upload_to_presigned_url(upload_url, data, content_type, file_name, checksum, owner_id):
-    request = urllib.request.Request(
-        upload_url,
-        data=data,
-        method="PUT",
-        headers={
-            "Content-Type": content_type,
-            "x-amz-meta-file_name": file_name,
-            "x-amz-meta-checksum": checksum,
-            "x-amz-meta-owner_id": owner_id,
-        },
-    )
-
-    with urllib.request.urlopen(request, timeout=60) as response:
-        assert response.status == 200
 
 
 def _build_db_key(owner_id, full_key):
@@ -231,6 +214,7 @@ def _delete_media_record_by_key(table, key):
         print(f"Deleted DynamoDB item: {key}")
 
     return deleted_item
+
 
 def _delete_s3_objects(s3, bucket, *keys):
     objects = [{"Key": key} for key in keys if key]
@@ -614,6 +598,7 @@ def test_upper_case_media(aws_clients, integration_config, unique_id):
                 _delete_media_record(table, record)
             except Exception as e:
                 print(f"DynamoDB cleanup failed: {e}")
+
 
 def test_deduplicate_media_in_s3(aws_clients, integration_config, unique_id):
     lambda_client = aws_clients["lambda"]

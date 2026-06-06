@@ -1,16 +1,17 @@
 import { useRef, useState } from "react";
-import { calculateFileHash, createStatus, getMediaType, getCurrentUserId, type StatusMessage, validateMediaFiles } from "../utils";
+import { calculateFileHash, createStatus, getMediaType, getCurrentUserId, type StatusMessage, validateMediaFiles, getErrorMessage } from "../utils";
 import { authFetch } from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 function UploadScreen() {
     const [files, setFiles] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));    const [visibility, setVisibility] = useState<"private" | "public">("private");
+    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", "")); const [visibility, setVisibility] = useState<"private" | "public">("private");
     const [fileStatuses, setFileStatuses] = useState<FileUploadItem[]>([]);
     const [overallProgress, setOverallProgress] = useState<number>(0);
     const navigate = useNavigate();
 
+    // make sure the files are valid before uploading
     function handleSelectedFiles(selectedFiles: File[]) {
         const { validFiles, invalidFiles } = validateMediaFiles(selectedFiles);
 
@@ -19,17 +20,17 @@ function UploadScreen() {
             setFileStatuses([]);
             setOverallProgress(0);
             setStatus(
-            createStatus(
-                "error",
-                `Unsupported file type: ${invalidFiles.map((file) => file.name).join(", ")}. Please upload JPG, PNG, WEBP, MP4, or MOV files.`
-            )
+                createStatus(
+                    "error",
+                    `Unsupported file type: ${invalidFiles.map((file) => file.name).join(", ")}. Please upload JPG, PNG, WEBP, MP4, or MOV files.`
+                )
             );
             return;
         }
 
         setStatus(createStatus("idle", ""));
         setFiles(validFiles);
-        setFileStatuses(validFiles.map((file) => ({name: file.name, status: "waiting"})));
+        setFileStatuses(validFiles.map((file) => ({ name: file.name, status: "waiting" })));
         setOverallProgress(0);
     }
 
@@ -47,6 +48,7 @@ function UploadScreen() {
         expires_in?: number;
     };
 
+    // local status
     type FileUploadStatus = "waiting"
         | "uploading"
         | "pending"
@@ -61,6 +63,7 @@ function UploadScreen() {
         status: FileUploadStatus;
     };
 
+    // backend processing status
     type MediaUploadStatus = "pending" | "uploaded" | "processing" | "ready" | "failed";
 
     type MediaUploadStatusResponse = {
@@ -102,7 +105,8 @@ function UploadScreen() {
                             `Complete. ${readyCount} ready, ${duplicateCount} duplicate skipped.`
                         )
                     );
-                    navigate("/dashboard", { state: { refresh: Date.now() }})
+                    // auto-direct to dashboard page
+                    navigate("/dashboard", { state: { refresh: Date.now() } })
                 }
             }
 
@@ -150,13 +154,17 @@ function UploadScreen() {
 
     async function pollUploadStatus(fileName: string, checksum: string) {
         let pollCount = 0;
-        const maxPolls = 20; // Stop polling after 20 attempts (1 minute)
+        const maxPolls = 20;
 
         const intervalId = window.setInterval(async () => {
             pollCount++;
+
             if (pollCount > maxPolls) {
-                updateFileStatus(fileName, "failed");
                 window.clearInterval(intervalId);
+                setStatus(createStatus(
+                    "error",
+                    `${fileName} is still processing. Please refresh later.`
+                ));
                 return;
             }
 
@@ -170,8 +178,8 @@ function UploadScreen() {
                 }
             } catch (error) {
                 console.error(error);
-                updateFileStatus(fileName, "failed");
                 window.clearInterval(intervalId);
+                setStatus(createStatus("error", getErrorMessage(error)));
             }
         }, 3000);
     }
@@ -202,8 +210,6 @@ function UploadScreen() {
                         visibility
                     }),
                 });
-
-                console.log(file.name, data);
 
                 if (data.duplicate) {
                     duplicatedFiles.push(file.name);
@@ -239,7 +245,6 @@ function UploadScreen() {
 
         } catch (error) {
             setStatus(createStatus("error", "Upload failed."));
-            console.error(error);
         }
     }
 
@@ -276,8 +281,8 @@ function UploadScreen() {
                 </label>
             </div>
             <div className="button-row">
-                <button type="button" 
-                    onClick={handleUpload} 
+                <button type="button"
+                    onClick={handleUpload}
                     disabled={files.length === 0 || status.type === "error"}
                 >
                     Upload
