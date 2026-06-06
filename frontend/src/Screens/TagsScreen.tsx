@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import { authFetch } from "../services/api";
 import { getErrorMessage, type EditTagsResponse } from "../utils";
 

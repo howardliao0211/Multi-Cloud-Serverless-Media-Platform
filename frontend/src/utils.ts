@@ -15,17 +15,34 @@ export async function getCurrentUserId(): Promise<string> {
   return user.userId;
 }
 
+/**
+ * Converts an unknown caught value into a user-friendly error message.
+ * 
+ * @param error the value caught from a try/catch block.
+ * @returns the original error message when the value is an Error; otherwise, a generic fallback message.
+ */
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Something went wrong.";
 }
 
+/**
+ * Media retrieval helpers.
+ * 
+ * @returns private media belonging to the current user.
+ */
 export async function getMyPrivateMedia() {
   return authFetch<GetMediaResponse>("/get_private_media", {
     method: "GET",
   });
 }
 
+/**
+ * Media retrieval helpers.
+ * 
+ * @returns all publicly accessible media.
+ * the caller can filter the returned records by owener ID when required. 
+ */
 export async function getMyPublicMedia() {
   return authFetch<GetMediaResponse>("/get_public_media", {
     method: "GET",
@@ -138,15 +155,6 @@ export type EditTagsResponse = {
   updated_count: number;
   results: EditTagsResult[];
 };
-
-export async function editMediaTags(
-  request: EditTagsRequest
-): Promise<EditTagsResponse> {
-  return authFetch<EditTagsResponse>("/edit_tags", {
-    method: "PATCH",
-    body: JSON.stringify(request),
-  });
-}
 
 export type DeleteFileRequest = {
   urls: string[];
