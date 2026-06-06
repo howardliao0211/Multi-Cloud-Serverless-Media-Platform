@@ -226,11 +226,14 @@ function QueryScreen() {
     }, [selectedUrl]);
 
     /**
-     * Finds the media record associated with the entered thumbnail URL.
+     * Finds the media record associated with the selected thumbnail URL.
      *
-     * @returns a promise that resolves after the thumbnail lookup is handled.
+     * After a successful search, the shared thumbnail selection is cleared so the
+     * related card button returns to its unselected state.
+     *
+     * @returns a promise that resolves after the thumbnail search is handled.
      */
-    async function handleThumbnailSearch() {
+    async function handleThumbnailSearch(): Promise<void> {
         const normalizedThumbnailUrl = selectedUrl.trim();
 
         if (!normalizedThumbnailUrl) {
@@ -243,15 +246,17 @@ function QueryScreen() {
         setDetectedTags({});
 
         try {
-            const data = await authFetch<QueryThumbnailUrlResponse>(
-                "/query_thumbnail_url",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        thumbnail_url: normalizedThumbnailUrl,
-                    }),
-                }
-            );
+            const data =
+                await authFetch<QueryThumbnailUrlResponse>(
+                    "/query_thumbnail_url",
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            thumbnail_url:
+                                normalizedThumbnailUrl,
+                        }),
+                    }
+                );
 
             const records = data.media_records ?? [];
 
@@ -259,8 +264,14 @@ function QueryScreen() {
             setResultCount(records.length);
 
             if (records.length === 0) {
-                setError("No media found for this thumbnail URL.");
+                setError(
+                    "No media found for this thumbnail URL."
+                );
+                return;
             }
+
+            // Clear the selected thumbnail state after a successful search.
+            setSelectedUrl("");
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -269,15 +280,25 @@ function QueryScreen() {
     }
 
     /**
-     * Copies a thumbnail URL and prepares it for thumbnail URL search.
+     * Toggles a thumbnail URL for thumbnail-based search.
      *
-     * @param thumbnailUrl the permanent thumbnail URL to copy and reuse.
-     * @returns a promise that resolves after the clipboard operation completes.
+     * Clicking an unselected thumbnail URL copies it to the clipboard and stores
+     * it in the shared search state. Clicking the same URL again clears the
+     * selected state.
+     *
+     * @param thumbnailUrl the permanent thumbnail URL to select or clear.
+     * @returns a promise that resolves after the clipboard operation is handled.
      */
-    async function handleUseThumbnailUrl(thumbnailUrl: string) {
+    async function handleUseThumbnailUrl(
+        thumbnailUrl: string
+    ): Promise<void> {
         try {
-            await navigator.clipboard.writeText(thumbnailUrl);
+            if (selectedUrl === thumbnailUrl) {
+                setSelectedUrl("");
+                return;
+            }
 
+            await navigator.clipboard.writeText(thumbnailUrl);
             setSelectedUrl(thumbnailUrl);
             setMode("thumbnail");
             setError(null);
@@ -606,9 +627,16 @@ function QueryScreen() {
                                         <button
                                             type="button"
                                             disabled={!record.thumbnail_url}
+                                            className={
+                                                record.thumbnail_url === selectedUrl
+                                                    ? "selected"
+                                                    : ""
+                                            }
                                             onClick={() => {
                                                 if (record.thumbnail_url) {
-                                                    void handleUseThumbnailUrl(record.thumbnail_url);
+                                                    void handleUseThumbnailUrl(
+                                                        record.thumbnail_url
+                                                    );
                                                 }
                                             }}
                                         >

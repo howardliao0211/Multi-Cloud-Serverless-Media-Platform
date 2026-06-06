@@ -30,16 +30,16 @@ function DashboardScreen() {
 
     // Media owned by the currently authentiacated user.
     const [myMediaRecords, setMyMediaRecords] = useState<MediaRecordResponse[]>([]);
-    
+
     // Public media owned by other users.
     const [otherPublicMediaRecords, setOtherPublicMediaRecords] = useState<MediaRecordResponse[]>([]);
 
     // Delete and Tags pages use the split-screen layout.
     const isSplitPage = location.pathname === "/dashboard/delete" || location.pathname === "/dashboard/tags";
-    
+
     // Full media URLs selected for bulk tag editing or deletion.
     const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
-    
+
     // Thumbnail URL prepared for the Search by Thumbnail URL filed.
     const [selectedUrl, setSelectedUrl] = useState<string>("");
 
@@ -161,14 +161,31 @@ function DashboardScreen() {
     }
 
     /**
-     * Copies a permanent thumbnail URL and prepares it for thumbnail search.
-     * When the user opens the Search page, QueryScreen reads selectedUrl from the Outlet context.
-     * 
-     * @param thumbnailUrl the permanent thumbnail URL to copy.
+     * Toggles a thumbnail URL for thumbnail-based search.
+     *
+     * Clicking an unselected thumbnail URL copies it to the clipboard and stores
+     * it in the shared search state. Clicking the same URL again clears the
+     * selected state.
+     *
+     * @param thumbnailUrl the permanent thumbnail URL to select or clear.
+     * @returns a promise that resolves after the clipboard operation is handled.
      */
-    async function handleCopyThumbnailUrl(thumbnailUrl: string) {
-        await navigator.clipboard.writeText(thumbnailUrl);
-        setSelectedUrl(thumbnailUrl);
+    async function handleCopyThumbnailUrl(
+        thumbnailUrl: string
+    ): Promise<void> {
+        try {
+            if (selectedUrl === thumbnailUrl) {
+                setSelectedUrl("");
+                return;
+            }
+
+            await navigator.clipboard.writeText(thumbnailUrl);
+            setSelectedUrl(thumbnailUrl);
+        } catch (error) {
+            setStatus(
+                createStatus("error", getErrorMessage(error))
+            );
+        }
     }
 
     /**
@@ -251,13 +268,20 @@ function DashboardScreen() {
                                 <button
                                     type="button"
                                     disabled={!record.thumbnail_url}
+                                    className={
+                                        record.thumbnail_url === selectedUrl
+                                            ? "selected"
+                                            : ""
+                                    }
                                     onClick={() => {
                                         if (record.thumbnail_url) {
-                                            void handleCopyThumbnailUrl(record.thumbnail_url);
+                                            void handleCopyThumbnailUrl(
+                                                record.thumbnail_url
+                                            );
                                         }
                                     }}
                                 >
-                                    {record.thumbnail_url && selectedUrl.includes(record.thumbnail_url)
+                                    {record.thumbnail_url === selectedUrl
                                         ? "Copied to Search"
                                         : "Copy Thumbnail URL"}
                                 </button>
@@ -315,8 +339,8 @@ function DashboardScreen() {
                                             <p>
                                                 Owner: <strong>{maskOwnerId(record.owner_id)}</strong>
                                             </p>
-                                            
-                                            <p>   
+
+                                            <p>
                                                 Visibility: <strong>{record.visibility}</strong>
                                             </p>
 
@@ -336,13 +360,20 @@ function DashboardScreen() {
                                                 <button
                                                     type="button"
                                                     disabled={!record.thumbnail_url}
+                                                    className={
+                                                        record.thumbnail_url === selectedUrl
+                                                            ? "selected"
+                                                            : ""
+                                                    }
                                                     onClick={() => {
                                                         if (record.thumbnail_url) {
-                                                            void handleCopyThumbnailUrl(record.thumbnail_url);
+                                                            void handleCopyThumbnailUrl(
+                                                                record.thumbnail_url
+                                                            );
                                                         }
                                                     }}
                                                 >
-                                                    {record.thumbnail_url && selectedUrl.includes(record.thumbnail_url)
+                                                    {record.thumbnail_url === selectedUrl
                                                         ? "Copied to Search"
                                                         : "Copy Thumbnail URL"}
                                                 </button>
