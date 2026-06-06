@@ -1,6 +1,11 @@
 import { getCurrentUser } from "aws-amplify/auth";
 import { authFetch } from "./services/api";
 
+/**
+ * Authentication helpers
+ * 
+ * @returns the Cognito ID of the currently authenticated user.
+ */
 export async function getCurrentUserId(): Promise<string> {
   const user = await getCurrentUser();
 
@@ -14,15 +19,6 @@ export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Something went wrong.";
 }
-
-// export type DashboardOutletContext = {
-//     selectedUrls: string[];
-//     setSelectedUrls: React.Dispatch<React.SetStateAction<string[]>>;
-
-//     selectedUrl: string;
-//     setSelectedUrl: React.Dispatch<React.SetStateAction<string>>;
-//     refreshMyMedia: () => Promise<void>;
-// };
 
 export async function getMyPrivateMedia() {
   return authFetch<GetMediaResponse>("/get_private_media", {
