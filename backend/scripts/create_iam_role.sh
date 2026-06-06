@@ -62,7 +62,8 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
         "sns:SetSubscriptionAttributes",
         "sns:ListSubscriptionsByTopic",
         "sns:Unsubscribe",
-        "sns:Publish"
+        "sns:Publish",
+        "sns:GetSubscriptionAttributes"
       ],
       "Resource": "arn:aws:sns:${AWS_REGION}:${ACCOUNT_ID}:${SNS_TOPIC_NAME}"
     },
