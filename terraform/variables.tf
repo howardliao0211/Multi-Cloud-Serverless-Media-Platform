@@ -65,6 +65,12 @@ variable "existing_cognito_user_pool_client_id" {
   default     = "7umv70h1q682h6pogi6hhc1lpc"
 }
 
+variable "existing_lambda_role_name" {
+  description = "Existing Lambda execution role that Terraform should attach runtime IAM permissions to."
+  type        = string
+  default     = "aussie-eco-len-lambda-role"
+}
+
 variable "frontend_local_origin" {
   description = "Local frontend origin for CORS."
   type        = string

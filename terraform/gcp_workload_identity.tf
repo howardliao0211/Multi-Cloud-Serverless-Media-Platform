@@ -21,7 +21,7 @@ resource "google_iam_workload_identity_pool_provider" "aws_lambda" {
     "attribute.aws_account" = "assertion.account"
   }
 
-  attribute_condition = "assertion.arn == 'arn:aws:sts::${data.aws_caller_identity.current.account_id}:assumed-role/aussie-eco-len-lambda-role/tag_image'"
+  attribute_condition = "assertion.arn == 'arn:aws:sts::${data.aws_caller_identity.current.account_id}:assumed-role/${var.existing_lambda_role_name}/tag_image'"
 }
 
 resource "google_service_account" "aws_lambda_invoker" {
@@ -34,7 +34,7 @@ resource "google_service_account_iam_member" "aws_lambda_can_impersonate_invoker
   service_account_id = google_service_account.aws_lambda_invoker.name
   role               = "roles/iam.workloadIdentityUser"
 
-  member = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.aws_lambda.name}/attribute.aws_role/arn:aws:sts::${data.aws_caller_identity.current.account_id}:assumed-role/aussie-eco-len-lambda-role/tag_image"
+  member = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.aws_lambda.name}/attribute.aws_role/arn:aws:sts::${data.aws_caller_identity.current.account_id}:assumed-role/${var.existing_lambda_role_name}/tag_image"
 }
 
 resource "google_cloud_run_v2_service_iam_member" "ml_processor_aws_invoker" {
