@@ -179,13 +179,6 @@ def lambda_handler(event, context):
             allow_http_methods=allow_methods,
         )
 
-    if event.get("httpMethod") != "POST":
-        return build_response_message(
-            status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "Unsupported HTTP method"},
-            allow_http_methods=allow_methods,
-        )
-
     try:
         request = parse_request(event)
         current_user = get_current_user(event)

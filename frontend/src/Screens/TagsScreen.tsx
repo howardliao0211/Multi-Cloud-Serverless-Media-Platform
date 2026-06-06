@@ -99,7 +99,7 @@ function TagsScreen() {
                 body: JSON.stringify({
                     urls,
                     tags,
-                    operation,
+                    operation_key: operation,
                 }),
             });
 

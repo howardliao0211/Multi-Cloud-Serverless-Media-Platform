@@ -125,7 +125,7 @@ export type TagCount = Record<string, number>;
 export type EditTagsRequest = {
   urls: string[];
   tags: TagCount[];
-  operation: 0 | 1;
+  operation_key: 0 | 1;
 };
 
 export type EditTagsResult = {
