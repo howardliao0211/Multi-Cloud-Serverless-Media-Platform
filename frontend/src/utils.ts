@@ -49,6 +49,9 @@ export async function getMyPublicMedia() {
   });
 }
 
+/**
+ * File validation and normalisation
+ */
 export const ALLOWED_MEDIA_TYPES = [
   "image/jpeg",
   "image/png",
@@ -57,10 +60,22 @@ export const ALLOWED_MEDIA_TYPES = [
   "video/quicktime",
 ];
 
+/**
+ * Checks whether a file has one of the supported MIME types.
+ * 
+ * @param file the file that uploaded by the current user.
+ * @returns true if the file is supported, otherwise false.
+ */
 export function isValidMediaFile(file: File): boolean {
   return ALLOWED_MEDIA_TYPES.includes(file.type);
 }
 
+/**
+ * Normalises the file extemsion to lowercase.
+ * 
+ * @param file the original browser File object.
+ * @returns the file name withe a lowercase extension.
+ */
 export function getNormalizedFileName(file: File): string {
   const parts = file.name.split(".");
   if (parts.length < 2) return file.name;
@@ -69,6 +84,12 @@ export function getNormalizedFileName(file: File): string {
   return `${parts.join(".")}.${extension}`;
 }
 
+/**
+ * Separates a collection of files into valid and invalid media files.
+ * 
+ * @param files the files to validate.
+ * @returns an object containing valid files and invalid files.
+ */
 export function validateMediaFiles(files: File[]): {
   validFiles: File[];
   invalidFiles: File[];
@@ -79,6 +100,9 @@ export function validateMediaFiles(files: File[]): {
   return { validFiles, invalidFiles };
 }
 
+/**
+ * Status types
+ */
 export type StatusType = "idle" | "loading" | "success" | "error";
 
 export type StatusMessage = {
@@ -86,10 +110,20 @@ export type StatusMessage = {
   text: string;
 };
 
+/**
+ * Creates a consistent status object for UI feedback.
+ * 
+ * @param type 
+ * @param text 
+ * @returns 
+ */
 export function createStatus(type: StatusType, text: string): StatusMessage {
   return {type, text};
 }
 
+/**
+ * Media types.
+ */
 export type MediaVisibility = "private" | "public";
 
 export type MediaRecordStatus =
@@ -134,11 +168,15 @@ export function getMediaType(file: File): "image" | "video" {
   throw new Error("Unsupported file type.");
 }
 
+/**
+ * Bull tag editing.
+ */
 export type TagCount = Record<string, number>;
 
 export type EditTagsRequest = {
   urls: string[];
   tags: TagCount[];
+  // 1 adds tags and 0 removes tags.
   operation_key: 0 | 1;
 };
 
@@ -156,6 +194,9 @@ export type EditTagsResponse = {
   results: EditTagsResult[];
 };
 
+/**
+ * Bulk file deletion
+ */
 export type DeleteFileRequest = {
   urls: string[];
 };
@@ -176,6 +217,9 @@ export type DeleteFileResponse = {
   results: DeleteFileResult[];
 };
 
+/**
+ * Search responses
+ */
 export type QueryTagsResponse = GetMediaResponse;
 
 export type QuerySpeciesResponse = GetMediaResponse;
@@ -189,6 +233,9 @@ export type QueryThumbnailUrlResponse = {
   media_records: MediaRecordResponse[];
 };
 
+/**
+ * SNS notification types
+ */
 export type SNSSubscribeRequest = {
   email: string;
   tags: string[];
