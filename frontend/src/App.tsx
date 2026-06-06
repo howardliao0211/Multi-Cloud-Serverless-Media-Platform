@@ -53,7 +53,7 @@ function WelcomeScreen() {
 
   useEffect(() => {
     if (showRegisterSuccess) {
-      sessionStorage.removeItem("registerSuccess");
+      sessionStorage.removeItem("showRegisterSuccess");
     }
   }, [showRegisterSuccess]);
 
