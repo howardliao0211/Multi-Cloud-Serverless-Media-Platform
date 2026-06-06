@@ -174,6 +174,58 @@ class QueryThumbnailUrlRequest(BaseModel):
     thumbnail_url: str
 
 
+class QueryFileUploadUrlRequest(BaseModel):
+    file_name: str
+    media_type: MediaType
+    content_type: str
+
+    @field_validator("file_name", "content_type")
+    @classmethod
+    def validate_required_text(cls, value: str) -> str:
+        normalized_value = value.strip()
+
+        if not normalized_value:
+            raise ValueError("value must not be empty")
+
+        return normalized_value
+
+
+class QueryFileUploadUrlResponse(BaseModel):
+    upload_url: str
+    query_key: str
+    expires_in: int
+
+
+class QueryFileRequest(BaseModel):
+    query_key: str
+
+    @field_validator("query_key")
+    @classmethod
+    def validate_query_key(cls, query_key: str) -> str:
+        normalized_query_key = query_key.strip()
+
+        if not normalized_query_key:
+            raise ValueError("query_key must not be empty")
+
+        return normalized_query_key
+
+
+class QueryFileResult(BaseModel):
+    checksum: str
+    file_name: str
+    visibility: MediaVisibility
+    media_type: MediaType
+    url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    tags: Dict[str, int] = Field(default_factory=dict)
+
+
+class QueryFileResponse(BaseModel):
+    detected_tags: Dict[str, int] = Field(default_factory=dict)
+    count: int
+    results: List[QueryFileResult] = Field(default_factory=list)
+
+
 class GetMediaResponse(BaseModel):
     media_records: List[MediaRecordResponse]
 

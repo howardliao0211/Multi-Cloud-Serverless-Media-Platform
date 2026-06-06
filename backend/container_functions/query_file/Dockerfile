@@ -1,4 +1,4 @@
-FROM lambda_python_base:latest
+FROM ml_base:latest
 
 WORKDIR ${LAMBDA_TASK_ROOT}
 
