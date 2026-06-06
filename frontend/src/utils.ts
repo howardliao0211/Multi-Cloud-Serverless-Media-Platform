@@ -15,6 +15,11 @@ export async function getCurrentUserId(): Promise<string> {
   return user.userId;
 }
 
+/**
+ * Authentication helpers
+ * 
+ * @returns the Cognito Email of the currently authenticated user.
+ */
 export async function getCurrentUserEmail(): Promise<string> {
   const attributes = await fetchUserAttributes();
 

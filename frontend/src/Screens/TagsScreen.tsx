@@ -3,12 +3,24 @@ import { useOutletContext } from "react-router-dom";
 import { authFetch } from "../services/api";
 import { getErrorMessage, type EditTagsResponse } from "../utils";
 
+/**
+ * Shared values provided by DashboardScreen through React Router Outlet context.
+ */
 type DashboardOutletContext = {
     selectedUrls: string[];
     setSelectedUrls: React.Dispatch<React.SetStateAction<string[]>>;
     refreshMyMedia: () => Promise<void>;
 }
 
+/**
+ * Provides a bulk interface for adding or removing tags from media files.
+ *
+ * Users can select media URLs from My Uploads or enter URLs manually. Multiple
+ * tags and counts can be applied to all selected media records in one request.
+ * After a successful update, the My Uploads section is refreshed.
+ *
+ * @returns The bulk tag-management interface.
+ */
 function TagsScreen() {
     const [tagUrlText, setTagUrlText] = useState<string>("");
     const [tagName, setTagName] = useState<string>("");
@@ -22,10 +34,19 @@ function TagsScreen() {
 
     const { selectedUrls, setSelectedUrls, refreshMyMedia,} = useOutletContext<DashboardOutletContext>();
 
+    /**
+     * Keeps the URL textarea synchronised with media selected in My Uploads.
+     */
     useEffect(() => {
         setTagUrlText(selectedUrls.join("\n"));
     }, [selectedUrls]);
 
+    /**
+     * Adds a normalised tag and count to the pending tag query.
+     *
+     * If the tag already exists, its count is replaced instead of creating
+     * a duplicate entry.
+     */
     function handleAddTag() {
         const normalizedName = tagName.trim().toLowerCase();
         const normalizedCount = Math.max(1, Number(tagCount) || 1);
@@ -60,13 +81,27 @@ function TagsScreen() {
         setError(null);
     }
 
+    /**
+     * Removes a tag from the pending bulk-update request.
+     *
+     * @param name the normalised tag name to remove.
+     */
     function handleRemoveTag(name: string) {
         setTagQueries((prev) =>
             prev.filter((tag) => tag.name !== name)
         );
     }
 
+    /**
+     * Applies the selected tag operation to all unique media URLs.
+     *
+     * The backend uses operation_key 1 to add tags and operation_key 0 to
+     * remove tags. Successfully modified media is reloaded in DashboardScreen.
+     *
+     * @returns a promise that resolves after the update request is handled.
+     */
     async function handleApplyChanges() {
+        // Trim blank lines and remove duplicate media URLs.
         const urls = Array.from(
             new Set(
                 tagUrlText
@@ -191,13 +226,13 @@ function TagsScreen() {
                 {tagQueries.length > 0 && (
                     <div className="selected-tags">
                         {tagQueries.map((tag) => (
-                            <span
+                            <button
                                 key={tag.name}
                                 className="tag-pill"
                                 onClick={() => handleRemoveTag(tag.name)}
                             >
                                 {tag.name}: {tag.count}x
-                            </span>
+                            </button>
                         ))}
                     </div>
                 )}

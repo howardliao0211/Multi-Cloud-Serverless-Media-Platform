@@ -102,8 +102,6 @@ ipython_config.py
 
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
 # poetry.lock
 # poetry.toml
@@ -278,11 +276,8 @@ credentials.csv
 
 # JavaScript / frontend dependencies and build output
 node_modules/
-dist/
 
 # Python virtual environments
-.venv/
-venv/
 gcp/ml_processor/models/
 terraform/.terraform/
 terraform/terraform.tfstate
@@ -291,3 +286,23 @@ terraform/*.tfplan
 terraform/crash.log
 terraform/crash.*.log
 evidence/
+backend-v2/.build/
+
+# backend v2 local build artifacts
+backend-v2/**/__pycache__/
+backend-v2/**/*.pyc
+backend-v2/**/*.pyo
+backend-v2/**/*.dist-info/
+backend-v2/**/*.egg-info/
+
+# local backend v2 environment
+backend-v2/.env
+
+# Keep integration-test fixture media tracked.
+!tests/fixtures/
+!tests/fixtures/media/
+!tests/fixtures/media/*.JPG
+!tests/fixtures/media/*.jpg
+!tests/fixtures/media/*.jpeg
+!tests/fixtures/media/*.png
+!tests/fixtures/media/*.mp4

@@ -1,7 +1,7 @@
 from boto3.dynamodb.types import TypeDeserializer
 import json
 from decimal import Decimal
-from typing import Any
+from typing import Any, List
 
 from shared.schemas import MediaRecordStatus, MediaVisibility
 from shared.aws_resources import get_sns_and_topic_arn
@@ -16,10 +16,7 @@ def ddb_image_to_python(image: dict | None) -> dict:
     if not image:
         return {}
 
-    return {
-        key: deserializer.deserialize(value)
-        for key, value in image.items()
-    }
+    return {key: deserializer.deserialize(value) for key, value in image.items()}
 
 
 def get_tags(media_record: dict[str, Any]) -> set[str]:
@@ -32,17 +29,13 @@ def get_tags(media_record: dict[str, Any]) -> set[str]:
     if not isinstance(tags, dict):
         return set()
 
-    return {
-        str(tag).strip().lower()
-        for tag, count in tags.items()
-        if int(count) > 0
-    }
+    return {str(tag).strip().lower() for tag, count in tags.items() if int(count) > 0}
 
 
 def publish_tag_notification(
     tag: str,
-    image_key: str,
-    image_url: str,
+    media_tags: List[str],
+    thumbnail_url: str,
     sns_client,
     topic_arn: str,
 ):
@@ -55,8 +48,8 @@ def publish_tag_notification(
 A new image was uploaded with a tag you subscribed to.
 
 Matched tag: {tag}
-Image key: {image_key}
-Image URL: {image_url}
+Media Tags: {", ".join(media_tags)}
+Thumbnail URL: {thumbnail_url}
 """,
         MessageAttributes={
             "tag": {
@@ -68,33 +61,31 @@ Image URL: {image_url}
 
 
 def publish_image_notifications(
-    tags: list[str],
-    image_key: str,
-    image_url: str,
+    subscribe_tags: list[str],
+    media_tags: str,
+    thumbnail_url: str,
     sns_client,
     topic_arn: str,
 ):
-    tags = [
-        tag.strip().lower()
-        for tag in tags
-        if tag and tag.strip()
-    ]
+    tags = [tag.strip().lower() for tag in subscribe_tags if tag and tag.strip()]
 
     results = []
 
     for tag in tags:
         response = publish_tag_notification(
             tag=tag,
-            image_key=image_key,
-            image_url=image_url,
+            media_tags=media_tags,
+            thumbnail_url=thumbnail_url,
             sns_client=sns_client,
             topic_arn=topic_arn,
         )
 
-        results.append({
-            "tag": tag,
-            "message_id": response.get("MessageId"),
-        })
+        results.append(
+            {
+                "tag": tag,
+                "message_id": response.get("MessageId"),
+            }
+        )
 
     return results
 
@@ -111,13 +102,9 @@ def lambda_handler(event, context):
 
         dynamodb_data = record.get("dynamodb", {})
 
-        old_image = ddb_image_to_python(
-            dynamodb_data.get("OldImage")
-        )
+        old_image = ddb_image_to_python(dynamodb_data.get("OldImage"))
 
-        new_image = ddb_image_to_python(
-            dynamodb_data.get("NewImage")
-        )
+        new_image = ddb_image_to_python(dynamodb_data.get("NewImage"))
 
         upload_status = new_image.get("upload_status")
         if upload_status != MediaRecordStatus.ready.value:
@@ -141,14 +128,13 @@ def lambda_handler(event, context):
         if not tags_to_publish:
             continue
 
-        image_key = new_image.get("full_key")
-
-        image_url = new_image.get("full_url")
+        media_tags = new_image.get("tags")
+        thumbnail_url = new_image.get("thumbnail_url")
 
         results = publish_image_notifications(
-            tags=list(tags_to_publish),
-            image_key=image_key,
-            image_url=image_url,
+            subscribe_tags=list(tags_to_publish),
+            media_tags=media_tags,
+            thumbnail_url=thumbnail_url,
             sns_client=sns,
             topic_arn=topic_arn,
         )
@@ -157,8 +143,10 @@ def lambda_handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "published": published,
-            "count": len(published),
-        }),
+        "body": json.dumps(
+            {
+                "published": published,
+                "count": len(published),
+            }
+        ),
     }

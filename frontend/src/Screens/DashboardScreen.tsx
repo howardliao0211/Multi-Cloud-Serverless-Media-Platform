@@ -9,18 +9,48 @@ import {
 } from "../utils";
 import { authFetch } from "../services/api";
 
-
+/**
+ * Main authenticated dashboard layout.
+ * 
+ * This component:
+ * -Displays the current user's uploads.
+ * -Displays public media uploaded by other users on the dashboard home page.
+ * -Provides shared media selection state to nested Delete and Tags pages.
+ * -Supports changing media visibility.
+ * -Passes shared state and refresh functions through React Router Outlet context.
+ * 
+ * @returns The dashboard layout and the currently selected nested page. 
+ */
 function DashboardScreen() {
     const location = useLocation();
-    const isDashboardHome = location.pathname === "/dashboard";
-    const [myMediaRecords, setMyMediaRecords] = useState<MediaRecordResponse[]>([]);
-    const [otherPublicMediaRecords, setOtherPublicMediaRecords] = useState<MediaRecordResponse[]>([]);
-    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
 
+    // Determines whether the user is currently viewing the dashboard home page.
+    const isDashboardHome = location.pathname === "/dashboard";
+
+    // Media owned by the currently authentiacated user.
+    const [myMediaRecords, setMyMediaRecords] = useState<MediaRecordResponse[]>([]);
+    
+    // Public media owned by other users.
+    const [otherPublicMediaRecords, setOtherPublicMediaRecords] = useState<MediaRecordResponse[]>([]);
+
+    // Delete and Tags pages use the split-screen layout.
     const isSplitPage = location.pathname === "/dashboard/delete" || location.pathname === "/dashboard/tags";
+    
+    // Full media URLs selected for bulk tag editing or deletion.
     const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
+    
+    // Thumbnail URL prepared for the Search by Thumbnail URL filed.
     const [selectedUrl, setSelectedUrl] = useState<string>("");
 
+    const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
+
+    /**
+     * Shared data made available to nested dashboard pages through Outlet.
+     * 
+     * DeleteScreen and TagScreen use selectedUrls.
+     * QureyScrren uses selectedUrl.
+     * Nested pages can call refreshMyMedia after modifying backend data.
+     */
     const outletContext = {
         selectedUrls,
         setSelectedUrls,
@@ -29,6 +59,11 @@ function DashboardScreen() {
         refreshMyMedia: loadMyMedia,
     };
 
+    /**
+     * Adds or removes a full media URL from the bulk selection.
+     * 
+     * @param url the permanent full media URL to toggle. 
+     */
     function handleToggleSelectedUrl(url: string) {
         setSelectedUrls((prev) =>
             prev.includes(url)
@@ -37,6 +72,13 @@ function DashboardScreen() {
         );
     }
 
+    /**
+     * Removes duplicate media records.
+     * A record is identified by the combination of checksum and file name.
+     * 
+     * @param records media records that may contain duplicates.
+     * @returns a new array containing only unique media records.
+     */
     function mergeUniqueMediaRecords(records: MediaRecordResponse[]) {
         const map = new Map<string, MediaRecordResponse>();
 
@@ -46,14 +88,20 @@ function DashboardScreen() {
         return Array.from(map.values());
     }
 
+    /**
+     * Loads media required by the dashboard.
+     * 
+     * Private media is already restricted to the current user by the backend.
+     * Public media is separated into:
+     * -the current user's public media.
+     * -public media owned by other users.
+     */
     async function loadMyMedia() {
-        const currentUserId = await getCurrentUserId();
-
         setStatus(createStatus("loading", "Loading your uploads..."));
 
         try {
+            const currentUserId = await getCurrentUserId();
             const privateData = await getMyPrivateMedia();
-
             const publicData = await getMyPublicMedia();
 
             const myPublicRecords = publicData.media_records.filter(
@@ -64,6 +112,7 @@ function DashboardScreen() {
                 (record) => record.owner_id !== currentUserId
             );
 
+            // Combine the current user's private and public media.
             setMyMediaRecords(
                 mergeUniqueMediaRecords([
                     ...privateData.media_records,
@@ -79,12 +128,22 @@ function DashboardScreen() {
         }
     }
 
+    /**
+     * Reloads media whenever the user enters the dashboard home, Delete page,
+     * or Tags page.
+     */
     useEffect(() => {
         if (location.pathname === "/dashboard" || isSplitPage) {
             void loadMyMedia();
         }
     }, [location.pathname]);
 
+    /**
+     * Changes the visibility of a media record and refreshes the dashboard.
+     * 
+     * @param url the permanent full URL identifying the media record. 
+     * @param visibility the target visibility value.
+     */
     async function handleChangeVisibility(url: string, visibility: "private" | "public") {
         try {
             await authFetch("/change_visibility", {
@@ -100,11 +159,25 @@ function DashboardScreen() {
         }
     }
 
+    /**
+     * Copies a permanent thumbnail URL and prepares it for thumbnail search.
+     * When the user opens the Search page, QueryScreen reads selectedUrl from the Outlet context.
+     * 
+     * @param thumbnailUrl the permanent thumbnail URL to copy.
+     */
     async function handleCopyThumbnailUrl(thumbnailUrl: string) {
         await navigator.clipboard.writeText(thumbnailUrl);
         setSelectedUrl(thumbnailUrl);
     }
 
+    /**
+     * Renders media owned by the current user.
+     * On the dashboard home page, public media belonging to other users
+     * can also be displayed beneath the user's uploads.
+     * 
+     * @param showOthersPublic whether to render public media from other users.
+     * @returns the My Uploads dashboard section.
+     */
     function readerMyUpload(showOthersPublic: boolean) {
         return (
             <main className="dashboard-content">
