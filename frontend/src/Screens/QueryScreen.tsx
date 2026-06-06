@@ -5,7 +5,6 @@ import { authFetch } from "../services/api";
 import {
     getErrorMessage,
     isValidMediaFile,
-    type DashboardOutletContext,
     type MediaRecordResponse,
     type QueryTagsResponse,
     type QuerySpeciesResponse,
@@ -15,25 +14,68 @@ import {
     getMediaType,
 } from "../utils";
 
+/**
+ * Shared values provided by DashboardScreen through React Router Outlet context. 
+ */
+type DashboardOutletContext = {
+    selectedUrl: string;
+    setSelectedUrl: React.Dispatch<React.SetStateAction<string>>;
+}
+
+/**
+ * Supported media search methods.
+ *
+ * -tags: Finds media containing the requested tags and minimum counts.
+ * -species: Finds media containing a specific species.
+ * -thumbnail: Finds the full media record from a thumbnail URL.
+ * -content: Detects species from an uploaded file and finds matching media.
+ */
 type SearchMode = "tags" | "species" | "thumbnail" | "content";
 
+/**
+ * Provides multiple search methods for wildlife media.
+ *
+ * The screen supports tag-count, species, thumbnail URL, and file-content
+ * searches. Search results display thumbnails, metadata, tags, and permanent
+ * URLs. Thumbnail URLs can also be copied into the shared thumbnail search
+ * field through DashboardScreen's Outlet context.
+ *
+ * @returns the wildlife media search interface.
+ */
 function QueryScreen() {
+    // Controls the currently displayed search form.
     const [mode, setMode] = useState<SearchMode>("tags");
+
+    // Tag-count search input and selected query tags.
     const [tagName, setTagName] = useState<string>("");
     const [tagCount, setTagCount] = useState<number>(1);
-    const [species, setSpecies] = useState<string>("");
     const [tagQueries, setTagQueries] = useState<{ name: string; count: number }[]>([]);
+    
+    // Species search input.
+    const [species, setSpecies] = useState<string>("");
+    
+    // Shared thumbnail URL stored by DashboardScreen.
     const { selectedUrl, setSelectedUrl } = useOutletContext<DashboardOutletContext>();
+    
     const [copiedFullUrl, setCopiedFullUrl] = useState<string>("");
+    
+    // File-content search state.
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+    // Search response and UI feedback state.
     const [results, setResults] = useState<MediaRecordResponse[]>([]);
     const [detectedTags, setDetectedTags] = useState<Record<string, number>>({});
     const [resultCount, setResultCount] = useState<number>(0);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
+    /**
+     * Clears the current search results and feedback.
+     *
+     * Input values are preserved so users can switch search modes without
+     * losing everything they previously entered.
+     */
     function resetSearchState() {
         setResults([]);
         setDetectedTags({});
@@ -41,11 +83,23 @@ function QueryScreen() {
         setError(null);
     }
 
+    /**
+     * Switches to another search mode and clears the previous result state.
+     *
+     * @param nextMode the search mode to display.
+     */
     function handleModeChange(nextMode: SearchMode) {
         setMode(nextMode);
         resetSearchState();
     }
 
+    
+     /**
+     * Adds a normalised tag and minimum count to the tag query.
+     *
+     * Adding an existing tag replaces its previous count instead of creating
+     * a duplicate entry.
+     */
     function handleAddTag() {
         const normalizedName = tagName.trim().toLowerCase();
         const normalizedCount = Math.max(1, Number(tagCount) || 1);
@@ -76,10 +130,20 @@ function QueryScreen() {
         setTagCount(1);
     }
 
+    /**
+     * Removes a tag from the current tag-count query.
+     *
+     * @param name the normalised tag name to remove.
+     */
     function handleRemoveTag(name: string) {
         setTagQueries(tagQueries.filter(tag => tag.name !== name));
     }
 
+    /**
+     * Finds media that satisfies all selected tag-count requirements.
+     *
+     * @returns a promise that resolves after the search request is handled.
+     */
     async function handleTagSearch() {
         if (tagQueries.length === 0) {
             setError("Please add at least one tag.");
@@ -109,6 +173,11 @@ function QueryScreen() {
         }
     }
 
+    /**
+     * Finds media matching a normalised species name.
+     *
+     * @returns a promise that resolves after the search request is handled.
+     */
     async function handleSpeciesSearch() {
         const normalizedSpecies = species.trim().toLowerCase();
 
@@ -138,6 +207,10 @@ function QueryScreen() {
         }
     }
 
+    /**
+     * Automatically switches to thumbnail mode when DashboardScreen provides
+     * a thumbnail URL through Outlet context.
+     */
     useEffect(() => {
         if (!selectedUrl) return;
 
@@ -148,6 +221,11 @@ function QueryScreen() {
         setError(null);
     }, [selectedUrl]);
 
+    /**
+     * Finds the media record associated with the entered thumbnail URL.
+     *
+     * @returns a promise that resolves after the thumbnail lookup is handled.
+     */
     async function handleThumbnailSearch() {
         const normalizedThumbnailUrl = selectedUrl.trim();
 
@@ -186,6 +264,12 @@ function QueryScreen() {
         }
     }
 
+    /**
+     * Copies a thumbnail URL and prepares it for thumbnail URL search.
+     *
+     * @param thumbnailUrl the permanent thumbnail URL to copy and reuse.
+     * @returns a promise that resolves after the clipboard operation completes.
+     */
     async function handleUseThumbnailUrl(thumbnailUrl: string) {
         try {
             await navigator.clipboard.writeText(thumbnailUrl);
@@ -203,6 +287,13 @@ function QueryScreen() {
         }
     }
 
+    /**
+     * Searches for media that matches species detected from an uploaded file.
+     *
+     * The file checksum and media type are sent to the backend query endpoint.
+     *
+     * @returns a promise that resolves after the content search is handled.
+     */
     async function handleContentSearch() {
         if (!file) {
             setError("Please select a file.");
@@ -240,6 +331,11 @@ function QueryScreen() {
         }
     }
 
+    /**
+     * Validates and stores a file selected through the file input.
+     *
+     * @param event the file input change event.
+     */
     function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
         const selectedFile = event.target.files?.[0];
 
@@ -255,6 +351,11 @@ function QueryScreen() {
         setError(null);
     }
 
+    /**
+     * Validates and stores a file dropped onto the content-search area.
+     *
+     * @param event the drag-and-drop event containing the selected file.
+     */
     function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
         event.preventDefault();
 

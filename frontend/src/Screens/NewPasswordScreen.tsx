@@ -2,12 +2,24 @@ import { confirmSignIn } from "aws-amplify/auth";
 import { createStatus, getErrorMessage, type StatusMessage } from "../utils";
 import { useState } from "react";
 
+/**
+ * 
+ * @param props - component properties.
+ * @param props.onNewPassSuccess - called after the new password is accepted.
+ * @returns the new-password form.
+ */
 function NewPasswordScreen({ onNewPassSuccess }: {onNewPassSuccess: () => void }){
     
     const [password, setPassword] = useState<string>("");
     const [confirmPassword, setConfirmPassword] = useState<string>("");
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
     
+    /**
+     * Validates the two password fields and completes the Cognito challenge.
+     * 
+     * @param event the new-password form submission event.
+     * @returns a promise that resolves when the password challenge is completed.
+     */
     async function handleNewPassword(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setStatus(createStatus("idle", ""));
@@ -18,6 +30,7 @@ function NewPasswordScreen({ onNewPassSuccess }: {onNewPassSuccess: () => void }
         }
 
         try {
+            // Complete Cognito's mandatory new-password challenge.
             await confirmSignIn({
                 challengeResponse: password,
             });
