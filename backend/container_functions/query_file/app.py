@@ -1,18 +1,15 @@
-import base64
-import tempfile
 import cv2
 
 from http import HTTPMethod, HTTPStatus
 from contextlib import contextmanager
-from dataclasses import dataclass
-from email.parser import BytesParser
-from email.policy import default
+from json import JSONDecodeError
 from pathlib import Path
+from uuid import uuid4
 from typing import Dict
 from typing import Iterator
 from typing import List
-from typing import Mapping
 
+from pydantic import ValidationError
 
 from shared.aws_resources import (
     download_s3_file,
@@ -21,8 +18,19 @@ from shared.aws_resources import (
     scan_media_record,
 )
 from shared.model import ImageTagger
-from shared.query_utils import can_query_media, infer_media_type, normalize_tag_counts
-from shared.schemas import MediaRecord, MediaRecordStatus, QueryFileResponse, QueryFileResult
+from shared.query_utils import (
+    can_query_media,
+    infer_media_type,
+    normalize_tag_counts,
+    parse_json_request,
+)
+from shared.schemas import (
+    MediaRecord,
+    MediaRecordStatus,
+    QueryFileRequest,
+    QueryFileResponse,
+    QueryFileResult,
+)
 from shared.utils import build_response_message, get_current_user
 
 
@@ -33,8 +41,9 @@ CLASSIFIER_MODEL_KEY = "models/model.pt"
 DETECTOR_MODEL_KEY = "models/mdv5a.pt"
 LOCAL_CLASSIFIER_MODEL_PATH = "/tmp/model.pt"
 LOCAL_DETECTOR_MODEL_PATH = "/tmp/mdv5a.pt"
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
-VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm"}
+QUERY_UPLOAD_PREFIX = "query_uploads"
 
 # Models are copied from S3 into Lambda's writable /tmp folder during cold start.
 download_s3_file(
@@ -58,104 +67,55 @@ tagger = ImageTagger(
 )
 
 
-@dataclass
-class UploadedQueryFile:
-    filename: str
-    content_type: str
-    content: bytes
+def parse_request(event: dict) -> QueryFileRequest:
+    return parse_json_request(event, QueryFileRequest)
 
 
 @contextmanager
-def temporary_query_file(uploaded_file: UploadedQueryFile) -> Iterator[Path]:
-    suffix = Path(uploaded_file.filename).suffix
-    temp_path = None
+def temporary_s3_query_file(query_key: str) -> Iterator[Path]:
+    suffix = Path(query_key).suffix
+    temp_path = Path(f"/tmp/query-{uuid4().hex}{suffix}")
 
     try:
-        # ImageTagger expects a local file path, so the uploaded bytes are staged briefly.
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            suffix=suffix,
-            delete=False,
-            dir="/tmp",
-        ) as temp_file:
-            temp_file.write(uploaded_file.content)
-            temp_path = Path(temp_file.name)
-
+        # ImageTagger expects a local file path, so the temporary S3 object is staged in /tmp.
+        download_s3_file(s3, bucket_name, query_key, str(temp_path))
         yield temp_path
 
     finally:
-        # query_file is search-only; the uploaded query image is not kept in S3 or DynamoDB.
-        if temp_path is not None:
-            temp_path.unlink(missing_ok=True)
+        # This is only the local staging copy. S3 cleanup is handled separately.
+        temp_path.unlink(missing_ok=True)
 
 
-def get_header(headers: Mapping[str, str], name: str) -> str | None:
-    name_lower = name.lower()
+def validate_query_key_owner(query_key: str, current_user: str) -> None:
+    expected_prefix = f"{QUERY_UPLOAD_PREFIX}/{current_user}/"
 
-    for key, value in headers.items():
-        if key.lower() == name_lower:
-            return value
-
-    return None
+    if not query_key.startswith(expected_prefix):
+        raise ValueError("query_key does not belong to the current user")
 
 
-def get_request_body_bytes(event: dict) -> bytes:
-    body = event.get("body") or ""
+def get_query_object_metadata(query_key: str, current_user: str) -> tuple[str, str]:
+    head = s3.head_object(Bucket=bucket_name, Key=query_key)
+    metadata = head.get("Metadata") or {}
 
-    if event.get("isBase64Encoded"):
-        return base64.b64decode(body)
+    if metadata.get("owner_id") != current_user:
+        raise ValueError("query object owner does not match the current user")
 
-    return body.encode("utf-8")
+    if metadata.get("purpose") != "query_file":
+        raise ValueError("query object was not uploaded for query_file")
 
+    content_type = head.get("ContentType") or ""
+    file_name = metadata.get("file_name") or Path(query_key).name
 
-def parse_multipart_file(event: dict) -> UploadedQueryFile:
-    headers = event.get("headers") or {}
-    content_type = get_header(headers, "content-type")
-
-    if not content_type or "multipart/form-data" not in content_type:
-        raise ValueError("Content-Type must be multipart/form-data")
-
-    body_bytes = get_request_body_bytes(event)
-    # The email parser understands MIME-style multipart boundaries, which match form-data.
-    raw_message = (
-        f"Content-Type: {content_type}\r\n"
-        "MIME-Version: 1.0\r\n"
-        "\r\n"
-    ).encode("utf-8") + body_bytes
-
-    message = BytesParser(policy=default).parsebytes(raw_message)
-
-    if not message.is_multipart():
-        raise ValueError("Request body is not valid multipart data")
-
-    for part in message.iter_parts():
-        filename = part.get_filename()
-
-        # Ignore normal form fields and keep the first actual file part.
-        if not filename:
-            continue
-
-        content = part.get_payload(decode=True) or b""
-
-        if not content:
-            raise ValueError("Uploaded query file must not be empty")
-
-        return UploadedQueryFile(
-            filename=filename,
-            content_type=part.get_content_type(),
-            content=content,
-        )
-
-    raise ValueError("No uploaded file found in multipart request")
+    return file_name, content_type
 
 
-def infer_uploaded_media_type(uploaded_file: UploadedQueryFile) -> str:
-    content_family = uploaded_file.content_type.split("/")[0].lower()
+def infer_uploaded_media_type(file_name: str, content_type: str) -> str:
+    content_family = content_type.split("/")[0].lower()
 
     if content_family in {"image", "video"}:
         return content_family
 
-    suffix = Path(uploaded_file.filename).suffix.lower()
+    suffix = Path(file_name).suffix.lower()
 
     if suffix in IMAGE_EXTENSIONS:
         return "image"
@@ -278,9 +238,10 @@ def detect_video_query_tags(temp_path: Path) -> Dict[str, int]:
 
 def detect_query_file_tags(
     temp_path: Path,
-    uploaded_file: UploadedQueryFile,
+    file_name: str,
+    content_type: str,
 ) -> Dict[str, int]:
-    media_type = infer_uploaded_media_type(uploaded_file)
+    media_type = infer_uploaded_media_type(file_name, content_type)
 
     if media_type == "image":
         return detect_image_query_tags(temp_path)
@@ -306,19 +267,17 @@ def lambda_handler(event, context):
         )
 
     try:
-        uploaded_file = parse_multipart_file(event)
-    except ValueError as error:
-        return build_response_message(
-            status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "Invalid query file request", "error": str(error)},
-            allow_http_methods=allow_methods,
+        current_user = get_current_user(event)
+        request = parse_request(event)
+        validate_query_key_owner(request.query_key, current_user)
+        file_name, content_type = get_query_object_metadata(
+            request.query_key,
+            current_user,
         )
 
-    try:
-        with temporary_query_file(uploaded_file) as temp_path:
+        with temporary_s3_query_file(request.query_key) as temp_path:
             temp_file_size = temp_path.stat().st_size
-            current_user = get_current_user(event)
-            detected_tags = detect_query_file_tags(temp_path, uploaded_file)
+            detected_tags = detect_query_file_tags(temp_path, file_name, content_type)
             response = query_matching_media(detected_tags, current_user)
 
             return build_response_message(
@@ -326,10 +285,10 @@ def lambda_handler(event, context):
                 body={
                     **response.model_dump(mode="json"),
                     "message": "query_file processed",
-                    "uploaded_file": {
-                        "filename": uploaded_file.filename,
-                        "content_type": uploaded_file.content_type,
-                        "size_bytes": len(uploaded_file.content),
+                    "query_file": {
+                        "query_key": request.query_key,
+                        "file_name": file_name,
+                        "content_type": content_type,
                     },
                     "temporary_file": {
                         "saved": True,
@@ -338,7 +297,7 @@ def lambda_handler(event, context):
                 },
                 allow_http_methods=allow_methods,
             )
-    except ValueError as error:
+    except (JSONDecodeError, ValidationError, ValueError) as error:
         return build_response_message(
             status_code=HTTPStatus.BAD_REQUEST,
             body={"message": "Invalid query file request", "error": str(error)},
