@@ -282,6 +282,7 @@ export type QueryFileUploadUrlResponse = {
 };
 
 export type QueryFileResult = {
+  owner_id: string;
   checksum: string;
   file_name: string;
   visibility: MediaVisibility;
@@ -297,6 +298,17 @@ export type QueryFileResponse = {
   detected_tags: Record<string, number>;
   count: number;
   results: QueryFileResult[];
+};
+
+export type QueryFileJobStatus = "pending" | "processing" | "completed" | "failed";
+
+export type QueryFileJobResponse = {
+  job_id: string;
+  status: QueryFileJobStatus;
+};
+
+export type QueryFileJobStatusResponse = QueryFileJobResponse & QueryFileResponse & {
+  error_message?: string | null;
 };
 
 export type QueryThumbnailUrlResponse = {

@@ -22,6 +22,13 @@ class MediaRecordStatus(str, Enum):
     failed = "failed"
 
 
+class QueryFileJobStatus(str, Enum):
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"
+
+
 class MediaRecord(BaseModel):
     key: str
     owner_id: str
@@ -212,6 +219,7 @@ class QueryFileRequest(BaseModel):
 
 
 class QueryFileResult(BaseModel):
+    owner_id: str
     checksum: str
     file_name: str
     visibility: MediaVisibility
@@ -227,6 +235,20 @@ class QueryFileResponse(BaseModel):
     detected_tags: Dict[str, int] = Field(default_factory=dict)
     count: int
     results: List[QueryFileResult] = Field(default_factory=list)
+
+
+class QueryFileJobResponse(BaseModel):
+    job_id: str
+    status: QueryFileJobStatus
+
+
+class QueryFileJobStatusResponse(BaseModel):
+    job_id: str
+    status: QueryFileJobStatus
+    detected_tags: Dict[str, int] = Field(default_factory=dict)
+    count: int = 0
+    results: List[QueryFileResult] = Field(default_factory=list)
+    error_message: Optional[str] = None
 
 
 class GetMediaResponse(BaseModel):

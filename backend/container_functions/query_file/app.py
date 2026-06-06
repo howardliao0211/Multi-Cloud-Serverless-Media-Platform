@@ -1,16 +1,13 @@
 import cv2
 import traceback
 
-from http import HTTPMethod, HTTPStatus
 from contextlib import contextmanager
-from json import JSONDecodeError
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 from typing import Dict
 from typing import Iterator
 from typing import List
-
-from pydantic import ValidationError
 
 from shared.aws_resources import (
     delete_s3_object_if_exists,
@@ -24,17 +21,15 @@ from shared.query_utils import (
     can_query_media,
     infer_media_type,
     normalize_tag_counts,
-    parse_json_request,
 )
 from shared.schemas import (
     MediaRecord,
     MediaRecordStatus,
-    QueryFileRequest,
     QueryFileResponse,
     QueryFileResult,
     MediaRecordResponse,
+    QueryFileJobStatus,
 )
-from shared.utils import build_response_message, get_current_user, get_http_method
 
 
 s3, bucket_name = get_bucket_and_name()
@@ -70,8 +65,40 @@ tagger = ImageTagger(
 )
 
 
-def parse_request(event: dict) -> QueryFileRequest:
-    return parse_json_request(event, QueryFileRequest)
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def build_job_key(job_id: str) -> str:
+    return f"QUERY_JOB#{job_id}"
+
+
+def update_query_job(job_id: str, updates: dict) -> None:
+    if not updates:
+        return
+
+    updates = {
+        **updates,
+        "updated_at": utc_now(),
+    }
+
+    update_expression_parts = []
+    expression_attribute_names = {}
+    expression_attribute_values = {}
+
+    for index, (field, value) in enumerate(updates.items()):
+        field_name = f"#field_{index}"
+        field_value = f":value_{index}"
+        update_expression_parts.append(f"{field_name} = {field_value}")
+        expression_attribute_names[field_name] = field
+        expression_attribute_values[field_value] = value
+
+    table.update_item(
+        Key={"key": build_job_key(job_id)},
+        UpdateExpression="SET " + ", ".join(update_expression_parts),
+        ExpressionAttributeNames=expression_attribute_names,
+        ExpressionAttributeValues=expression_attribute_values,
+    )
 
 
 @contextmanager
@@ -160,6 +187,7 @@ def shape_query_result(media_record: MediaRecord) -> QueryFileResult:
     )
 
     return QueryFileResult(
+        owner_id=media_record.owner_id,
         checksum=media_record.checksum,
         file_name=media_record.file_name,
         visibility=media_record.visibility,
@@ -268,71 +296,59 @@ def detect_query_file_tags(
 
 
 def lambda_handler(event, context):
-    allow_methods = [HTTPMethod.POST, HTTPMethod.OPTIONS]
-    http_method = get_http_method(event)
-
-    if http_method == "OPTIONS":
-        return build_response_message(
-            status_code=HTTPStatus.OK,
-            body={"message": "OK"},
-            allow_http_methods=allow_methods,
-        )
-
-    if http_method != "POST":
-        return build_response_message(
-            status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "Unsupported HTTP method"},
-            allow_http_methods=allow_methods,
-        )
-
-    request = None
+    job_id = event["job_id"]
+    current_user = event["owner_id"]
+    query_key = event["query_key"]
 
     try:
-        current_user = get_current_user(event)
-        request = parse_request(event)
-        validate_query_key_owner(request.query_key, current_user)
+        update_query_job(
+            job_id,
+            {
+                "status": QueryFileJobStatus.processing.value,
+                "error_message": None,
+            },
+        )
+        validate_query_key_owner(query_key, current_user)
         file_name, content_type = get_query_object_metadata(
-            request.query_key,
+            query_key,
             current_user,
         )
 
-        with temporary_s3_query_file(request.query_key) as temp_path:
-            temp_file_size = temp_path.stat().st_size
+        with temporary_s3_query_file(query_key) as temp_path:
             detected_tags = detect_query_file_tags(temp_path, file_name, content_type)
             response = query_matching_media(detected_tags, current_user)
 
-            return build_response_message(
-                status_code=HTTPStatus.OK,
-                body={
-                    **response.model_dump(mode="json"),
-                    "message": "query_file processed",
-                    "query_file": {
-                        "query_key": request.query_key,
-                        "file_name": file_name,
-                        "content_type": content_type,
-                    },
-                    "temporary_file": {
-                        "saved": True,
-                        "size_bytes": temp_file_size,
-                    },
+            update_query_job(
+                job_id,
+                {
+                    "status": QueryFileJobStatus.completed.value,
+                    "detected_tags": response.detected_tags,
+                    "count": response.count,
+                    "results": [
+                        result.model_dump(mode="json")
+                        for result in response.results
+                    ],
+                    "error_message": None,
                 },
-                allow_http_methods=allow_methods,
             )
-    except (JSONDecodeError, ValidationError, ValueError) as error:
-        return build_response_message(
-            status_code=HTTPStatus.BAD_REQUEST,
-            body={"message": "Invalid query file request", "error": str(error)},
-            allow_http_methods=allow_methods,
-        )
+
+            return {
+                "job_id": job_id,
+                "status": QueryFileJobStatus.completed.value,
+            }
+
     except Exception as error:
         print("Unhandled query_file error")
         print(traceback.format_exc())
 
-        return build_response_message(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            body={"message": "Query file processing failed", "error": str(error)},
-            allow_http_methods=allow_methods,
+        update_query_job(
+            job_id,
+            {
+                "status": QueryFileJobStatus.failed.value,
+                "error_message": str(error),
+            },
         )
+        raise
+
     finally:
-        if request is not None:
-            cleanup_query_upload(request.query_key)
+        cleanup_query_upload(query_key)

@@ -11,7 +11,8 @@ import {
     type QuerySpeciesResponse,
     type QueryThumbnailUrlResponse,
     type QueryFileUploadUrlResponse,
-    type QueryFileResponse,
+    type QueryFileJobResponse,
+    type QueryFileJobStatusResponse,
     type QueryFileResult,
     getMediaType,
     maskOwnerId,
@@ -44,6 +45,10 @@ function getResultThumbnailUrl(record: SearchResultRecord): string | null | unde
 
 function getResultPermanentThumbnailUrl(record: SearchResultRecord): string | null | undefined {
     return record.thumbnail_url;
+}
+
+function wait(milliseconds: number): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
 /**
@@ -378,16 +383,37 @@ function QueryScreen() {
                 throw new Error(`Query file upload failed: ${uploadResponse.status}`);
             }
 
-            const data = await authFetch<QueryFileResponse>("/query_file", {
+            const job = await authFetch<QueryFileJobResponse>("/query_file/jobs", {
                 method: "POST",
                 body: JSON.stringify({
                     query_key: uploadInfo.query_key,
                 }),
             }, true);
 
-            setDetectedTags(data.detected_tags ?? {});
-            setResults(data.results ?? []);
-            setResultCount(data.count ?? data.results?.length ?? 0);
+            for (let attempt = 0; attempt < 120; attempt += 1) {
+                await wait(3000);
+
+                const jobStatus = await authFetch<QueryFileJobStatusResponse>(
+                    `/query_file/jobs/${job.job_id}`,
+                    {
+                        method: "GET",
+                    },
+                    true
+                );
+
+                if (jobStatus.status === "completed") {
+                    setDetectedTags(jobStatus.detected_tags ?? {});
+                    setResults(jobStatus.results ?? []);
+                    setResultCount(jobStatus.count ?? jobStatus.results?.length ?? 0);
+                    return;
+                }
+
+                if (jobStatus.status === "failed") {
+                    throw new Error(jobStatus.error_message ?? "Query file processing failed.");
+                }
+            }
+
+            throw new Error("Query file processing timed out.");
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {

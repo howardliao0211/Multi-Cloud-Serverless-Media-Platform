@@ -51,6 +51,18 @@ data "aws_iam_policy_document" "lambda_runtime" {
   }
 
   statement {
+    sid = "InvokeQueryFileWorker"
+
+    actions = [
+      "lambda:InvokeFunction",
+    ]
+
+    resources = [
+      "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:query_file",
+    ]
+  }
+
+  statement {
     sid = "ReadGcpMlHmacSecret"
 
     actions = [

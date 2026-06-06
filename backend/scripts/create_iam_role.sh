@@ -92,6 +92,14 @@ cat > /tmp/aussie-eco-len-lambda-policy.json <<EOF
       "Resource": "arn:aws:dynamodb:${AWS_REGION}:${ACCOUNT_ID}:table/${MEDIA_TABLE_NAME}/stream/*"
     },
     {
+      "Sid": "InvokeQueryFileWorker",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:InvokeFunction"
+      ],
+      "Resource": "arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:query_file"
+    },
+    {
       "Sid": "S3UploadedMediaReadAccess",
       "Effect": "Allow",
       "Action": [
