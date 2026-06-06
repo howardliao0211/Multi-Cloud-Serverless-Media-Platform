@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { authFetch } from "../services/api";
 import { getErrorMessage, type EditTagsResponse } from "../utils";
 
@@ -20,6 +20,7 @@ function TagsScreen() {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const { selectedUrls, setSelectedUrls, } = useOutletContext<DashboardOutletContext>();
+    const navigate = useNavigate();
 
     useEffect(() => {
         setTagUrlText(selectedUrls.join("\n"));
@@ -103,22 +104,30 @@ function TagsScreen() {
                 }),
             });
 
-            setSuccessMessage(
-                `${data.updated_count} file${data.updated_count === 1 ? "" : "s"
-                } updated successfully.`
-            );
-
             const failedResults = data.results.filter(
                 (result) => !result.updated
             );
 
+            if (data.updated_count > 0) {
+                setSuccessMessage(
+                    `${data.updated_count} file${data.updated_count === 1 ? "" : "s"
+                    } updated successfully.`
+                );
+            } else {
+                setSuccessMessage(null);
+            }
+
             if (failedResults.length > 0) {
                 setError(
-                    failedResults.map(
-                        (result) =>
-                            `${result.url}: ${result.message ?? "Update failed."
-                            }`
-                    )
+                    failedResults
+                        .map((result) => {
+                            const fileLabel =
+                                result.file_name ??
+                                "Selected file";
+
+                            return `${fileLabel}: ${result.message ?? "Update failed."
+                                }`;
+                        })
                         .join("\n")
                 );
             }
@@ -129,6 +138,13 @@ function TagsScreen() {
                 setTagQueries([]);
                 setTagName("");
                 setTagCount(1);
+
+                navigate("/dashboard/tags", {
+                    replace: true,
+                    state: {
+                        refreshedAt: Date.now(),
+                    },
+                });
             }
 
         } catch (error) {
