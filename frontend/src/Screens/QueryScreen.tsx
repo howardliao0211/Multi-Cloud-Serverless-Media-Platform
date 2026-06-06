@@ -5,6 +5,7 @@ import { authFetch } from "../services/api";
 import {
     getErrorMessage,
     isValidMediaFile,
+    type DashboardOutletContext,
     type MediaRecordResponse,
     type QueryTagsResponse,
     type QuerySpeciesResponse,
@@ -13,15 +14,8 @@ import {
     type QueryFileResponse,
     type QueryFileResult,
     getMediaType,
+    maskOwnerId,
 } from "../utils";
-
-/**
- * Shared values provided by DashboardScreen through React Router Outlet context. 
- */
-type DashboardOutletContext = {
-    selectedUrl: string;
-    setSelectedUrl: React.Dispatch<React.SetStateAction<string>>;
-}
 
 /**
  * Supported media search methods.
@@ -70,15 +64,15 @@ function QueryScreen() {
     const [tagName, setTagName] = useState<string>("");
     const [tagCount, setTagCount] = useState<number>(1);
     const [tagQueries, setTagQueries] = useState<{ name: string; count: number }[]>([]);
-    
+
     // Species search input.
     const [species, setSpecies] = useState<string>("");
-    
+
     // Shared thumbnail URL stored by DashboardScreen.
     const { selectedUrl, setSelectedUrl } = useOutletContext<DashboardOutletContext>();
-    
+
     const [copiedFullUrl, setCopiedFullUrl] = useState<string>("");
-    
+
     // File-content search state.
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -113,13 +107,13 @@ function QueryScreen() {
         resetSearchState();
     }
 
-    
-     /**
-     * Adds a normalised tag and minimum count to the tag query.
-     *
-     * Adding an existing tag replaces its previous count instead of creating
-     * a duplicate entry.
-     */
+
+    /**
+    * Adds a normalised tag and minimum count to the tag query.
+    *
+    * Adding an existing tag replaces its previous count instead of creating
+    * a duplicate entry.
+    */
     function handleAddTag() {
         const normalizedName = tagName.trim().toLowerCase();
         const normalizedCount = Math.max(1, Number(tagCount) || 1);
@@ -206,6 +200,16 @@ function QueryScreen() {
             return;
         }
 
+        const containsMultipleSpecies =
+            normalizedSpecies.includes(",") ||
+            normalizedSpecies.includes(";") ||
+            normalizedSpecies.includes("\n");
+
+        if (containsMultipleSpecies) {
+            setError("Please enter only one species.");
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
         setDetectedTags({});
@@ -232,7 +236,7 @@ function QueryScreen() {
      * a thumbnail URL through Outlet context.
      */
     useEffect(() => {
-        if (!selectedUrl) return;
+        if (!selectedUrl.trim()) return;
 
         setMode("thumbnail");
         setResults([]);
@@ -242,11 +246,14 @@ function QueryScreen() {
     }, [selectedUrl]);
 
     /**
-     * Finds the media record associated with the entered thumbnail URL.
+     * Finds the media record associated with the selected thumbnail URL.
      *
-     * @returns a promise that resolves after the thumbnail lookup is handled.
+     * After a successful search, the shared thumbnail selection is cleared so the
+     * related card button returns to its unselected state.
+     *
+     * @returns a promise that resolves after the thumbnail search is handled.
      */
-    async function handleThumbnailSearch() {
+    async function handleThumbnailSearch(): Promise<void> {
         const normalizedThumbnailUrl = selectedUrl.trim();
 
         if (!normalizedThumbnailUrl) {
@@ -259,15 +266,17 @@ function QueryScreen() {
         setDetectedTags({});
 
         try {
-            const data = await authFetch<QueryThumbnailUrlResponse>(
-                "/query_thumbnail_url",
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        thumbnail_url: normalizedThumbnailUrl,
-                    }),
-                }
-            );
+            const data =
+                await authFetch<QueryThumbnailUrlResponse>(
+                    "/query_thumbnail_url",
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            thumbnail_url:
+                                normalizedThumbnailUrl,
+                        }),
+                    }
+                );
 
             const records = data.media_records ?? [];
 
@@ -275,8 +284,14 @@ function QueryScreen() {
             setResultCount(records.length);
 
             if (records.length === 0) {
-                setError("No media found for this thumbnail URL.");
+                setError(
+                    "No media found for this thumbnail URL."
+                );
+                return;
             }
+
+            // Clear the selected thumbnail state after a successful search.
+            setSelectedUrl("");
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -285,15 +300,25 @@ function QueryScreen() {
     }
 
     /**
-     * Copies a thumbnail URL and prepares it for thumbnail URL search.
+     * Toggles a thumbnail URL for thumbnail-based search.
      *
-     * @param thumbnailUrl the permanent thumbnail URL to copy and reuse.
-     * @returns a promise that resolves after the clipboard operation completes.
+     * Clicking an unselected thumbnail URL copies it to the clipboard and stores
+     * it in the shared search state. Clicking the same URL again clears the
+     * selected state.
+     *
+     * @param thumbnailUrl the permanent thumbnail URL to select or clear.
+     * @returns a promise that resolves after the clipboard operation is handled.
      */
-    async function handleUseThumbnailUrl(thumbnailUrl: string) {
+    async function handleUseThumbnailUrl(
+        thumbnailUrl: string
+    ): Promise<void> {
         try {
-            await navigator.clipboard.writeText(thumbnailUrl);
+            if (selectedUrl === thumbnailUrl) {
+                setSelectedUrl("");
+                return;
+            }
 
+            await navigator.clipboard.writeText(thumbnailUrl);
             setSelectedUrl(thumbnailUrl);
             setMode("thumbnail");
             setError(null);
@@ -486,7 +511,7 @@ function QueryScreen() {
                             <input
                                 value={species}
                                 onChange={(event) => setSpecies(event.target.value)}
-                                placeholder="Enter species name (eg. koala)"
+                                placeholder="Enter one species name (eg. koala)"
                             />
                         </div>
 
@@ -622,13 +647,14 @@ function QueryScreen() {
                                     File Name:
                                     <strong>{record.file_name}</strong>
                                 </p>
+
+                                <p>
+                                    Owner: <strong>{maskOwnerId(record.owner_id)}</strong>
+                                </p>
+
                                 <p>
                                     Visibility: <strong>{record.visibility}</strong>
                                 </p>
-
-
-
-
 
                                 <div className="media-tags-text">
                                     {Object.entries(record.tags ?? {}).length > 0 ? (
@@ -647,6 +673,7 @@ function QueryScreen() {
                                         <button
                                             type="button"
                                             disabled={!permanentThumbnailUrl}
+                                            className={permanentThumbnailUrl === selectedUrl ? "selected" : ""}
                                             onClick={() => {
                                                 if (permanentThumbnailUrl) {
                                                     void handleUseThumbnailUrl(permanentThumbnailUrl);
