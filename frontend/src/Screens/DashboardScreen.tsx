@@ -26,6 +26,7 @@ function DashboardScreen() {
         setSelectedUrls,
         selectedUrl,
         setSelectedUrl,
+        refreshMyMedia: loadMyMedia,
     };
 
     function handleToggleSelectedUrl(url: string) {

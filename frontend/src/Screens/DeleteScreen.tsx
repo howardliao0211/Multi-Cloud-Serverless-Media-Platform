@@ -6,6 +6,7 @@ import { getErrorMessage, type DeleteFileResponse} from "../utils";
 type DashboardOutletContext = {
     selectedUrls: string[];
     setSelectedUrls: React.Dispatch<React.SetStateAction<string[]>>;
+    refreshMyMedia: () => Promise<void>;
 }
 
 function DeleteScreen() {
@@ -15,7 +16,7 @@ function DeleteScreen() {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    const { selectedUrls, setSelectedUrls, } = useOutletContext<DashboardOutletContext>();
+    const { selectedUrls, setSelectedUrls, refreshMyMedia,} = useOutletContext<DashboardOutletContext>();
 
     useEffect(() => {
         setDeleteUrlText(selectedUrls.join("\n"));
@@ -71,6 +72,8 @@ function DeleteScreen() {
             if (data.deleted_count > 0){
                 setSelectedUrls([]);
                 setDeleteUrlText("");
+
+                await refreshMyMedia();
             }
         } catch (error) {
             setError(getErrorMessage(error));

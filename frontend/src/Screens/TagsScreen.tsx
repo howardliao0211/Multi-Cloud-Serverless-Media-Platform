@@ -6,6 +6,7 @@ import { getErrorMessage, type EditTagsResponse } from "../utils";
 type DashboardOutletContext = {
     selectedUrls: string[];
     setSelectedUrls: React.Dispatch<React.SetStateAction<string[]>>;
+    refreshMyMedia: () => Promise<void>;
 }
 
 function TagsScreen() {
@@ -19,8 +20,7 @@ function TagsScreen() {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    const { selectedUrls, setSelectedUrls, } = useOutletContext<DashboardOutletContext>();
-    const navigate = useNavigate();
+    const { selectedUrls, setSelectedUrls, refreshMyMedia,} = useOutletContext<DashboardOutletContext>();
 
     useEffect(() => {
         setTagUrlText(selectedUrls.join("\n"));
@@ -139,12 +139,7 @@ function TagsScreen() {
                 setTagName("");
                 setTagCount(1);
 
-                navigate("/dashboard/tags", {
-                    replace: true,
-                    state: {
-                        refreshedAt: Date.now(),
-                    },
-                });
+                await refreshMyMedia();
             }
 
         } catch (error) {
