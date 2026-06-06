@@ -112,6 +112,7 @@ function DashboardScreen() {
                 (record) => record.owner_id !== currentUserId
             );
 
+            // Combine the current user's private and public media.
             setMyMediaRecords(
                 mergeUniqueMediaRecords([
                     ...privateData.media_records,
@@ -127,12 +128,22 @@ function DashboardScreen() {
         }
     }
 
+    /**
+     * Reloads media whenever the user enters the dashboard home, Delete page,
+     * or Tags page.
+     */
     useEffect(() => {
         if (location.pathname === "/dashboard" || isSplitPage) {
             void loadMyMedia();
         }
     }, [location.pathname]);
 
+    /**
+     * Changes the visibility of a media record and refreshes the dashboard.
+     * 
+     * @param url the permanent full URL identifying the media record. 
+     * @param visibility the target visibility value.
+     */
     async function handleChangeVisibility(url: string, visibility: "private" | "public") {
         try {
             await authFetch("/change_visibility", {
@@ -148,11 +159,25 @@ function DashboardScreen() {
         }
     }
 
+    /**
+     * Copies a permanent thumbnail URL and prepares it for thumbnail search.
+     * When the user opens the Search page, QueryScreen reads selectedUrl from the Outlet context.
+     * 
+     * @param thumbnailUrl the permanent thumbnail URL to copy.
+     */
     async function handleCopyThumbnailUrl(thumbnailUrl: string) {
         await navigator.clipboard.writeText(thumbnailUrl);
         setSelectedUrl(thumbnailUrl);
     }
 
+    /**
+     * Renders media owned by the current user.
+     * On the dashboard home page, public media belonging to other users
+     * can also be displayed beneath the user's uploads.
+     * 
+     * @param showOthersPublic whether to render public media from other users.
+     * @returns the My Uploads dashboard section.
+     */
     function readerMyUpload(showOthersPublic: boolean) {
         return (
             <main className="dashboard-content">

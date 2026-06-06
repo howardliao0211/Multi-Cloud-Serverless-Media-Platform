@@ -470,64 +470,71 @@ function QueryScreen() {
                                     <span>No thumbnail available</span>
                                 )}
                             </div>
-                            <p>
-                                File Name: <strong>{record.file_name}</strong>
-                            </p>
-                            <p>
-                                Visibility: <strong>{record.visibility}</strong>
-                            </p>
+                            <div className="media-card-body">
+                                <p className="media-file-name">
+                                    File Name:
+                                    <strong>{record.file_name}</strong>
+                                </p>
+                                <p>
+                                    Visibility: <strong>{record.visibility}</strong>
+                                </p>
 
-                            <div className="media-tags-text">
-                                {Object.entries(record.tags ?? {}).length > 0 ? (
-                                    Object.entries(record.tags).map(([tag, count]) => (
-                                        <p key={tag}>
-                                            {tag} ({count})
-                                        </p>
-                                    ))
-                                ) : (
-                                    <p>No tags yet</p>
-                                )}
-                            </div>
 
-                            <div className="media-url-actions">
-                                {mode !== "thumbnail" && (
+
+
+
+                                <div className="media-tags-text">
+                                    {Object.entries(record.tags ?? {}).length > 0 ? (
+                                        Object.entries(record.tags).map(([tag, count]) => (
+                                            <p key={tag}>
+                                                {tag} ({count})
+                                            </p>
+                                        ))
+                                    ) : (
+                                        <p>No tags yet</p>
+                                    )}
+                                </div>
+
+                                <div className="media-url-actions">
+                                    {mode !== "thumbnail" && (
+                                        <button
+                                            type="button"
+                                            disabled={!record.thumbnail_url}
+                                            onClick={() => {
+                                                if (record.thumbnail_url) {
+                                                    void handleUseThumbnailUrl(record.thumbnail_url);
+                                                }
+                                            }}
+                                        >
+                                            {record.thumbnail_url === selectedUrl
+                                                ? "Copied to Search"
+                                                : "Copy Thumbnail URL"}
+                                        </button>
+                                    )}
+
                                     <button
                                         type="button"
-                                        disabled={!record.thumbnail_url}
-                                        onClick={() => {
-                                            if (record.thumbnail_url) {
-                                                void handleUseThumbnailUrl(record.thumbnail_url);
+                                        disabled={!record.full_url}
+                                        onClick={async () => {
+                                            if (!record.full_url) return;
+
+                                            try {
+                                                await navigator.clipboard.writeText(record.full_url);
+                                                setCopiedFullUrl(record.full_url);
+
+                                                window.setTimeout(() => {
+                                                    setCopiedFullUrl("");
+                                                }, 2000);
+                                            } catch (error) {
+                                                setError(getErrorMessage(error));
                                             }
                                         }}
                                     >
-                                        {record.thumbnail_url === selectedUrl
-                                            ? "Copied to Search"
-                                            : "Copy Thumbnail URL"}
+                                        {record.full_url === copiedFullUrl
+                                            ? "Copied Successfully"
+                                            : "Copy Full URL"}
                                     </button>
-                                )}
-
-                                <button
-                                    type="button"
-                                    disabled={!record.full_url}
-                                    onClick={async () => {
-                                        if (!record.full_url) return;
-
-                                        try {
-                                            await navigator.clipboard.writeText(record.full_url);
-                                            setCopiedFullUrl(record.full_url);
-
-                                            window.setTimeout(() => {
-                                                setCopiedFullUrl("");
-                                            }, 2000);
-                                        } catch (error) {
-                                            setError(getErrorMessage(error));
-                                        }
-                                    }}
-                                >
-                                    {record.full_url === copiedFullUrl
-                                        ? "Copied Successfully"
-                                        : "Copy Full URL"}
-                                </button>
+                                </div>
                             </div>
                         </article>
                     ))}
