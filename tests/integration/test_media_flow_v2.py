@@ -19,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_IMAGE = Path(
     os.environ.get(
         "TEST_IMAGE",
-        str(REPO_ROOT / "test_media" / "Perameles_nasuta_1.JPG"),
+        str(REPO_ROOT / "tests/fixtures/media" / "Perameles_nasuta_1.JPG"),
     )
 )
 
@@ -162,3 +162,67 @@ def test_backend_v2_image_ingest_end_to_end() -> None:
 
     finally:
         _delete_test_artifacts(key=key, checksum=checksum)
+
+def test_backend_v2_video_ingest_end_to_end() -> None:
+    test_video = Path("integration/test_video.mp4")
+    assert test_video.exists(), f"Missing test video: {test_video}"
+
+    run_id = uuid.uuid4().hex
+    checksum = f"v2-video-it-{run_id}"
+    file_name = f"{checksum}.mp4"
+    key = f"videos-v2/{file_name}"
+
+    try:
+        s3.upload_file(
+            Filename=str(test_video),
+            Bucket=MEDIA_BUCKET_NAME,
+            Key=key,
+            ExtraArgs={
+                "ContentType": "video/mp4",
+                "Metadata": {
+                    "owner_id": TEST_OWNER,
+                    "checksum": checksum,
+                    "file_name": file_name,
+                },
+            },
+        )
+
+        _put_pending_record(key=key, checksum=checksum, file_name=file_name)
+
+        payload = _invoke_media_ingest(key)
+        assert payload["statusCode"] == 200
+
+        record = {}
+        for _ in range(10):
+            record = _get_record(key)
+            if record.get("upload_status", {}).get("S") == "ready":
+                break
+            time.sleep(1)
+
+        assert record["upload_status"]["S"] == "ready", record
+        assert record["file_type"]["S"] == "video/mp4", record
+        assert record["ml_provider"]["S"] == "gcp_cloud_run", record
+        assert record["ml_model_name"]["S"] == "gcp_image_tagger", record
+        assert "thumbnail_key" in record, record
+        assert "thumbnail_url" in record, record
+
+        tags = record.get("tags", {}).get("M", {})
+        assert tags, record
+        assert any(value.get("N") == "1" for value in tags.values()), record
+
+        detections = record.get("ml_detections", {}).get("L", [])
+        assert isinstance(detections, list), record
+
+        if detections:
+            assert any(
+                "timestamp_sec" in detection.get("M", {})
+                for detection in detections
+            ), record
+            assert all(
+                detection.get("M", {}).get("source", {}).get("S") == "original"
+                for detection in detections
+            ), record
+
+    finally:
+        _delete_test_artifacts(key=key, checksum=checksum)
+

@@ -297,3 +297,12 @@ backend-v2/**/*.egg-info/
 
 # local backend v2 environment
 backend-v2/.env
+
+# Keep integration-test fixture media tracked.
+!tests/fixtures/
+!tests/fixtures/media/
+!tests/fixtures/media/*.JPG
+!tests/fixtures/media/*.jpg
+!tests/fixtures/media/*.jpeg
+!tests/fixtures/media/*.png
+!tests/fixtures/media/*.mp4

@@ -92,9 +92,9 @@ jobs:
 
             - name: Stage GCP model files
               run: |
-                  mkdir -p gcp/ml_processor/models
-                  cp models/model.pt gcp/ml_processor/models/model.pt
-                  cp models/mdv5a.pt gcp/ml_processor/models/mdv5a.pt
+                  mkdir -p backend-v2/gcp/ml_processor/models
+                  cp models/model.pt backend-v2/gcp/ml_processor/models/model.pt
+                  cp models/mdv5a.pt backend-v2/gcp/ml_processor/models/mdv5a.pt
 
             - name: Install test dependencies
               run: |
