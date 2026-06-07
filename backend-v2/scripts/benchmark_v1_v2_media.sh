@@ -5,7 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${BACKEND_V2_DIR}/.." && pwd)"
 
-# shellcheck source=/dev/null
 source "${SCRIPT_DIR}/load_env.sh" "${BACKEND_V2_DIR}/.env"
 
 export AWS_PAGER=""
@@ -18,12 +17,22 @@ OUT_DIR="${OUT_DIR:-${REPO_ROOT}/.benchmark/v1-v2-${RUN_ID}}"
 POLL_INTERVAL_SECONDS="${POLL_INTERVAL_SECONDS:-5}"
 IMAGE_TIMEOUT_SECONDS="${IMAGE_TIMEOUT_SECONDS:-240}"
 VIDEO_TIMEOUT_SECONDS="${VIDEO_TIMEOUT_SECONDS:-900}"
-DO_CLEANUP="false"
 MEDIA_LIMIT="${MEDIA_LIMIT:-}"
+BENCHMARK_V1_MODE="${BENCHMARK_V1_MODE:-notification}"
+DO_CLEANUP="false"
 
 if [[ "${1:-}" == "--cleanup" ]]; then
   DO_CLEANUP="true"
 fi
+
+mkdir -p "${OUT_DIR}"
+
+CSV_PATH="${OUT_DIR}/benchmark.csv"
+JSONL_PATH="${OUT_DIR}/benchmark.jsonl"
+SUMMARY_PATH="${OUT_DIR}/summary.txt"
+
+echo "pipeline,media_type,file,s3_key,ddb_key,status,provider,tags_json,thumbnail_key,duration_seconds,error" > "${CSV_PATH}"
+: > "${JSONL_PATH}"
 
 required_env() {
   local name="$1"
@@ -37,15 +46,6 @@ required_env AWS_REGION
 required_env AWS_PROFILE
 required_env MEDIA_BUCKET_NAME
 required_env MEDIA_TABLE_NAME
-
-mkdir -p "${OUT_DIR}"
-
-CSV_PATH="${OUT_DIR}/benchmark.csv"
-JSONL_PATH="${OUT_DIR}/benchmark.jsonl"
-SUMMARY_PATH="${OUT_DIR}/summary.txt"
-
-echo "pipeline,media_type,file,s3_key,ddb_key,status,provider,tags_json,thumbnail_key,duration_seconds,error" > "${CSV_PATH}"
-: > "${JSONL_PATH}"
 
 json_escape() {
   python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
@@ -62,24 +62,48 @@ print(int(time.time() * 1000))
 PY
 }
 
+csv_quote() {
+  python3 -c 'import csv,sys; csv.writer(sys.stdout).writerow(sys.argv[1:])' "$@"
+}
+
+create_s3_event() {
+  local bucket="$1"
+  local key="$2"
+  local output="$3"
+
+  cat > "${output}" <<EOF
+{
+  "Records": [
+    {
+      "eventSource": "aws:s3",
+      "eventName": "ObjectCreated:Put",
+      "s3": {
+        "bucket": {"name": "${bucket}"},
+        "object": {"key": "${key}"}
+      }
+    }
+  ]
+}
+EOF
+}
+
 ddb_get_item_to_file() {
   local ddb_key_raw="$1"
   local out_file="$2"
-  local ddb_key_json
-  ddb_key_json="$(json_escape "${ddb_key_raw}")"
 
   aws dynamodb get-item \
     --table-name "${MEDIA_TABLE_NAME}" \
     --region "${AWS_REGION}" \
     --profile "${AWS_PROFILE}" \
-    --key "{\"key\":{\"S\":${ddb_key_json}}}" \
+    --key "{\"key\":{\"S\":$(json_escape "${ddb_key_raw}")}}" \
     --output json > "${out_file}"
 }
 
 parse_ddb_field() {
   local item_file="$1"
   local field="$2"
-  python3 - "$item_file" "$field" <<'PYHELPER'
+
+  python3 - "$item_file" "$field" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -97,12 +121,13 @@ except Exception:
 item = data.get("Item") or {}
 v = item.get(field) or {}
 print(v.get("S") or "")
-PYHELPER
+PY
 }
 
 parse_ddb_tags_json() {
   local item_file="$1"
-  python3 - "$item_file" <<'PYHELPER'
+
+  python3 - "$item_file" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -130,55 +155,6 @@ for k, v in raw.items():
         tags[k] = v["S"]
 
 print(json.dumps(tags, sort_keys=True))
-PYHELPER
-}
-
-csv_quote() {
-  python3 -c 'import csv,sys; w=csv.writer(sys.stdout); w.writerow(sys.argv[1:])' "$@"
-}
-
-create_s3_event() {
-  local bucket="$1"
-  local key="$2"
-  local output="$3"
-
-  cat > "${output}" <<EOF
-{
-  "Records": [
-    {
-      "eventSource": "aws:s3",
-      "eventName": "ObjectCreated:Put",
-      "s3": {
-        "bucket": {"name": "${bucket}"},
-        "object": {"key": "${key}"}
-      }
-    }
-  ]
-}
-EOF
-}
-
-invoke_v2_lambda() {
-  local event_path="$1"
-  local response_path="$2"
-
-  aws lambda invoke \
-    --function-name media_ingest_v2 \
-    --region "${AWS_REGION}" \
-    --profile "${AWS_PROFILE}" \
-    --payload "fileb://${event_path}" \
-    "${response_path}" >/dev/null
-
-  python3 - <<PY
-import json
-from pathlib import Path
-outer = json.loads(Path("${response_path}").read_text())
-if outer.get("statusCode") != 200:
-    raise SystemExit(f"media_ingest_v2 statusCode={outer.get('statusCode')}: {outer}")
-body = json.loads(outer.get("body") or "{}")
-result = body.get("result", {})
-if result.get("statusCode") != 200:
-    raise SystemExit(f"process_ml_result_v2 statusCode={result.get('statusCode')}: {result}")
 PY
 }
 
@@ -193,7 +169,7 @@ wait_for_ready() {
   while true; do
     ddb_get_item_to_file "${ddb_key}" "${item_file}" || true
 
-    if python3 - "${item_file}" <<'PYWAIT'
+    if python3 - "${item_file}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -217,7 +193,7 @@ if status == "failed":
     raise SystemExit(2)
 
 raise SystemExit(1)
-PYWAIT
+PY
     then
       return 0
     else
@@ -230,12 +206,116 @@ PYWAIT
     local now elapsed
     now="$(now_ms)"
     elapsed=$(( (now - start) / 1000 ))
+
     if (( elapsed >= timeout_seconds )); then
       return 1
     fi
 
     sleep "${POLL_INTERVAL_SECONDS}"
   done
+}
+
+invoke_lambda_checked() {
+  local function_name="$1"
+  local event_path="$2"
+  local response_path="$3"
+
+  aws lambda invoke \
+    --function-name "${function_name}" \
+    --region "${AWS_REGION}" \
+    --profile "${AWS_PROFILE}" \
+    --payload "fileb://${event_path}" \
+    "${response_path}" >/dev/null
+
+  python3 - "$response_path" "$function_name" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+function_name = sys.argv[2]
+
+try:
+    payload = json.loads(path.read_text())
+except Exception as exc:
+    raise SystemExit(f"{function_name}: invalid JSON response: {exc}")
+
+status = payload.get("statusCode")
+if status is not None:
+    try:
+        status_int = int(status)
+    except Exception:
+        status_int = 500
+    if status_int >= 400:
+        raise SystemExit(f"{function_name}: returned statusCode={status}: {payload}")
+PY
+}
+
+record_result() {
+  local pipeline="$1"
+  local media_type="$2"
+  local file="$3"
+  local s3_key="$4"
+  local ddb_key="$5"
+  local status="$6"
+  local provider="$7"
+  local tags_json="$8"
+  local thumbnail_key="$9"
+  local duration_seconds="${10}"
+  local error="${11}"
+
+  csv_quote \
+    "${pipeline}" \
+    "${media_type}" \
+    "${file}" \
+    "${s3_key}" \
+    "${ddb_key}" \
+    "${status}" \
+    "${provider}" \
+    "${tags_json}" \
+    "${thumbnail_key}" \
+    "${duration_seconds}" \
+    "${error}" >> "${CSV_PATH}"
+
+  python3 - "$pipeline" "$media_type" "$file" "$s3_key" "$ddb_key" "$status" "$provider" "$tags_json" "$thumbnail_key" "$duration_seconds" "$error" <<'PY' >> "${JSONL_PATH}"
+import json
+import sys
+
+(
+    pipeline,
+    media_type,
+    file,
+    s3_key,
+    ddb_key,
+    status,
+    provider,
+    tags_json,
+    thumbnail_key,
+    duration_seconds,
+    error,
+) = sys.argv[1:]
+
+try:
+    tags = json.loads(tags_json) if tags_json else {}
+except Exception:
+    tags = {"_parse_error": tags_json}
+
+row = {
+    "pipeline": pipeline,
+    "media_type": media_type,
+    "file": file,
+    "s3_key": s3_key,
+    "ddb_key": ddb_key,
+    "status": status,
+    "provider": provider,
+    "tags": tags,
+    "thumbnail_key": thumbnail_key,
+    "duration_seconds": float(duration_seconds) if duration_seconds else None,
+    "error": error,
+}
+
+print(json.dumps(row, sort_keys=True))
+PY
 }
 
 cleanup_artifacts() {
@@ -265,91 +345,36 @@ cleanup_artifacts() {
     --key "{\"key\":{\"S\":$(json_escape "${ddb_key}")}}" >/dev/null 2>&1 || true
 }
 
-record_result() {
-  local pipeline="$1"
-  local media_type="$2"
-  local file="$3"
-  local s3_key="$4"
-  local ddb_key="$5"
-  local status="$6"
-  local provider="$7"
-  local tags_json="$8"
-  local thumbnail_key="$9"
-  local duration_seconds="${10}"
-  local error="${11}"
-
-  csv_quote \
-    "${pipeline}" \
-    "${media_type}" \
-    "${file}" \
-    "${s3_key}" \
-    "${ddb_key}" \
-    "${status}" \
-    "${provider}" \
-    "${tags_json}" \
-    "${thumbnail_key}" \
-    "${duration_seconds}" \
-    "${error}" >> "${CSV_PATH}"
-
-  python3 - "$pipeline" "$media_type" "$file" "$s3_key" "$ddb_key" "$status" "$provider" "$tags_json" "$thumbnail_key" "$duration_seconds" "$error" <<'PYJSON' >> "${JSONL_PATH}"
-import json
-import sys
-
-(
-    pipeline,
-    media_type,
-    file,
-    s3_key,
-    ddb_key,
-    status,
-    provider,
-    tags_json,
-    thumbnail_key,
-    duration_seconds,
-    error,
-) = sys.argv[1:]
-
-try:
-    tags = json.loads(tags_json) if tags_json else {}
-except json.JSONDecodeError:
-    tags = {"_parse_error": tags_json}
-
-row = {
-    "pipeline": pipeline,
-    "media_type": media_type,
-    "file": file,
-    "s3_key": s3_key,
-    "ddb_key": ddb_key,
-    "status": status,
-    "provider": provider,
-    "tags": tags,
-    "thumbnail_key": thumbnail_key,
-    "duration_seconds": float(duration_seconds) if duration_seconds else None,
-    "error": error,
-}
-
-print(json.dumps(row, sort_keys=True))
-PYJSON
-}
-
 run_case() {
   local pipeline="$1"
   local media_type="$2"
   local local_file="$3"
 
-  local file_name checksum prefix s3_key ddb_key timeout item_file start_ms end_ms duration status provider tags_json thumbnail_key error event_path response_path
+  local file_name checksum prefix s3_key ddb_key timeout item_file event_path response_path start_ms end_ms duration status provider tags_json thumbnail_key error lambda_function
 
   file_name="$(basename "${local_file}")"
   checksum="$(sha256_file "${local_file}")"
 
   if [[ "${pipeline}" == "v1" && "${media_type}" == "image" ]]; then
-    prefix="images"
+    if [[ "${BENCHMARK_V1_MODE}" == "manual" ]]; then
+      prefix="images-manual-benchmark"
+    else
+      prefix="images"
+    fi
+    lambda_function="tag_image"
   elif [[ "${pipeline}" == "v1" && "${media_type}" == "video" ]]; then
-    prefix="videos"
+    if [[ "${BENCHMARK_V1_MODE}" == "manual" ]]; then
+      prefix="videos-manual-benchmark"
+    else
+      prefix="videos"
+    fi
+    lambda_function="tag_video"
   elif [[ "${pipeline}" == "v2" && "${media_type}" == "image" ]]; then
     prefix="images-v2"
+    lambda_function="media_ingest_v2"
   elif [[ "${pipeline}" == "v2" && "${media_type}" == "video" ]]; then
     prefix="videos-v2"
+    lambda_function="media_ingest_v2"
   else
     echo "Invalid case: ${pipeline} ${media_type}" >&2
     exit 1
@@ -370,7 +395,6 @@ run_case() {
   echo "== ${pipeline} ${media_type}: ${file_name} =="
 
   start_ms="$(now_ms)"
-  error=""
 
   if ! aws s3 cp "${local_file}" "s3://${MEDIA_BUCKET_NAME}/${s3_key}" \
       --region "${AWS_REGION}" \
@@ -378,52 +402,42 @@ run_case() {
       --metadata "owner_id=${OWNER_ID},checksum=${checksum},file_name=${file_name},visibility=private" >/dev/null
   then
     end_ms="$(now_ms)"
-    duration="$(python3 - <<PY
-print(round((${end_ms} - ${start_ms}) / 1000, 3))
-PY
-)"
+    duration="$(python3 -c "print(round((${end_ms} - ${start_ms}) / 1000, 3))")"
     record_result "${pipeline}" "${media_type}" "${local_file}" "${s3_key}" "${ddb_key}" "upload_failed" "" "{}" "" "${duration}" "s3 upload failed"
     return 1
   fi
 
-  if [[ "${pipeline}" == "v2" ]]; then
+  if [[ "${pipeline}" == "v2" || ( "${pipeline}" == "v1" && "${BENCHMARK_V1_MODE}" == "manual" ) ]]; then
     create_s3_event "${MEDIA_BUCKET_NAME}" "${s3_key}" "${event_path}"
-    if ! invoke_v2_lambda "${event_path}" "${response_path}"; then
+
+    if ! invoke_lambda_checked "${lambda_function}" "${event_path}" "${response_path}"; then
       end_ms="$(now_ms)"
-      duration="$(python3 - <<PY
-print(round((${end_ms} - ${start_ms}) / 1000, 3))
-PY
-)"
-      record_result "${pipeline}" "${media_type}" "${local_file}" "${s3_key}" "${ddb_key}" "lambda_failed" "" "{}" "" "${duration}" "v2 lambda invoke failed"
+      duration="$(python3 -c "print(round((${end_ms} - ${start_ms}) / 1000, 3))")"
+      record_result "${pipeline}" "${media_type}" "${local_file}" "${s3_key}" "${ddb_key}" "lambda_failed" "" "{}" "" "${duration}" "${lambda_function} invoke failed"
+      echo "FAIL ${pipeline} ${media_type} ${file_name}: ${lambda_function} invoke failed" >&2
       return 1
     fi
   fi
 
   if wait_for_ready "${ddb_key}" "${timeout}" "${item_file}"; then
     end_ms="$(now_ms)"
-    duration="$(python3 - <<PY
-print(round((${end_ms} - ${start_ms}) / 1000, 3))
-PY
-)"
+    duration="$(python3 -c "print(round((${end_ms} - ${start_ms}) / 1000, 3))")"
     status="$(parse_ddb_field "${item_file}" "upload_status")"
     provider="$(parse_ddb_field "${item_file}" "ml_provider")"
     tags_json="$(parse_ddb_tags_json "${item_file}")"
     thumbnail_key="$(parse_ddb_field "${item_file}" "thumbnail_key")"
 
     record_result "${pipeline}" "${media_type}" "${local_file}" "${s3_key}" "${ddb_key}" "${status}" "${provider}" "${tags_json}" "${thumbnail_key}" "${duration}" ""
-
     echo "PASS ${pipeline} ${media_type} ${file_name}: ${duration}s tags=${tags_json}"
   else
     rc=$?
     end_ms="$(now_ms)"
-    duration="$(python3 - <<PY
-print(round((${end_ms} - ${start_ms}) / 1000, 3))
-PY
-)"
-    status="$(parse_ddb_field "${item_file}" "upload_status" || true)"
-    provider="$(parse_ddb_field "${item_file}" "ml_provider" || true)"
-    tags_json="$(parse_ddb_tags_json "${item_file}" || echo '{}')"
-    thumbnail_key="$(parse_ddb_field "${item_file}" "thumbnail_key" || true)"
+    duration="$(python3 -c "print(round((${end_ms} - ${start_ms}) / 1000, 3))")"
+    status="$(parse_ddb_field "${item_file}" "upload_status")"
+    provider="$(parse_ddb_field "${item_file}" "ml_provider")"
+    tags_json="$(parse_ddb_tags_json "${item_file}")"
+    thumbnail_key="$(parse_ddb_field "${item_file}" "thumbnail_key")"
+
     if [[ "${rc}" == "2" ]]; then
       error="DynamoDB upload_status=failed"
     else
@@ -446,6 +460,7 @@ echo "OUT_DIR=${OUT_DIR}"
 echo "IMAGE_DIR=${IMAGE_DIR}"
 echo "VIDEO_FILE=${VIDEO_FILE}"
 echo "cleanup=${DO_CLEANUP}"
+echo "BENCHMARK_V1_MODE=${BENCHMARK_V1_MODE}"
 echo
 
 aws sts get-caller-identity \
@@ -477,20 +492,22 @@ if [[ ! -f "${VIDEO_FILE}" ]]; then
 fi
 
 while IFS= read -r image_file; do
-  run_case "v1" "image" "${image_file}"
-  run_case "v2" "image" "${image_file}"
+  run_case "v1" "image" "${image_file}" || true
+  run_case "v2" "image" "${image_file}" || true
 done < "${OUT_DIR}/images.txt"
 
-run_case "v1" "video" "${VIDEO_FILE}"
-run_case "v2" "video" "${VIDEO_FILE}"
+run_case "v1" "video" "${VIDEO_FILE}" || true
+run_case "v2" "video" "${VIDEO_FILE}" || true
 
-python3 - <<PY > "${SUMMARY_PATH}"
+python3 - "${CSV_PATH}" "${JSONL_PATH}" > "${SUMMARY_PATH}" <<'PY'
 import csv
 import statistics
+import sys
 from collections import defaultdict
 from pathlib import Path
 
-csv_path = Path("${CSV_PATH}")
+csv_path = Path(sys.argv[1])
+jsonl_path = Path(sys.argv[2])
 rows = list(csv.DictReader(csv_path.open()))
 
 groups = defaultdict(list)
@@ -506,7 +523,7 @@ for row in rows:
 print("Benchmark summary")
 print("=================")
 print(f"CSV: {csv_path}")
-print(f"JSONL: ${JSONL_PATH}")
+print(f"JSONL: {jsonl_path}")
 print()
 
 for key in sorted(groups):
@@ -534,13 +551,3 @@ echo "Wrote:"
 echo "  ${CSV_PATH}"
 echo "  ${JSONL_PATH}"
 echo "  ${SUMMARY_PATH}"
-
-echo
-echo "Useful log commands:"
-cat <<EOF
-aws logs tail /aws/lambda/tag_image --region "${AWS_REGION}" --profile "${AWS_PROFILE}" --since 60m --format short
-aws logs tail /aws/lambda/tag_video --region "${AWS_REGION}" --profile "${AWS_PROFILE}" --since 60m --format short
-aws logs tail /aws/lambda/media_ingest_v2 --region "${AWS_REGION}" --profile "${AWS_PROFILE}" --since 60m --format short
-aws logs tail /aws/lambda/process_ml_result_v2 --region "${AWS_REGION}" --profile "${AWS_PROFILE}" --since 60m --format short
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=\${GCP_SERVICE_NAME}" --project "\${GCP_PROJECT_ID}" --limit 120 --format="value(timestamp,severity,textPayload)"
-EOF
