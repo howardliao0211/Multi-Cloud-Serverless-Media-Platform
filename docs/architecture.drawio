@@ -1,0 +1,823 @@
+<mxfile host="app.diagrams.net" pages="5">
+  <diagram name="01 Logical multi-cloud architecture" id="2TOwsEEigMXA8-zUwz57">
+    <mxGraphModel dx="2894" dy="1191" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1450" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;fillColor=#F7F7F7;strokeColor=#999999;dashed=0;container=1;collapsible=0;recursiveResize=0;" value="User / Client" vertex="1">
+          <mxGeometry height="1180" width="230" x="40" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;fillColor=#FFF8EE;strokeColor=#FF9900;dashed=0;container=1;collapsible=0;recursiveResize=0;" value="AWS application platform" vertex="1">
+          <mxGeometry height="1180" width="1340" x="300" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;fillColor=#F2F7FF;strokeColor=#4285F4;dashed=0;container=1;collapsible=0;recursiveResize=0;" value="GCP optional ML accelerator" vertex="1">
+          <mxGeometry height="1180" width="620" x="1700" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#777777;strokeColor=none;fontColor=#FFFFFF;" value="Frontend" vertex="1">
+          <mxGeometry height="32" width="170" x="70" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FF9900;strokeColor=none;fontColor=#FFFFFF;" value="Identity + API" vertex="1">
+          <mxGeometry height="32" width="260" x="350" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FF9900;strokeColor=none;fontColor=#FFFFFF;" value="AWS backend logic" vertex="1">
+          <mxGeometry height="32" width="410" x="660" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FF9900;strokeColor=none;fontColor=#FFFFFF;" value="Storage + events" vertex="1">
+          <mxGeometry height="32" width="250" x="1110" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FF9900;strokeColor=none;fontColor=#FFFFFF;" value="Notifications" vertex="1">
+          <mxGeometry height="32" width="200" x="1400" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#4285F4;strokeColor=none;fontColor=#FFFFFF;" value="Cloud Run ML" vertex="1">
+          <mxGeometry height="32" width="330" x="1740" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#4285F4;strokeColor=none;fontColor=#FFFFFF;" value="GCP security + build" vertex="1">
+          <mxGeometry height="32" width="180" x="2100" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#666666;fillColor=#F7F7F7;align=center;verticalAlign=middle;" value="&lt;b&gt;React frontend&lt;/b&gt;&lt;br/&gt;AWS hosted SPA&lt;br/&gt;Uses Amplify Auth" vertex="1">
+          <mxGeometry height="90" width="170" x="70" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#D67200;fillColor=#FFF4E5;align=center;verticalAlign=middle;" value="&lt;b&gt;Amazon Cognito&lt;/b&gt;&lt;br/&gt;User pool&lt;br/&gt;issues JWT" vertex="1">
+          <mxGeometry height="78" width="220" x="360" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#D67200;fillColor=#FFF4E5;align=center;verticalAlign=middle;" value="&lt;b&gt;Amazon API Gateway&lt;/b&gt;&lt;br/&gt;Cognito JWT authorizer&lt;br/&gt;Routes protected API calls" vertex="1">
+          <mxGeometry height="95" width="220" x="360" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;Request-response Lambdas&lt;/b&gt;&lt;br/&gt;get_signed_url, queries,&lt;br/&gt;edit/delete/visibility,&lt;br/&gt;subscriptions" vertex="1">
+          <mxGeometry height="130" width="350" x="685" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;Lambda access control&lt;/b&gt;&lt;br/&gt;Reads Cognito &lt;i&gt;sub&lt;/i&gt;&lt;br/&gt;public = any authenticated user&lt;br/&gt;private = owner only" vertex="1">
+          <mxGeometry height="115" width="320" x="700" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;Event-processing Lambdas&lt;/b&gt;&lt;br/&gt;tag_image / tag_video&lt;br/&gt;Create thumbnails&lt;br/&gt;Run or call ML inference&lt;br/&gt;Update processing status" vertex="1">
+          <mxGeometry height="145" width="350" x="690" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;publish_tags Lambda&lt;/b&gt;&lt;br/&gt;DynamoDB Stream consumer&lt;br/&gt;Publishes one SNS message per new tag" vertex="1">
+          <mxGeometry height="95" width="350" x="690" y="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;Amazon S3 bucket&lt;/b&gt;&lt;br/&gt;images/ videos/&lt;br/&gt;thumbnails/ models/&lt;br/&gt;Presigned PUT/GET URLs" vertex="1">
+          <mxGeometry height="120" width="210" x="1125" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;Amazon DynamoDB&lt;/b&gt;&lt;br/&gt;MediaRecord catalogue&lt;br/&gt;status, owner, visibility,&lt;br/&gt;tags, thumbnail URLs" vertex="1">
+          <mxGeometry height="135" width="210" x="1125" y="455" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;DynamoDB Streams&lt;/b&gt;&lt;br/&gt;Ready / new tag events" vertex="1">
+          <mxGeometry height="70" width="210" x="1125" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;S3 ObjectCreated events&lt;/b&gt;&lt;br/&gt;images/ → tag_image&lt;br/&gt;videos/ → tag_video" vertex="1">
+          <mxGeometry height="92" width="210" x="1125" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#D67200;fillColor=#FFF4E5;align=center;verticalAlign=middle;" value="&lt;b&gt;Amazon SNS topic&lt;/b&gt;&lt;br/&gt;Email subscriptions&lt;br/&gt;Filter policy on &lt;i&gt;tag&lt;/i&gt; attribute" vertex="1">
+          <mxGeometry height="110" width="170" x="1410" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#666666;fillColor=#F7F7F7;align=center;verticalAlign=middle;" value="&lt;b&gt;Subscriber email inbox&lt;/b&gt;" vertex="1">
+          <mxGeometry height="56" width="170" x="1410" y="1085" as="geometry" />
+        </mxCell>
+        <mxCell id="25" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#3B78E7;fillColor=#EAF1FE;align=center;verticalAlign=middle;" value="&lt;b&gt;Cloud Run ML processor&lt;/b&gt;&lt;br/&gt;/health&lt;br/&gt;/process-media&lt;br/&gt;Containerized image inference" vertex="1">
+          <mxGeometry height="120" width="280" x="1765" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#3B78E7;fillColor=#EAF1FE;align=center;verticalAlign=middle;" value="&lt;b&gt;MegaDetector + species classifier&lt;/b&gt;&lt;br/&gt;Lazy-loaded inside Cloud Run container" vertex="1">
+          <mxGeometry height="92" width="280" x="1765" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#3B78E7;fillColor=#EAF1FE;align=center;verticalAlign=middle;" value="&lt;b&gt;Artifact Registry&lt;/b&gt;&lt;br/&gt;ML processor container image" vertex="1">
+          <mxGeometry height="90" width="125" x="2130" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#6D56A7;fillColor=#F2EDFF;align=center;verticalAlign=middle;" value="&lt;b&gt;Secret Manager&lt;/b&gt;&lt;br/&gt;HMAC secret" vertex="1">
+          <mxGeometry height="70" width="125" x="2130" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="29" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#6D56A7;fillColor=#F2EDFF;align=center;verticalAlign=middle;" value="&lt;b&gt;Workload Identity Federation&lt;/b&gt;&lt;br/&gt;AWS Lambda → Google service account&lt;br/&gt;No long-lived key" vertex="1">
+          <mxGeometry height="105" width="205" x="2090" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="30" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#555555;" target="13" value="1 sign in / get JWT">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="31" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#555555;" target="14" value="2 API request with Bearer JWT">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="398" />
+              <mxPoint x="330" y="398" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="32" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="15" value="3 invoke protected Lambda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="34" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#34495E;dashed=1;dashPattern=8 5;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" target="12" value="5 return presigned PUT URL">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="190" />
+              <mxPoint x="200" y="190" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="35" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="19" value="6 direct media upload">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="330" />
+              <mxPoint x="190" y="610" />
+              <mxPoint x="1100" y="610" />
+              <mxPoint x="1100" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="36" edge="1" parent="1" source="19" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="22" value="7 object-created notification">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1410" y="290" />
+              <mxPoint x="1410" y="820" />
+              <mxPoint x="1230" y="820" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="37" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="17" value="8 invoke media processor">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1100" y="895" />
+              <mxPoint x="1060" y="895" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="38" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;dashed=1;dashPattern=8 5;" target="19" value="9 read object / upload thumbnail">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1080" y="790" />
+              <mxPoint x="1080" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="39" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="20" value="10 status + tags + thumbnail metadata">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="40" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#7A3CFF;dashed=1;dashPattern=8 5;" target="25" value="11 optional signed inference request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1220" y="760" />
+              <mxPoint x="1220" y="655" />
+              <mxPoint x="1680" y="655" />
+              <mxPoint x="1680" y="360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="41" edge="1" parent="1" source="25" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#7A3CFF;dashed=1;dashPattern=8 5;" target="19" value="12 presigned S3 GET download">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1710" y="330" />
+              <mxPoint x="1645" y="330" />
+              <mxPoint x="1645" y="180" />
+              <mxPoint x="1220" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="42" edge="1" parent="1" source="25" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#7A3CFF;dashed=1;dashPattern=8 5;" target="17" value="13 tag counts + detections">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1700" y="395" />
+              <mxPoint x="1660" y="395" />
+              <mxPoint x="1660" y="700" />
+              <mxPoint x="1070" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="43" edge="1" parent="1" source="25" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#4285F4;" target="26" value="14 lazy load model">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" source="27" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#4285F4;" target="25" value="container image">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="45" edge="1" parent="1" source="28" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#6D56A7;dashed=1;dashPattern=8 5;" target="25" value="verify HMAC secret">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="46" edge="1" parent="1" source="29" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#6D56A7;dashed=1;dashPattern=8 5;" target="25" value="Google ID token">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2090" y="700" />
+              <mxPoint x="2060" y="700" />
+              <mxPoint x="2060" y="430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="47" edge="1" parent="1" source="20" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="21" value="15 ready/new tag event">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="48" edge="1" parent="1" source="21" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="18" value="16 invoke publisher">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1120" y="715" />
+              <mxPoint x="1080" y="715" />
+              <mxPoint x="1080" y="1040" />
+              <mxPoint x="1045" y="1040" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="49" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="23" value="17 publish message with tag attribute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="50" edge="1" parent="1" source="23" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="24" value="18 filtered email notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="51" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;dashed=1;dashPattern=8 5;" target="16" value="read current user sub / enforce owner rules">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="470" y="450" />
+              <mxPoint x="470" y="540" />
+              <mxPoint x="690" y="540" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="52" edge="1" parent="1" source="16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;dashed=1;dashPattern=8 5;" target="20" value="query public/private media">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="53" edge="1" parent="1" source="20" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#34495E;dashed=1;dashPattern=8 5;" target="12" value="return media + presigned GET URLs">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1120" y="520" />
+              <mxPoint x="290" y="520" />
+              <mxPoint x="290" y="265" />
+              <mxPoint x="245" y="265" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="54" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fontSize=12;strokeColor=#999999;fillColor=#FFF7CC;align=left;verticalAlign=top;spacing=10;" value="&lt;b&gt;Legend&lt;/b&gt;&lt;br/&gt;Solid arrows = normal runtime flow&lt;br/&gt;Dashed arrows = returned URL, security token, optional GCP path, or read-back flow&lt;br/&gt;Numbers show the main upload and tagging path." vertex="1">
+          <mxGeometry height="125" width="530" x="70" y="1080" as="geometry" />
+        </mxCell>
+        <mxCell id="55" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fontSize=12;strokeColor=#999999;fillColor=#FFF7CC;align=left;verticalAlign=top;spacing=10;" value="&lt;b&gt;Lucidchart editing tip&lt;/b&gt;&lt;br/&gt;After import, replace any simple service boxes with Lucidchart’s official AWS/GCP icons if your diagram theme requires native icon shapes. The flow labels and layout are intentionally separated to avoid overlap." vertex="1">
+          <mxGeometry height="110" width="520" x="1740" y="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="x1ky21lrQqiwESbL-lAZ-55" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#34495E;dashed=1;dashPattern=8 5;" target="12" value="5 return presigned PUT URL">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="270" />
+              <mxPoint x="650" y="190" />
+              <mxPoint x="200" y="190" />
+            </Array>
+            <mxPoint x="685" y="270" as="sourcePoint" />
+            <mxPoint x="200" y="220" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="33" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" target="20" value="4 create pending record / query records">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="420" />
+              <mxPoint x="1040" y="420" />
+              <mxPoint x="1040" y="440" />
+              <mxPoint x="1125" y="440" />
+            </Array>
+            <mxPoint x="1350" y="400" as="sourcePoint" />
+            <mxPoint x="1545" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="02 Upload and tagging data flow" id="kU19RItfrqIWsJKYY9qk">
+    <mxGraphModel dx="1290" dy="695" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;fillColor=#FFFFFF;strokeColor=#BBBBBB;dashed=0;container=1;collapsible=0;recursiveResize=0;" value="Upload + media tagging flow" vertex="1">
+          <mxGeometry height="1010" width="2280" x="40" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#777777;strokeColor=none;fontColor=#FFFFFF;" value="Client" vertex="1">
+          <mxGeometry height="35" width="220" x="80" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FF9900;strokeColor=none;fontColor=#FFFFFF;" value="API + Lambda" vertex="1">
+          <mxGeometry height="35" width="460" x="380" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#FF9900;strokeColor=none;fontColor=#FFFFFF;" value="AWS storage/events" vertex="1">
+          <mxGeometry height="35" width="430" x="930" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#4285F4;strokeColor=none;fontColor=#FFFFFF;" value="Optional GCP inference" vertex="1">
+          <mxGeometry height="35" width="440" x="1480" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=#597A3A;strokeColor=none;fontColor=#FFFFFF;" value="Result" vertex="1">
+          <mxGeometry height="35" width="220" x="2020" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#666666;fillColor=#F7F7F7;align=center;verticalAlign=middle;" value="&lt;b&gt;React frontend&lt;/b&gt;&lt;br/&gt;Authenticated user selects image/video" vertex="1">
+          <mxGeometry height="85" width="200" x="90" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;get_signed_url Lambda&lt;/b&gt;&lt;br/&gt;Validates request&lt;br/&gt;Uses Cognito sub as owner_id" vertex="1">
+          <mxGeometry height="110" width="330" x="420" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;DynamoDB pending MediaRecord&lt;/b&gt;&lt;br/&gt;status = pending" vertex="1">
+          <mxGeometry height="85" width="300" x="980" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;Presigned S3 PUT URL&lt;/b&gt;&lt;br/&gt;Returned to frontend" vertex="1">
+          <mxGeometry height="75" width="330" x="420" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;S3 object&lt;/b&gt;&lt;br/&gt;images/ or videos/&lt;br/&gt;metadata: file_name, checksum, owner_id" vertex="1">
+          <mxGeometry height="115" width="300" x="980" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;S3 ObjectCreated event&lt;/b&gt;&lt;br/&gt;prefix routing" vertex="1">
+          <mxGeometry height="75" width="300" x="980" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;tag_image / tag_video Lambda&lt;/b&gt;&lt;br/&gt;uploaded → processing&lt;br/&gt;thumbnail generation&lt;br/&gt;ML inference orchestration" vertex="1">
+          <mxGeometry height="140" width="330" x="420" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#3B78E7;fillColor=#EAF1FE;align=center;verticalAlign=middle;" value="&lt;b&gt;GCP Cloud Run /process-media&lt;/b&gt;&lt;br/&gt;Receives HMAC-signed request&lt;br/&gt;Downloads image using short-lived S3 URL" vertex="1">
+          <mxGeometry height="120" width="360" x="1520" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;Fallback local AWS inference&lt;/b&gt;&lt;br/&gt;MegaDetector + classifier in Lambda&lt;br/&gt;Used if GCP disabled or fails" vertex="1">
+          <mxGeometry height="110" width="330" x="420" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;DynamoDB ready MediaRecord&lt;/b&gt;&lt;br/&gt;tags, detections, thumbnail_url,&lt;br/&gt;model provider + version" vertex="1">
+          <mxGeometry height="120" width="260" x="2000" y="645" as="geometry" />
+        </mxCell>
+        <mxCell id="18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;S3 thumbnail&lt;/b&gt;&lt;br/&gt;thumbnails/" vertex="1">
+          <mxGeometry height="75" width="300" x="980" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="19" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#555555;" target="9" value="1 request upload URL">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="20" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="10" value="2 create pending record">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#34495E;" target="11" value="3 return URL">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="12" value="4 direct PUT to S3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="13" value="5 emit event">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="24" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="14" value="6 invoke processor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="25" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;dashed=1;dashPattern=8 5;" target="12" value="7 read uploaded object">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="26" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#7A3CFF;dashed=1;dashPattern=8 5;" target="15" value="8 optional signed GCP request">
+          <mxGeometry relative="1" x="-0.0204" y="-20" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1700" y="760" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="27" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#7A3CFF;dashed=1;dashPattern=8 5;" target="14" value="9 tag counts + detections">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1520" y="720" />
+              <mxPoint x="1460" y="720" />
+              <mxPoint x="1460" y="840" />
+              <mxPoint x="770" y="840" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="28" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;dashed=1;dashPattern=8 5;" target="16" value="10 if GCP unavailable">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="18" value="11 upload thumbnail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="30" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="17" value="12 write final status">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="720" />
+              <mxPoint x="1940" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="31" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;dashed=1;dashPattern=8 5;" target="17" value="thumbnail reference">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fontSize=12;strokeColor=#999999;fillColor=#FFF7CC;align=left;verticalAlign=top;spacing=10;" value="&lt;b&gt;Why this page exists&lt;/b&gt;&lt;br/&gt;This page isolates the most important data path, so it is easier to present than the full logical architecture page." vertex="1">
+          <mxGeometry height="80" width="250" x="90" y="930" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="03 Search and notification flows" id="eG5jooTI9seHj29-s1od">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="2400" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;fillColor=#F7F7F7;strokeColor=#888888;dashed=0;container=1;collapsible=0;recursiveResize=0;" value="Search / display flow" vertex="1">
+          <mxGeometry height="980" width="1060" x="60" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;fillColor=#FFF8EE;strokeColor=#FF9900;dashed=0;container=1;collapsible=0;recursiveResize=0;" value="Tag subscription and notification flow" vertex="1">
+          <mxGeometry height="980" width="1060" x="1220" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#666666;fillColor=#F7F7F7;align=center;verticalAlign=middle;" value="&lt;b&gt;React frontend&lt;/b&gt;&lt;br/&gt;Search page" vertex="1">
+          <mxGeometry height="80" width="210" x="120" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#D67200;fillColor=#FFF4E5;align=center;verticalAlign=middle;" value="&lt;b&gt;API Gateway&lt;/b&gt;&lt;br/&gt;Cognito JWT authorizer" vertex="1">
+          <mxGeometry height="80" width="230" x="430" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;Query Lambdas&lt;/b&gt;&lt;br/&gt;get_public_media&lt;br/&gt;get_private_media&lt;br/&gt;query_tags/query_species" vertex="1">
+          <mxGeometry height="125" width="280" x="760" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;DynamoDB&lt;/b&gt;&lt;br/&gt;Scan/query ready records&lt;br/&gt;Apply access rules" vertex="1">
+          <mxGeometry height="105" width="280" x="760" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;S3&lt;/b&gt;&lt;br/&gt;Generate presigned GET URLs&lt;br/&gt;for media/thumbnail display" vertex="1">
+          <mxGeometry height="105" width="230" x="430" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="9" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#555555;" target="5" value="1 authenticated search request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="10" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="6" value="2 route query">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="11" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="7" value="3 filter by status/tags/owner/visibility">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="12" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="8" value="4 create signed read URLs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="13" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#34495E;dashed=1;dashPattern=8 5;" target="4" value="5 media list + thumbnail URLs">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="245" />
+              <mxPoint x="700" y="245" />
+              <mxPoint x="700" y="120" />
+              <mxPoint x="180" y="120" />
+              <mxPoint x="180" y="205" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#666666;fillColor=#F7F7F7;align=center;verticalAlign=middle;" value="&lt;b&gt;React frontend&lt;/b&gt;&lt;br/&gt;Subscription form" vertex="1">
+          <mxGeometry height="85" width="220" x="1280" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;subscribe_tags / unsubscribe_tags&lt;/b&gt;&lt;br/&gt;Manage email subscription choices" vertex="1">
+          <mxGeometry height="105" width="300" x="1580" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#D67200;fillColor=#FFF4E5;align=center;verticalAlign=middle;" value="&lt;b&gt;SNS email topic&lt;/b&gt;&lt;br/&gt;Filter policy on tag attribute" vertex="1">
+          <mxGeometry height="95" width="230" x="1970" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;DynamoDB media update&lt;/b&gt;&lt;br/&gt;public item ready or tag edited" vertex="1">
+          <mxGeometry height="95" width="250" x="1280" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#597A3A;fillColor=#F1F8EA;align=center;verticalAlign=middle;" value="&lt;b&gt;DynamoDB Streams&lt;/b&gt;&lt;br/&gt;Change event" vertex="1">
+          <mxGeometry height="75" width="240" x="1600" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#9A5E00;fillColor=#FFF8E8;align=center;verticalAlign=middle;" value="&lt;b&gt;publish_tags Lambda&lt;/b&gt;&lt;br/&gt;Publishes one message per new tag" vertex="1">
+          <mxGeometry height="95" width="270" x="1920" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;spacing=8;fontSize=13;strokeColor=#666666;fillColor=#F7F7F7;align=center;verticalAlign=middle;" value="&lt;b&gt;Subscriber email inbox&lt;/b&gt;&lt;br/&gt;Receives only matching tags" vertex="1">
+          <mxGeometry height="80" width="230" x="1970" y="750" as="geometry" />
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#555555;" target="15" value="1 save/update subscription">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="16" value="2 create SNS email subscription + filter policy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#597A3A;" target="18" value="3 record becomes ready / gains tags">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="24" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="19" value="4 invoke publisher">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="25" edge="1" parent="1" source="19" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="16" value="5 publish with message attribute: tag">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="26" edge="1" parent="1" source="16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=#FFFFFF;strokeColor=#D67200;" target="20" value="6 SNS filter matches subscriber">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="27" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fontSize=12;strokeColor=#999999;fillColor=#FFF7CC;align=left;verticalAlign=top;spacing=10;" value="&lt;b&gt;Filtering point&lt;/b&gt;&lt;br/&gt;SNS does the tag matching through subscription filter policies. The application publishes one message per new tag." vertex="1">
+          <mxGeometry height="95" width="470" x="1290" y="800" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Upload image or video data flow" id="Ow8r4fshFBJnZ_3Yprkn">
+    <mxGraphModel dx="1245" dy="417" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1550" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v3" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=30;rounded=1;collapsible=0;container=1;recursiveResize=0;fillColor=#f5f5f5;strokeColor=#999999;fontStyle=1;fontSize=12;" value="&lt;b&gt;User / Client&lt;/b&gt;" vertex="1">
+          <mxGeometry height="1240" width="330" x="40" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="v5" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=30;rounded=1;collapsible=0;container=1;recursiveResize=0;fillColor=#eef5ff;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" value="&lt;b&gt;GCP optional ML accelerator&lt;/b&gt;" vertex="1">
+          <mxGeometry height="800" width="480" x="1860" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="v6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;fontStyle=1;" value="&lt;b&gt;React frontend&lt;/b&gt;&lt;br&gt;AWS hosted web app&lt;br&gt;User selects image/video" vertex="1">
+          <mxGeometry height="90" width="220" x="95" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="v7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;AWS Cognito&lt;/b&gt;&lt;br&gt;Sign in / ID token&lt;br&gt;&lt;i&gt;JWT contains sub&lt;/i&gt;" vertex="1">
+          <mxGeometry height="90" width="200" x="470" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="v8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;Amazon API Gateway&lt;/b&gt;&lt;br&gt;Cognito JWT authorizer&lt;br&gt;Routes request" vertex="1">
+          <mxGeometry height="90" width="230" x="730" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="v9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;get_signed_url Lambda&lt;/b&gt;&lt;br&gt;Reads owner_id from JWT&lt;br&gt;Builds S3 key&lt;br&gt;Creates pending record" vertex="1">
+          <mxGeometry height="125" width="250" x="1030" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="v10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;Amazon DynamoDB&lt;/b&gt;&lt;br&gt;MediaRecord table&lt;br&gt;Status + tags + thumbnail&lt;br&gt;owner/public access metadata" vertex="1">
+          <mxGeometry height="110" width="290" x="1370" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="v11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;Amazon S3 media bucket&lt;/b&gt;&lt;br&gt;&lt;b&gt;images/&lt;/b&gt; uploaded images&lt;br&gt;&lt;b&gt;videos/&lt;/b&gt; uploaded videos&lt;br&gt;&lt;b&gt;thumbnails/&lt;/b&gt; generated JPEGs&lt;br&gt;&lt;b&gt;models/&lt;/b&gt; ML artifacts" vertex="1">
+          <mxGeometry height="155" width="330" x="720" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="v12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;fontStyle=1;" value="&lt;b&gt;Frontend status UI&lt;/b&gt;&lt;br&gt;Polls upload status&lt;br&gt;Shows ready / failed" vertex="1">
+          <mxGeometry height="90" width="220" x="95" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="v14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;" value="&lt;b&gt;S3 ObjectCreated&lt;/b&gt;&lt;br&gt;Prefix: &lt;b&gt;images/&lt;/b&gt;" vertex="1">
+          <mxGeometry height="70" width="260" x="500" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="v15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;" value="&lt;b&gt;S3 ObjectCreated&lt;/b&gt;&lt;br&gt;Prefix: &lt;b&gt;videos/&lt;/b&gt;" vertex="1">
+          <mxGeometry height="70" width="260" x="500" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="v16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;tag_image Lambda&lt;/b&gt;&lt;br&gt;1. Read S3 metadata&lt;br&gt;2. Mark uploaded → processing&lt;br&gt;3. Create thumbnail&lt;br&gt;4. Run image inference" vertex="1">
+          <mxGeometry height="135" width="310" x="850" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="v17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;tag_video Lambda&lt;/b&gt;&lt;br&gt;1. Read S3 metadata&lt;br&gt;2. Mark uploaded → processing&lt;br&gt;3. Sample frames with OpenCV&lt;br&gt;4. Tag each frame&lt;br&gt;5. Thumbnail = best frame" vertex="1">
+          <mxGeometry height="150" width="310" x="850" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="v18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;Local AWS inference&lt;/b&gt;&lt;br&gt;MegaDetector finds animals&lt;br&gt;Species classifier counts tags&lt;br&gt;Used for video and fallback image path" vertex="1">
+          <mxGeometry height="130" width="270" x="1240" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="v19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;DynamoDB final update&lt;/b&gt;&lt;br&gt;Status: &lt;b&gt;ready&lt;/b&gt; or &lt;b&gt;failed&lt;/b&gt;&lt;br&gt;Tags + detections + model metadata&lt;br&gt;Thumbnail key / URL" vertex="1">
+          <mxGeometry height="125" width="310" x="1370" y="1030" as="geometry" />
+        </mxCell>
+        <mxCell id="v20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" value="&lt;b&gt;Workload Identity Federation&lt;/b&gt;&lt;br&gt;AWS Lambda → Google identity" vertex="1">
+          <mxGeometry height="100" width="180" x="1900" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="v21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" value="&lt;b&gt;Secret Manager&lt;/b&gt;&lt;br&gt;HMAC secret" vertex="1">
+          <mxGeometry height="85" width="180" x="1900" y="345" as="geometry" />
+        </mxCell>
+        <mxCell id="v22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" value="&lt;b&gt;Cloud Run&lt;/b&gt;&lt;br&gt;ML processor&lt;br&gt;POST /process-media&lt;br&gt;Verifies HMAC + timestamp" vertex="1">
+          <mxGeometry height="135" width="180" x="2110" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="v23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" value="&lt;b&gt;Artifact Registry&lt;/b&gt;&lt;br&gt;ML container image" vertex="1">
+          <mxGeometry height="95" width="180" x="2110" y="485" as="geometry" />
+        </mxCell>
+        <mxCell id="v24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;" value="&lt;b&gt;DynamoDB Streams&lt;/b&gt;&lt;br&gt;ready / new tag event" vertex="1">
+          <mxGeometry height="70" width="230" x="1370" y="1230" as="geometry" />
+        </mxCell>
+        <mxCell id="v25" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;publish_tags Lambda&lt;/b&gt;&lt;br&gt;Only public ready media&lt;br&gt;Publishes one message per tag" vertex="1">
+          <mxGeometry height="100" width="220" x="1660" y="1215" as="geometry" />
+        </mxCell>
+        <mxCell id="v26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;Amazon SNS&lt;/b&gt;&lt;br&gt;Email topic&lt;br&gt;Filter policy on tag attribute" vertex="1">
+          <mxGeometry height="100" width="200" x="1940" y="1215" as="geometry" />
+        </mxCell>
+        <mxCell id="v27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=12;fontStyle=1;" value="&lt;b&gt;Subscriber email&lt;/b&gt;&lt;br&gt;Matching tag only" vertex="1">
+          <mxGeometry height="70" width="150" x="2180" y="1230" as="geometry" />
+        </mxCell>
+        <mxCell id="e28" edge="1" parent="1" source="v6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v7" value="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="440" y="205" />
+              <mxPoint x="440" y="205" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e29" edge="1" parent="1" source="v6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v8" value="2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="205" y="270" />
+              <mxPoint x="845" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e30" edge="1" parent="1" source="v8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v9" value="3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1010" y="195" />
+              <mxPoint x="1010" y="195" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e31" edge="1" parent="1" source="v9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v10" value="4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1340" y="193" />
+              <mxPoint x="1340" y="193" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e32" edge="1" parent="1" source="v9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v6" value="5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1155" y="300" />
+              <mxPoint x="205" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e33" edge="1" parent="1" source="v6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v11" value="6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="205" y="340" />
+              <mxPoint x="885" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e34" edge="1" parent="1" source="v11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v14" value="7a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e35" edge="1" parent="1" source="v11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v15" value="7b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e36" edge="1" parent="1" source="v14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v16" value="8a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e37" edge="1" parent="1" source="v15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v17" value="8b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e38" edge="1" parent="1" source="v16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v11" value="9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e39" edge="1" parent="1" source="v17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v11" value="9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e40" edge="1" parent="1" source="v16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v10" value="10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e41" edge="1" parent="1" source="v17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v10" value="10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e42" edge="1" parent="1" source="v16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#674ea7;fontSize=12;dashed=1;dashPattern=6 4;" target="v22" value="11 optional">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e43" edge="1" parent="1" source="v22" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#674ea7;fontSize=12;dashed=1;dashPattern=6 4;" target="v16" value="12 tags">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e44" edge="1" parent="1" source="v16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;fontSize=12;dashed=1;dashPattern=6 4;" target="v18" value="13 fallback">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e45" edge="1" parent="1" source="v17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v18" value="13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e46" edge="1" parent="1" source="v18" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v19" value="14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e47" edge="1" parent="1" source="v16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v19" value="14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e48" edge="1" parent="1" source="v17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v19" value="14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e49" edge="1" parent="1" source="v19" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v10" value="15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e50" edge="1" parent="1" source="v12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v8" value="16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e51" edge="1" parent="1" source="v8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" value="17">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="845" y="270" />
+              <mxPoint x="1155" y="270" />
+            </Array>
+            <mxPoint x="1210" y="585" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e53" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v12" value="19">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1210" y="585" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e54" edge="1" parent="1" source="v10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v24" value="20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e55" edge="1" parent="1" source="v24" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v25" value="21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e56" edge="1" parent="1" source="v25" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v26" value="22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e57" edge="1" parent="1" source="v26" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v27" value="23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e58" edge="1" parent="1" source="v16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#674ea7;fontSize=12;dashed=1;dashPattern=6 4;" target="v20" value="ID token">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e59" edge="1" parent="1" source="v21" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#674ea7;fontSize=12;dashed=1;dashPattern=6 4;" target="v22" value="verify HMAC">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e60" edge="1" parent="1" source="v23" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#674ea7;fontSize=12;dashed=1;dashPattern=6 4;" target="v22" value="container image">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v61" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=30;rounded=1;collapsible=0;container=1;recursiveResize=0;fillColor=#f8f9fa;strokeColor=#999999;fontStyle=1;fontSize=12;" value="&lt;b&gt;Upload-focused data-flow legend&lt;/b&gt;" vertex="1">
+          <mxGeometry height="155" width="2295" x="40" y="1340" as="geometry" />
+        </mxCell>
+        <mxCell id="t62" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=14;" value="&lt;b&gt;1&lt;/b&gt; User signs in with Cognito. &lt;b&gt;2–3&lt;/b&gt; Frontend calls API Gateway and get_signed_url Lambda. &lt;b&gt;4&lt;/b&gt; Lambda writes a pending MediaRecord. &lt;b&gt;5–6&lt;/b&gt; Frontend receives a presigned S3 PUT URL and uploads the image/video directly to S3. &lt;b&gt;7–8&lt;/b&gt; S3 prefix notification invokes tag_image or tag_video. &lt;b&gt;9–10&lt;/b&gt; Processing Lambdas read metadata, update status, and create thumbnails. &lt;b&gt;11–13&lt;/b&gt; Image processing may call GCP Cloud Run through signed request; if unavailable it falls back to local AWS inference. Video remains on AWS Lambda. &lt;b&gt;14–15&lt;/b&gt; Lambda writes tags, detections, thumbnail, model metadata, and ready/failed status to DynamoDB. &lt;b&gt;16–19&lt;/b&gt; Frontend polls status. &lt;b&gt;20–23&lt;/b&gt; DynamoDB Streams trigger tag notifications for public ready media through SNS email filters." vertex="1">
+          <mxGeometry height="95" width="2240" x="65" y="1380" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Image vs video processing detail" id="N_7c5ShH2bxavfTftqEz">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="2200" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v63" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=30;rounded=1;collapsible=0;container=1;recursiveResize=0;fillColor=#fff4e6;strokeColor=#d79b00;fontStyle=1;fontSize=12;" value="&lt;b&gt;Image upload processing detail&lt;/b&gt;" vertex="1">
+          <mxGeometry height="1140" width="1020" x="40" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="v64" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=30;rounded=1;collapsible=0;container=1;recursiveResize=0;fillColor=#fff4e6;strokeColor=#d79b00;fontStyle=1;fontSize=12;" value="&lt;b&gt;Video upload processing detail&lt;/b&gt;" vertex="1">
+          <mxGeometry height="1140" width="1020" x="1130" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="v65" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;1. Direct S3 PUT&lt;/b&gt;&lt;br&gt;Object saved under images/" vertex="1">
+          <mxGeometry height="80" width="300" x="110" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="v66" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;2. S3 event&lt;/b&gt;&lt;br&gt;ObjectCreated prefix images/" vertex="1">
+          <mxGeometry height="80" width="300" x="110" y="255" as="geometry" />
+        </mxCell>
+        <mxCell id="v67" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;3. tag_image Lambda&lt;/b&gt;&lt;br&gt;HeadObject reads metadata" vertex="1">
+          <mxGeometry height="80" width="300" x="110" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="v68" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;4. Status update&lt;/b&gt;&lt;br&gt;pending → uploaded → processing" vertex="1">
+          <mxGeometry height="80" width="300" x="110" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="v69" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;5. Thumbnail&lt;/b&gt;&lt;br&gt;Generated and written to thumbnails/" vertex="1">
+          <mxGeometry height="80" width="300" x="110" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="v70" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;6. Inference decision&lt;/b&gt;&lt;br&gt;GCP enabled? call Cloud Run; otherwise local AWS inference" vertex="1">
+          <mxGeometry height="80" width="300" x="110" y="755" as="geometry" />
+        </mxCell>
+        <mxCell id="v71" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;7. Final MediaRecord&lt;/b&gt;&lt;br&gt;tags, detections, model info, thumbnail, ready/failed" vertex="1">
+          <mxGeometry height="80" width="300" x="110" y="880" as="geometry" />
+        </mxCell>
+        <mxCell id="v72" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;8. Notify if public&lt;/b&gt;&lt;br&gt;DDB Stream → publish_tags → SNS email filters" vertex="1">
+          <mxGeometry height="80" width="300" x="110" y="1005" as="geometry" />
+        </mxCell>
+        <mxCell id="e73" edge="1" parent="1" source="v65" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v66" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e74" edge="1" parent="1" source="v66" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v67" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e75" edge="1" parent="1" source="v67" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v68" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e76" edge="1" parent="1" source="v68" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v69" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e77" edge="1" parent="1" source="v69" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v70" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e78" edge="1" parent="1" source="v70" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v71" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e79" edge="1" parent="1" source="v71" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v72" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v80" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef5ff;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;dashed=1;dashPattern=8 4;" value="&lt;b&gt;Optional GCP Cloud Run branch&lt;/b&gt;&lt;br&gt;Lambda sends presigned S3 GET URL + media hash + HMAC signature.&lt;br&gt;Cloud Run verifies HMAC/timestamp, downloads image, runs ML container, returns tags and detections." vertex="1">
+          <mxGeometry height="190" width="420" x="535" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="e81" edge="1" parent="1" source="v70" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#674ea7;fontSize=12;dashed=1;dashPattern=6 4;" target="v80" value="if enabled">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e82" edge="1" parent="1" source="v80" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#674ea7;fontSize=12;dashed=1;dashPattern=6 4;" target="v71" value="result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v83" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;1. Direct S3 PUT&lt;/b&gt;&lt;br&gt;Object saved under videos/" vertex="1">
+          <mxGeometry height="80" width="300" x="1200" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="v84" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;2. S3 event&lt;/b&gt;&lt;br&gt;ObjectCreated prefix videos/" vertex="1">
+          <mxGeometry height="80" width="300" x="1200" y="242" as="geometry" />
+        </mxCell>
+        <mxCell id="v85" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;3. tag_video Lambda&lt;/b&gt;&lt;br&gt;HeadObject reads metadata" vertex="1">
+          <mxGeometry height="80" width="300" x="1200" y="354" as="geometry" />
+        </mxCell>
+        <mxCell id="v86" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;4. Status update&lt;/b&gt;&lt;br&gt;pending → uploaded → processing" vertex="1">
+          <mxGeometry height="80" width="300" x="1200" y="466" as="geometry" />
+        </mxCell>
+        <mxCell id="v87" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;5. Frame sampling&lt;/b&gt;&lt;br&gt;OpenCV samples around 1 frame/sec" vertex="1">
+          <mxGeometry height="80" width="300" x="1200" y="578" as="geometry" />
+        </mxCell>
+        <mxCell id="v88" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;6. AWS local inference&lt;/b&gt;&lt;br&gt;Each sampled frame uses MegaDetector + classifier" vertex="1">
+          <mxGeometry height="80" width="300" x="1200" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="v89" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;7. Aggregate tags&lt;/b&gt;&lt;br&gt;Per species count = max detected in any sampled frame" vertex="1">
+          <mxGeometry height="80" width="300" x="1200" y="802" as="geometry" />
+        </mxCell>
+        <mxCell id="v90" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;8. Thumbnail + final record&lt;/b&gt;&lt;br&gt;Best frame thumbnail, ready/failed status, tags written to DynamoDB" vertex="1">
+          <mxGeometry height="80" width="300" x="1200" y="914" as="geometry" />
+        </mxCell>
+        <mxCell id="v91" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="&lt;b&gt;9. Notify if public&lt;/b&gt;&lt;br&gt;DDB Stream → publish_tags → SNS email filters" vertex="1">
+          <mxGeometry height="80" width="300" x="1200" y="1026" as="geometry" />
+        </mxCell>
+        <mxCell id="e92" edge="1" parent="1" source="v83" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v84" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e93" edge="1" parent="1" source="v84" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v85" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e94" edge="1" parent="1" source="v85" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v86" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e95" edge="1" parent="1" source="v86" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v87" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e96" edge="1" parent="1" source="v87" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v88" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e97" edge="1" parent="1" source="v88" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v89" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e98" edge="1" parent="1" source="v89" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v90" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e99" edge="1" parent="1" source="v90" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;fontSize=12;" target="v91" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t100" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=15;" value="&lt;b&gt;Key distinction:&lt;/b&gt; image uploads can use the optional GCP Cloud Run accelerator, while video uploads stay on AWS Lambda and run frame sampling plus local inference before writing the final DynamoDB record." vertex="1">
+          <mxGeometry height="60" width="2040" x="70" y="1210" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
