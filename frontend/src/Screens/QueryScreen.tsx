@@ -621,7 +621,7 @@ function QueryScreen() {
                     <div className="selected-tags">
                         {Object.entries(detectedTags).map(([tag, count]) => (
                             <span key={tag} className="tag-pill">
-                                {tag} : {count} x
+                                {tag} : {count} 
                             </span>
                         ))}
                     </div>
