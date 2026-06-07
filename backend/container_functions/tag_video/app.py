@@ -1,18 +1,23 @@
 from urllib.parse import unquote_plus
 import cv2
 import numpy as np
+import uuid
+import os
+from http import HTTPStatus
 
-from shared.schemas import MediaRecordStatus
-from shared.model import ImageTagger
+from shared.schemas import MediaRecordStatus, MediaType
+from shared.utils import build_response_message
 from shared.aws_resources import (
     get_bucket_and_name,
     get_table,
     download_s3_file,
     update_media_record_in_db,
     get_s3_object_head_and_url,
-    is_media_record_processing
+    is_media_record_processing,
 )
 from shared.utils import build_db_key, build_thumbnail_s3_key
+from shared.gcp_ml_contracts import GcpMlRequest, GcpModelUrls
+from shared.gcp_ml_client import call_gcp_ml_processor, generate_presigned_get_url
 
 s3, bucket_name = get_bucket_and_name()
 table = get_table()
@@ -20,79 +25,88 @@ table = get_table()
 CLASSIFIER_MODEL_KEY = "models/model.pt"
 DETECTOR_MODEL_KEY = "models/mdv5a.pt"
 
-LOCAL_CLASSIFIER_MODEL_PATH = "/tmp/model.pt"
-LOCAL_DETECTOR_MODEL_PATH = "/tmp/mdv5a.pt"
 
-download_s3_file(
-    s3, bucket_name, CLASSIFIER_MODEL_KEY, LOCAL_CLASSIFIER_MODEL_PATH
-)
-
-download_s3_file(
-    s3, bucket_name, DETECTOR_MODEL_KEY, LOCAL_DETECTOR_MODEL_PATH
-)
-
-
-tagger = ImageTagger(
-    classifier_model_path=LOCAL_CLASSIFIER_MODEL_PATH,
-    detector_model_path=LOCAL_DETECTOR_MODEL_PATH,
-)
-
-
-def process_video_frames_one_by_one(local_path: str):
+def read_video_frame(local_path, frame_index: int):
     cap = cv2.VideoCapture(str(local_path))
 
     if not cap.isOpened():
         raise ValueError(f"Cannot open video: {local_path}")
 
-    fps = cap.get(cv2.CAP_PROP_FPS)
-
-    if fps <= 0:
-        cap.release()
-        raise ValueError("Could not read FPS from video.")
-
-    frame_interval = int(round(fps))
-    frame_count = 0
-    sampled_idx = 0
-
-    final_tags = {}
-    best_thumbnail_frame = None
-    max_animal_cnt = 0
-
     try:
-        while True:
-            success, frame = cap.read()
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
 
-            if not success:
-                break
+        success, frame = cap.read()
 
-            if frame_count % frame_interval == 0:
-                tagger_result = tagger.tag_image(frame)
-                current_tags = tagger_result["tags"]
+        if not success or frame is None or frame.size == 0:
+            raise ValueError(f"Cannot read video frame at index {frame_index}")
 
-                for animal, count in current_tags.items():
-                    final_tags[animal] = max(final_tags.get(animal, 0), count)
-
-                if len(current_tags) > max_animal_cnt:
-                    max_animal_cnt = len(current_tags)
-                    best_thumbnail_frame = frame.copy()
-
-                sampled_idx += 1
-
-            frame_count += 1
+        return frame
 
     finally:
         cap.release()
 
-    if best_thumbnail_frame is None:
-        raise ValueError("No frames were extracted from video.")
 
-    return final_tags, best_thumbnail_frame
+def process_video_frames(bucket, video_s3_key, local_path):
+    cap = cv2.VideoCapture(str(local_path))
+
+    if not cap.isOpened():
+        raise ValueError(f"Cannot open video: {local_path}")
+
+    try:
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
+        if fps is None or fps <= 0:
+            fps = 30
+
+        frame_interval = max(int(round(fps)), 1)
+
+    finally:
+        cap.release()
+
+    input_url = generate_presigned_get_url(bucket, video_s3_key)
+
+    model_urls = GcpModelUrls(
+        classifier=generate_presigned_get_url(bucket, CLASSIFIER_MODEL_KEY),
+        detector=generate_presigned_get_url(bucket, DETECTOR_MODEL_KEY),
+    )
+
+    gcp_request = GcpMlRequest(
+        request_id=str(uuid.uuid4()),
+        media_type=MediaType.video.value,
+        input_url=input_url,
+        model_urls=model_urls,
+        model_version=os.getenv("GCP_MODEL_VERSION", "model_presigned_url"),
+        sample_every_n_frames=frame_interval,
+        max_frame=None,
+    )
+
+    gcp_result = call_gcp_ml_processor(gcp_request)
+
+    final_tags = {}
+    best_sampled_frame_index = 0
+    max_animal_cnt = 0
+
+    assert gcp_result.frames is not None
+
+    for frame in gcp_result.frames:
+        current_tags = frame.tag_counts
+
+        for animal, count in current_tags.items():
+            final_tags[animal] = max(final_tags.get(animal, 0), count)
+
+        total_detected_animal = sum(current_tags.values())
+
+        if total_detected_animal > max_animal_cnt:
+            max_animal_cnt = total_detected_animal
+            best_sampled_frame_index = frame.frame_index
+
+    thumbnail_frame = read_video_frame(local_path, best_sampled_frame_index)
+
+    return final_tags, thumbnail_frame
 
 
 def create_thumbnail(image: np.ndarray, fx: float = 0.5, fy: float = 0.5):
-    resized_scaled = cv2.resize(
-        image, None, fx=fx, fy=fy, interpolation=cv2.INTER_AREA
-    )
+    resized_scaled = cv2.resize(image, None, fx=fx, fy=fy, interpolation=cv2.INTER_AREA)
     return resized_scaled
 
 
@@ -126,32 +140,31 @@ def process_video(bucket: str, s3_key: str):
     file_type = head["ContentType"]
 
     thumbnail_s3_key = build_thumbnail_s3_key(checksum + f".{file_ext}")
-    db_key = build_db_key(
-        owner_id, s3_key
-    )
+    db_key = build_db_key(owner_id, s3_key)
 
     update_media_record_in_db(
-        table, db_key, {
+        table,
+        db_key,
+        {
             "full_url": full_url,
             "file_type": file_type,
             "upload_status": MediaRecordStatus.uploaded,
-        }
+        },
     )
 
-    should_process = is_media_record_processing(
-        table, db_key
-    )
+    should_process = is_media_record_processing(table, db_key)
 
     if not should_process:
-        print(
-            f"Duplicate media already exists, skipping model run: {file_name}")
-        return
+        print(f"Duplicate media already exists, skipping model run: {file_name}")
+        return None
 
     try:
         update_media_record_in_db(
-            table, db_key, {
+            table,
+            db_key,
+            {
                 "upload_status": MediaRecordStatus.processing,
-            }
+            },
         )
 
         local_path = f"/tmp/{file_name}"
@@ -163,42 +176,46 @@ def process_video(bucket: str, s3_key: str):
             local_path=local_path,
         )
 
-        final_tags, thumbnail_frame = process_video_frames_one_by_one(
-            local_path
+        final_tags, thumbnail_frame = process_video_frames(
+            bucket=bucket, video_s3_key=s3_key, local_path=local_path
         )
 
         # Use the frame with most animal to create thumbnail
-        thumbnail = create_thumbnail(
-            thumbnail_frame
-        )
+        thumbnail = create_thumbnail(thumbnail_frame)
 
         upload_thumbnail_to_s3(thumbnail, thumbnail_s3_key, bucket)
         _, thumbnail_url = get_s3_object_head_and_url(thumbnail_s3_key)
 
+        db_entry = {
+            "thumbnail_key": thumbnail_s3_key,
+            "thumbnail_url": thumbnail_url,
+            "tags": final_tags,
+            "upload_status": MediaRecordStatus.ready,
+        }
         update_media_record_in_db(
-            table, db_key, {
-                "thumbnail_key": thumbnail_s3_key,
-                "thumbnail_url": thumbnail_url,
-                "tags": final_tags,
-                "upload_status": MediaRecordStatus.ready,
-            }
+            table,
+            db_key,
+            db_entry,
         )
 
         print(f"Finished processing media: {s3_key}")
+        return db_entry
+
     except Exception as e:
         update_media_record_in_db(
-            table, db_key, {
+            table,
+            db_key,
+            {
                 "upload_status": MediaRecordStatus.failed,
                 "error_message": f"Error: {e}",
-            }
+            },
         )
         raise
 
 
 def lambda_handler(event, context):
-    video_file_extensions = [
-        "mp4", "mov", "webm"
-    ]
+    video_file_extensions = ["mp4", "mov", "webm"]
+    entries = []
 
     for record in event["Records"]:
         bucket = record["s3"]["bucket"]["name"]
@@ -210,7 +227,14 @@ def lambda_handler(event, context):
                 f"Unsupported image file type. Only support {video_file_extensions}"
             )
 
-        process_video(
+        entry = process_video(
             bucket=bucket,
             s3_key=s3_key,
         )
+
+        if entry is not None:
+            entries.append(entry)
+
+    return build_response_message(
+        status_code=HTTPStatus.OK, body=entries, allow_http_methods=[]
+    )

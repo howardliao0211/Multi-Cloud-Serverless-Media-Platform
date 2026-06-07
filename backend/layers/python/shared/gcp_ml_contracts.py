@@ -23,10 +23,15 @@ class GcpMlRequest(BaseModel):
     max_frame: int | None = None
 
 
+class GcpMlFrame(BaseModel):
+    frame_index: int
+    tag_counts: Dict[str, int] = Field(default_factory=dict)
+
+
 class GcpMlResponse(BaseModel):
     request_id: str
-    tag_counts: Dict[str, int]
-    frames: Optional[List[Dict[str, int]]] = None
+    tag_counts: Dict[str, int] = Field(default_factory=dict)
+    frames: Optional[List[GcpMlFrame]] = None
 
 
 class GcpDetection(BaseModel):
