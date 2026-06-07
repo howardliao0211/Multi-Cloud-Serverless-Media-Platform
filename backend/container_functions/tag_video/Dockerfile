@@ -11,7 +11,6 @@ RUN mkdir -p /opt/python/shared
 
 # Copy only selected shared files
 COPY layers/python/shared/__init__.py \
-    layers/python/shared/model.py \
     layers/python/shared/aws_resources.py \
     layers/python/shared/schemas.py \
     layers/python/shared/utils.py \

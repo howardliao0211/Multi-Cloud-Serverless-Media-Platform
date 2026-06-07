@@ -1,5 +1,7 @@
-import cv2
 import traceback
+import uuid
+import cv2
+import os
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -16,7 +18,6 @@ from shared.aws_resources import (
     get_table,
     scan_media_record,
 )
-from shared.model import ImageTagger
 from shared.query_utils import (
     can_query_media,
     infer_media_type,
@@ -24,45 +25,24 @@ from shared.query_utils import (
 )
 from shared.schemas import (
     MediaRecord,
+    MediaType,
     MediaRecordStatus,
     QueryFileResponse,
     QueryFileResult,
     MediaRecordResponse,
     QueryFileJobStatus,
 )
-
+from shared.gcp_ml_contracts import GcpMlRequest, GcpModelUrls
+from shared.gcp_ml_client import call_gcp_ml_processor, generate_presigned_get_url
 
 s3, bucket_name = get_bucket_and_name()
 table = get_table()
 
 CLASSIFIER_MODEL_KEY = "models/model.pt"
 DETECTOR_MODEL_KEY = "models/mdv5a.pt"
-LOCAL_CLASSIFIER_MODEL_PATH = "/tmp/model.pt"
-LOCAL_DETECTOR_MODEL_PATH = "/tmp/mdv5a.pt"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm"}
 QUERY_UPLOAD_PREFIX = "query_uploads"
-
-# Models are copied from S3 into Lambda's writable /tmp folder during cold start.
-download_s3_file(
-    s3,
-    bucket_name,
-    CLASSIFIER_MODEL_KEY,
-    LOCAL_CLASSIFIER_MODEL_PATH,
-)
-
-download_s3_file(
-    s3,
-    bucket_name,
-    DETECTOR_MODEL_KEY,
-    LOCAL_DETECTOR_MODEL_PATH,
-)
-
-# Keep one tagger instance warm across invocations whenever Lambda reuses the container.
-tagger = ImageTagger(
-    classifier_model_path=LOCAL_CLASSIFIER_MODEL_PATH,
-    detector_model_path=LOCAL_DETECTOR_MODEL_PATH,
-)
 
 
 def utc_now() -> str:
@@ -231,58 +211,75 @@ def query_matching_media(
     )
 
 
-def detect_image_query_tags(temp_path: Path) -> Dict[str, int]:
+def detect_image_query_tags(s3_key) -> Dict[str, int]:
     # ImageTagger returns the animal tags found in the temporary query image.
-    tagger_result = tagger.tag_image(temp_path)
-    return normalize_tag_counts(tagger_result.get("tags"))
+    input_url = generate_presigned_get_url(bucket_name, s3_key)
+    model_urls = GcpModelUrls(
+        classifier=generate_presigned_get_url(bucket_name, CLASSIFIER_MODEL_KEY),
+        detector=generate_presigned_get_url(bucket_name, DETECTOR_MODEL_KEY),
+    )
+    gcp_request = GcpMlRequest(
+        request_id=str(uuid.uuid4()),
+        media_type=MediaType.image.value,
+        input_url=input_url,
+        model_urls=model_urls,
+        model_version=os.getenv("GCP_MODEL_VERSION", "model_presigned_url"),
+    )
+    gcp_result = call_gcp_ml_processor(gcp_request)
+    return normalize_tag_counts(gcp_result.tag_counts)
 
 
-def detect_video_query_tags(temp_path: Path) -> Dict[str, int]:
+def detect_video_query_tags(s3_key, temp_path: Path) -> Dict[str, int]:
     cap = cv2.VideoCapture(str(temp_path))
 
     if not cap.isOpened():
-        raise ValueError(f"Cannot open uploaded query video: {temp_path}")
-
-    fps = cap.get(cv2.CAP_PROP_FPS)
-
-    if fps <= 0:
-        cap.release()
-        raise ValueError("Could not read FPS from uploaded query video")
-
-    frame_interval = max(1, int(round(fps)))
-    frame_count = 0
-    sampled_frames = 0
-    detected_tags: Dict[str, int] = {}
+        raise ValueError(f"Cannot open video: {temp_path}")
 
     try:
-        while True:
-            success, frame = cap.read()
+        fps = cap.get(cv2.CAP_PROP_FPS)
 
-            if not success:
-                break
+        if fps is None or fps <= 0:
+            fps = 30
 
-            # Match the upload pipeline: sample one frame per second, not every frame.
-            if frame_count % frame_interval == 0:
-                tagger_result = tagger.tag_image(frame)
-                frame_tags = normalize_tag_counts(tagger_result.get("tags"))
-
-                for tag, count in frame_tags.items():
-                    detected_tags[tag] = max(detected_tags.get(tag, 0), count)
-
-                sampled_frames += 1
-
-            frame_count += 1
+        frame_interval = max(int(round(fps)), 1)
 
     finally:
         cap.release()
 
-    if sampled_frames == 0:
-        raise ValueError("No frames were extracted from uploaded query video")
+    input_url = generate_presigned_get_url(bucket_name, s3_key)
+
+    model_urls = GcpModelUrls(
+        classifier=generate_presigned_get_url(bucket_name, CLASSIFIER_MODEL_KEY),
+        detector=generate_presigned_get_url(bucket_name, DETECTOR_MODEL_KEY),
+    )
+
+    gcp_request = GcpMlRequest(
+        request_id=str(uuid.uuid4()),
+        media_type=MediaType.video.value,
+        input_url=input_url,
+        model_urls=model_urls,
+        model_version=os.getenv("GCP_MODEL_VERSION", "model_presigned_url"),
+        sample_every_n_frames=frame_interval,
+        max_frame=None,
+    )
+
+    gcp_result = call_gcp_ml_processor(gcp_request)
+    detected_tags: Dict[str, int] = {}
+
+    assert gcp_result.frames is not None
+
+    for frame in gcp_result.frames:
+        current_tags = frame.tag_counts
+        frame_tags = normalize_tag_counts(current_tags)
+
+        for tag, count in frame_tags.items():
+            detected_tags[tag] = max(detected_tags.get(tag, 0), count)
 
     return detected_tags
 
 
 def detect_query_file_tags(
+    s3_key: str,
     temp_path: Path,
     file_name: str,
     content_type: str,
@@ -290,9 +287,9 @@ def detect_query_file_tags(
     media_type = infer_uploaded_media_type(file_name, content_type)
 
     if media_type == "image":
-        return detect_image_query_tags(temp_path)
+        return detect_image_query_tags(s3_key, temp_path)
 
-    return detect_video_query_tags(temp_path)
+    return detect_video_query_tags(s3_key, temp_path)
 
 
 def lambda_handler(event, context):
@@ -315,7 +312,9 @@ def lambda_handler(event, context):
         )
 
         with temporary_s3_query_file(query_key) as temp_path:
-            detected_tags = detect_query_file_tags(temp_path, file_name, content_type)
+            detected_tags = detect_query_file_tags(
+                query_key, temp_path, file_name, content_type
+            )
             response = query_matching_media(detected_tags, current_user)
 
             update_query_job(
@@ -325,8 +324,7 @@ def lambda_handler(event, context):
                     "detected_tags": response.detected_tags,
                     "count": response.count,
                     "results": [
-                        result.model_dump(mode="json")
-                        for result in response.results
+                        result.model_dump(mode="json") for result in response.results
                     ],
                     "error_message": None,
                 },

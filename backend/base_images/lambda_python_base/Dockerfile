@@ -12,11 +12,11 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv pip install \
-      boto3>=1.43.9 \
-      pydantic>=2.13.4 \
-      requests>=2.32.3 \
-      --target "${LAMBDA_TASK_ROOT}" \
-      --index-url https://pypi.org/simple \
+    boto3>=1.43.9 \
+    pydantic>=2.13.4 \
+    requests>=2.32.3 \
+    --target "${LAMBDA_TASK_ROOT}" \
+    --index-url https://pypi.org/simple \
     && python - <<'PY_CLEAN'
 from pathlib import Path
 import shutil
