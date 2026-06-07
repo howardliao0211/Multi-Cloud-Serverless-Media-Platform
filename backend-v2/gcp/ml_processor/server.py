@@ -2,7 +2,9 @@ import hashlib
 import hmac
 import json
 import os
+import threading
 import urllib.request
+from collections import OrderedDict
 from pathlib import Path
 import time
 import tempfile
@@ -26,7 +28,9 @@ MAX_TIME_SKEW_SECONDS = int(os.getenv("MAX_TIME_SKEW_SECONDS", "300"))
 LOCAL_CLASSIFIER_MODEL_PATH = Path(os.getenv("LOCAL_CLASSIFIER_MODEL_PATH", "/models/model.pt"))
 LOCAL_DETECTOR_MODEL_PATH = Path(os.getenv("LOCAL_DETECTOR_MODEL_PATH", "/models/mdv5a.pt"))
 
-_tagger = None
+MAX_CACHED_TAGGERS = 3
+_tagger_cache = OrderedDict()
+_tagger_lock = threading.Lock()
 
 
 def json_response(handler, status_code, payload):
@@ -184,32 +188,49 @@ def _resolve_model_paths(model_urls: dict | None = None, model_version: str | No
     return "/models/model.pt", "/models/mdv5a.pt"
 
 def get_tagger(model_urls: dict | None = None, model_version: str | None = None) -> ImageTagger:
-    global _tagger
+    effective_model_version = model_version or os.environ.get("GCP_MODEL_VERSION", "default")
 
-    if _tagger is not None:
-        return _tagger
+    with _tagger_lock:
+        classifier_model_path, detector_model_path = _resolve_model_paths(
+            model_urls,
+            effective_model_version,
+        )
+        cache_key = (
+            effective_model_version,
+            classifier_model_path,
+            detector_model_path,
+        )
 
-    print("Initializing ImageTagger", flush=True)
+        cached_tagger = _tagger_cache.get(cache_key)
+        if cached_tagger is not None:
+            _tagger_cache.move_to_end(cache_key)
+            return cached_tagger
 
-    classifier_model_path, detector_model_path = _resolve_model_paths(model_urls, model_version)
-    print(f"Using classifier model: {classifier_model_path}", flush=True)
-    print(f"Using detector model: {detector_model_path}", flush=True)
+        print(f"Initializing ImageTagger for model_version={effective_model_version}", flush=True)
+        print(f"Using classifier model: {classifier_model_path}", flush=True)
+        print(f"Using detector model: {detector_model_path}", flush=True)
 
-    for model_path in [Path(classifier_model_path), Path(detector_model_path)]:
-        if not model_path.exists():
-            raise FileNotFoundError(f"Model file not found: {model_path}")
-        if model_path.stat().st_size < 1024:
-            raise ValueError(
-                f"Model file looks too small: {model_path} ({model_path.stat().st_size} bytes)"
-            )
+        for model_path in [Path(classifier_model_path), Path(detector_model_path)]:
+            if not model_path.exists():
+                raise FileNotFoundError(f"Model file not found: {model_path}")
+            if model_path.stat().st_size < 1024:
+                raise ValueError(
+                    f"Model file looks too small: {model_path} ({model_path.stat().st_size} bytes)"
+                )
 
-    _tagger = ImageTagger(
-        classifier_model_path=classifier_model_path,
-        detector_model_path=detector_model_path,
-    )
-    print("ImageTagger initialized", flush=True)
+        tagger = ImageTagger(
+            classifier_model_path=classifier_model_path,
+            detector_model_path=detector_model_path,
+        )
+        _tagger_cache[cache_key] = tagger
+        _tagger_cache.move_to_end(cache_key)
 
-    return _tagger
+        while len(_tagger_cache) > MAX_CACHED_TAGGERS:
+            evicted_key, _ = _tagger_cache.popitem(last=False)
+            print(f"Evicted cached ImageTagger for model_version={evicted_key[0]}", flush=True)
+
+        print("ImageTagger initialized", flush=True)
+        return tagger
 
 
 def download_input_to_temp_file(url: str, suffix: str = ".jpg") -> Path:
@@ -228,113 +249,137 @@ def download_input_to_temp_file(url: str, suffix: str = ".jpg") -> Path:
     return temp_path
 
 
-def real_image_inference(inputs, model_urls: dict | None = None, model_version: str | None = None):
+def real_image_inference(input_url: str, model_urls: dict | None = None, model_version: str | None = None):
     tagger = get_tagger(model_urls, model_version)
 
     all_tags = Counter()
-    detections = []
 
-    for item in inputs:
-        url = item.get("url")
-        if not url:
-            raise ValueError("Input item is missing url")
+    local_image_path = download_input_to_temp_file(input_url)
 
-        source = item.get("source", "unknown")
-        timestamp_sec = item.get("timestamp_sec")
-
-        local_image_path = download_input_to_temp_file(url)
-
+    try:
+        result = tagger.tag_image(local_image_path)
+    finally:
         try:
-            result = tagger.tag_image(local_image_path)
-        finally:
-            try:
-                local_image_path.unlink(missing_ok=True)
-            except Exception:
-                pass
+            local_image_path.unlink(missing_ok=True)
+        except Exception:
+            pass
 
-        item_tags = result.get("tags", {})
-        all_tags.update(item_tags)
-
-        for detection in result.get("detections", []):
-            detections.append({
-                **detection,
-                "source": source,
-                "timestamp_sec": timestamp_sec,
-            })
+    item_tags = result.get("tags", {})
+    all_tags.update(item_tags)
 
     return {
-        "tags": sorted(all_tags.keys()),
         "tag_counts": dict(all_tags),
-        "detections": detections,
     }
 
 
-def real_video_inference(inputs, model_urls: dict | None = None, model_version: str | None = None):
+def _merge_max_counts(aggregate: dict, tags: dict) -> None:
+    for tag, value in tags.items():
+        try:
+            count = int(value)
+        except (TypeError, ValueError):
+            count = 1 if value else 0
+
+        if count > aggregate.get(tag, 0):
+            aggregate[tag] = count
+
+
+def _positive_int_or_none(value, name: str) -> int | None:
+    if value is None or value == "":
+        return None
+
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} must be a positive integer when set")
+
+    return parsed if parsed > 0 else None
+
+
+def _video_max_sampled_frames() -> int | None:
+    raw_value = os.getenv("GCP_VIDEO_MAX_SAMPLED_FRAMES", "").strip()
+    return _positive_int_or_none(raw_value, "GCP_VIDEO_MAX_SAMPLED_FRAMES")
+
+
+def real_video_inference(
+    input_url: str,
+    model_urls: dict | None = None,
+    model_version: str | None = None,
+    sample_every_n_frames: int | None = None,
+    max_frame: int | None = None,
+):
     tagger = get_tagger(model_urls, model_version)
 
     all_tags = Counter()
-    detections = []
+    frames = []
 
-    for item in inputs:
-        url = item.get("url")
-        if not url:
-            raise ValueError("Input item is missing url")
+    local_video_path = download_input_to_temp_file(input_url, suffix=".mp4")
 
-        source = item.get("source", "unknown")
-        local_video_path = download_input_to_temp_file(url, suffix=".mp4")
+    cap = cv2.VideoCapture(str(local_video_path))
+    if not cap.isOpened():
+        local_video_path.unlink(missing_ok=True)
+        raise ValueError(f"Cannot open video: {local_video_path}")
 
-        cap = cv2.VideoCapture(str(local_video_path))
-        if not cap.isOpened():
+    try:
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0
+        explicit_interval = _positive_int_or_none(sample_every_n_frames, "sample_every_n_frames")
+        frame_interval = explicit_interval or (max(int(round(fps)), 1) if fps > 0 else 30)
+
+        frame_count = 0
+        sampled_count = 0
+        max_sampled_frames = _positive_int_or_none(max_frame, "max_frame")
+        if max_sampled_frames is None:
+            max_sampled_frames = _video_max_sampled_frames()
+
+        while True:
+            if max_sampled_frames is not None and sampled_count >= max_sampled_frames:
+                break
+
+            success, frame = cap.read()
+            if not success:
+                break
+
+            if frame_count % frame_interval == 0:
+                result = tagger.tag_image(frame)
+                item_tags = result.get("tags", {})
+                frame_tag_counts = {}
+
+                _merge_max_counts(all_tags, item_tags)
+                _merge_max_counts(frame_tag_counts, item_tags)
+
+                frames.append({
+                    "frame_index": sampled_count,
+                    "tag_counts": dict(frame_tag_counts),
+                })
+
+                sampled_count += 1
+
+            frame_count += 1
+
+        if sampled_count == 0:
+            raise ValueError("No frames were extracted from video")
+    finally:
+        cap.release()
+        try:
             local_video_path.unlink(missing_ok=True)
-            raise ValueError(f"Cannot open video: {local_video_path}")
-
-        try:
-            fps = cap.get(cv2.CAP_PROP_FPS) or 0
-            frame_interval = max(int(round(fps)), 1) if fps > 0 else 30
-
-            frame_count = 0
-            sampled_count = 0
-            max_sampled_frames = int(os.getenv("GCP_VIDEO_MAX_SAMPLED_FRAMES", "12"))
-
-            while sampled_count < max_sampled_frames:
-                success, frame = cap.read()
-                if not success:
-                    break
-
-                if frame_count % frame_interval == 0:
-                    timestamp_sec = None
-                    if fps > 0:
-                        timestamp_sec = round(frame_count / fps, 3)
-
-                    result = tagger.tag_image(frame)
-                    item_tags = result.get("tags", {})
-                    all_tags.update(item_tags)
-
-                    for detection in result.get("detections", []):
-                        detections.append({
-                            **detection,
-                            "source": source,
-                            "timestamp_sec": timestamp_sec,
-                        })
-
-                    sampled_count += 1
-
-                frame_count += 1
-
-            if sampled_count == 0:
-                raise ValueError("No frames were extracted from video")
-        finally:
-            cap.release()
-            try:
-                local_video_path.unlink(missing_ok=True)
-            except Exception:
-                pass
+        except Exception:
+            pass
 
     return {
-        "tags": sorted(all_tags.keys()),
         "tag_counts": dict(all_tags),
-        "detections": detections,
+        "frames": frames,
     }
+
+
+def _extract_input_url(payload: dict) -> str | None:
+    input_url = payload.get("input_url")
+    if input_url:
+        return input_url
+
+    inputs = payload.get("inputs") or []
+    if inputs and isinstance(inputs[0], dict):
+        return inputs[0].get("url")
+
+    return None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -377,41 +422,44 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(body.decode("utf-8"))
 
             request_id = payload.get("request_id")
-            media_hash = payload.get("hash")
             media_type = payload.get("media_type")
-            inputs = payload.get("inputs", [])
+            input_url = _extract_input_url(payload)
             model_urls = payload.get("model_urls") or {}
             model_version = payload.get("model_version") or os.environ.get("GCP_MODEL_VERSION", "default")
+            sample_every_n_frames = payload.get("sample_every_n_frames")
+            max_frame = payload.get("max_frame")
 
             if not request_id:
                 return json_response(self, 400, {"error": "Missing request_id"})
 
-            if not media_hash:
-                return json_response(self, 400, {"error": "Missing hash"})
-
             if media_type not in ["image", "video"]:
                 return json_response(self, 400, {"error": "media_type must be image or video"})
 
-            if not inputs:
-                return json_response(self, 400, {"error": "At least one input is required"})
+            if not input_url:
+                return json_response(self, 400, {"error": "Missing input_url"})
 
             if media_type == "image":
-                inference_result = real_image_inference(inputs, model_urls, model_version)
+                inference_result = real_image_inference(input_url, model_urls, model_version)
             elif media_type == "video":
-                inference_result = real_video_inference(inputs, model_urls, model_version)
+                inference_result = real_video_inference(
+                    input_url,
+                    model_urls,
+                    model_version,
+                    sample_every_n_frames,
+                    max_frame,
+                )
             else:
                 return json_response(self, 400, {"error": "media_type must be image or video"})
 
-            return json_response(self, 200, {
+            response_payload = {
                 "request_id": request_id,
-                "hash": media_hash,
-                "status": "success",
-                "tags": inference_result["tags"],
                 "tag_counts": inference_result["tag_counts"],
-                "detections": inference_result["detections"],
-                "model_name": "gcp_image_tagger",
-                "model_version": model_version,
-            })
+            }
+
+            if media_type == "video":
+                response_payload["frames"] = inference_result["frames"]
+
+            return json_response(self, 200, response_payload)
 
         except PermissionError as exc:
             return json_response(self, 401, {"error": str(exc)})

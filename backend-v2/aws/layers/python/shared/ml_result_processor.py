@@ -47,6 +47,21 @@ def normalize_tags(tags: dict[str, Any] | None) -> dict[str, int]:
     return normalized
 
 
+def normalize_gcp_tags(result: dict[str, Any]) -> dict[str, int]:
+    tag_counts = result.get("tag_counts")
+    if isinstance(tag_counts, dict) and tag_counts:
+        return normalize_tags(tag_counts)
+
+    tags = result.get("tags")
+    if isinstance(tags, dict):
+        return normalize_tags(tags)
+
+    if isinstance(tags, list):
+        return {str(tag): 1 for tag in tags if str(tag).strip()}
+
+    return {}
+
+
 def _build_update_expression(values: dict[str, Any]) -> tuple[str, dict[str, str], dict[str, Any]]:
     expression_names: dict[str, str] = {}
     expression_values: dict[str, Any] = {}
@@ -122,12 +137,12 @@ def normalize_gcp_result_shape(result: dict) -> dict:
     """Accept the existing GCP/v1 result shape and normalize it for v2 storage."""
     normalized = dict(result or {})
 
-    if normalized.get("status") == "success":
+    if normalized.get("status") is None:
+        normalized["status"] = "ok"
+    elif normalized.get("status") == "success":
         normalized["status"] = "ok"
 
-    tags = normalized.get("tags")
-    if isinstance(tags, list):
-        normalized["tags"] = {str(tag): 1 for tag in tags}
+    normalized["tags"] = normalize_gcp_tags(normalized)
 
     if normalized.get("provider") is None:
         normalized["provider"] = "gcp_cloud_run"
