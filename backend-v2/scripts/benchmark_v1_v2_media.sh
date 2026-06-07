@@ -191,22 +191,33 @@ wait_for_ready() {
   start="$(now_ms)"
 
   while true; do
-    ddb_get_item_to_file "${ddb_key}" "${item_file}"
+    ddb_get_item_to_file "${ddb_key}" "${item_file}" || true
 
-    if python3 - <<PY
+    if python3 - "${item_file}" <<'PYWAIT'
 import json
+import sys
 from pathlib import Path
-data = json.loads(Path("${item_file}").read_text())
+
+path = Path(sys.argv[1])
+
+try:
+    text = path.read_text()
+    data = json.loads(text) if text.strip() else {}
+except Exception:
+    raise SystemExit(1)
+
 item = data.get("Item")
 if not item:
     raise SystemExit(1)
+
 status = item.get("upload_status", {}).get("S")
 if status == "ready":
     raise SystemExit(0)
 if status == "failed":
     raise SystemExit(2)
+
 raise SystemExit(1)
-PY
+PYWAIT
     then
       return 0
     else
