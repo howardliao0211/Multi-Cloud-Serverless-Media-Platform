@@ -26,7 +26,8 @@ cat > "$POLICY_FILE" <<JSON
       "Resource": [
         "arn:aws:s3:::${MEDIA_BUCKET_NAME}/images-v2/*",
         "arn:aws:s3:::${MEDIA_BUCKET_NAME}/videos-v2/*",
-        "arn:aws:s3:::${MEDIA_BUCKET_NAME}/query-temp-v2/*"
+        "arn:aws:s3:::${MEDIA_BUCKET_NAME}/query-temp-v2/*",
+                "arn:aws:s3:::${MEDIA_BUCKET_NAME}/models/*"
       ]
     },
     {

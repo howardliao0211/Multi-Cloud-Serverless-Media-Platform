@@ -100,6 +100,30 @@ def _create_thumbnail_if_supported(bucket: str, key: str, media_type: str) -> tu
     return None, None
 
 
+def _presign_model_urls(bucket: str) -> dict[str, str]:
+    """Generate short-lived S3 model URLs for the GCP ML processor.
+
+    Lambda has AWS permission; Cloud Run only receives temporary HTTPS URLs.
+    Do not log these URLs.
+    """
+    expires_in = int(os.environ.get("GCP_MODEL_URL_EXPIRES_SECONDS", "3600"))
+    classifier_key = os.environ.get("CLASSIFIER_MODEL_KEY", "models/model.pt")
+    detector_key = os.environ.get("DETECTOR_MODEL_KEY", "models/mdv5a.pt")
+
+    return {
+        "classifier": s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket, "Key": classifier_key},
+            ExpiresIn=expires_in,
+        ),
+        "detector": s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket, "Key": detector_key},
+            ExpiresIn=expires_in,
+        ),
+    }
+
+
 def _invoke_process_ml_result(payload: dict[str, Any]) -> dict[str, Any]:
     function_name = os.environ.get("PROCESS_ML_RESULT_FUNCTION_NAME")
 
@@ -168,6 +192,7 @@ def handle_s3_object(bucket: str, key: str) -> dict[str, Any]:
         thumbnail_key, thumbnail_url = _create_thumbnail_if_supported(bucket, key, media_type)
 
         input_url = generate_presigned_get_url(bucket, key)
+        model_urls = _presign_model_urls(bucket)
 
         gcp_request = GcpMlRequest(
             request_id=str(uuid.uuid4()),
@@ -177,6 +202,8 @@ def handle_s3_object(bucket: str, key: str) -> dict[str, Any]:
             media_type=media_type,
             input_url=input_url,
             source="media_ingest",
+            model_urls=model_urls,
+            model_version=os.environ.get("GCP_MODEL_VERSION", "mdv5a-plus-classifier"),
         )
 
         gcp_result = call_gcp_ml_processor(gcp_request)

@@ -17,6 +17,8 @@ class GcpMlRequest(BaseModel):
     media_type: MediaType
     input_url: str
     source: str = "media_ingest"
+    model_urls: dict[str, str] | None = None
+    model_version: str | None = None
 
 
 class GcpDetection(BaseModel):

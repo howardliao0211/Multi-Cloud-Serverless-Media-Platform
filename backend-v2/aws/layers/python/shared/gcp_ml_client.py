@@ -170,6 +170,12 @@ def call_gcp_ml_processor(
             }
         ],
     }
+
+    if request.model_urls:
+        payload["model_urls"] = request.model_urls
+
+    if request.model_version:
+        payload["model_version"] = request.model_version
     body = _canonical_body(payload)
 
     headers = sign_request(payload)

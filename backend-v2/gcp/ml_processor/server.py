@@ -159,12 +159,15 @@ def _download_model_if_needed(url: str, path: str) -> str:
     return str(target)
 
 
-def _resolve_model_paths() -> tuple[str, str]:
-    """Resolve classifier/detector model paths from presigned URLs or baked-in fallback."""
-    cache_dir = Path(os.environ.get("GCP_MODEL_CACHE_DIR", "/tmp/aussie-ecolens-models"))
+def _resolve_model_paths(model_urls: dict | None = None, model_version: str | None = None) -> tuple[str, str]:
+    """Resolve classifier/detector model paths from request URLs, env URLs, or baked-in fallback."""
+    cache_root = Path(os.environ.get("GCP_MODEL_CACHE_DIR", "/tmp/aussie-ecolens-models"))
+    version = model_version or os.environ.get("GCP_MODEL_VERSION", "default")
+    cache_dir = cache_root / version
 
-    classifier_url = os.environ.get("GCP_CLASSIFIER_MODEL_URL", "")
-    detector_url = os.environ.get("GCP_DETECTOR_MODEL_URL", "")
+    model_urls = model_urls or {}
+    classifier_url = model_urls.get("classifier") or os.environ.get("GCP_CLASSIFIER_MODEL_URL", "")
+    detector_url = model_urls.get("detector") or os.environ.get("GCP_DETECTOR_MODEL_URL", "")
 
     if classifier_url and detector_url:
         classifier_path = _download_model_if_needed(
@@ -180,7 +183,7 @@ def _resolve_model_paths() -> tuple[str, str]:
     # Backward-compatible fallback for old baked-model images.
     return "/models/model.pt", "/models/mdv5a.pt"
 
-def get_tagger() -> ImageTagger:
+def get_tagger(model_urls: dict | None = None, model_version: str | None = None) -> ImageTagger:
     global _tagger
 
     if _tagger is not None:
@@ -188,7 +191,7 @@ def get_tagger() -> ImageTagger:
 
     print("Initializing ImageTagger", flush=True)
 
-    classifier_model_path, detector_model_path = _resolve_model_paths()
+    classifier_model_path, detector_model_path = _resolve_model_paths(model_urls, model_version)
     print(f"Using classifier model: {classifier_model_path}", flush=True)
     print(f"Using detector model: {detector_model_path}", flush=True)
 
@@ -225,8 +228,8 @@ def download_input_to_temp_file(url: str, suffix: str = ".jpg") -> Path:
     return temp_path
 
 
-def real_image_inference(inputs):
-    tagger = get_tagger()
+def real_image_inference(inputs, model_urls: dict | None = None, model_version: str | None = None):
+    tagger = get_tagger(model_urls, model_version)
 
     all_tags = Counter()
     detections = []
@@ -266,8 +269,8 @@ def real_image_inference(inputs):
     }
 
 
-def real_video_inference(inputs):
-    tagger = get_tagger()
+def real_video_inference(inputs, model_urls: dict | None = None, model_version: str | None = None):
+    tagger = get_tagger(model_urls, model_version)
 
     all_tags = Counter()
     detections = []
@@ -377,6 +380,8 @@ class Handler(BaseHTTPRequestHandler):
             media_hash = payload.get("hash")
             media_type = payload.get("media_type")
             inputs = payload.get("inputs", [])
+            model_urls = payload.get("model_urls") or {}
+            model_version = payload.get("model_version") or os.environ.get("GCP_MODEL_VERSION", "default")
 
             if not request_id:
                 return json_response(self, 400, {"error": "Missing request_id"})
@@ -391,9 +396,9 @@ class Handler(BaseHTTPRequestHandler):
                 return json_response(self, 400, {"error": "At least one input is required"})
 
             if media_type == "image":
-                inference_result = real_image_inference(inputs)
+                inference_result = real_image_inference(inputs, model_urls, model_version)
             elif media_type == "video":
-                inference_result = real_video_inference(inputs)
+                inference_result = real_video_inference(inputs, model_urls, model_version)
             else:
                 return json_response(self, 400, {"error": "media_type must be image or video"})
 

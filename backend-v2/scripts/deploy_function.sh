@@ -1,82 +1,89 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FUNCTION_NAME="${1:?Usage: deploy_function.sh <function-name> <source-dir>}"
-SOURCE_DIR="${2:?Usage: deploy_function.sh <function-name> <source-dir>}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${BACKEND_V2_DIR}/.." && pwd)"
 
-AWS_REGION="${AWS_REGION:-us-east-1}"
-AWS_PROFILE="${AWS_PROFILE:-AussieEcoLense}"
-LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-arn:aws:iam::539913718279:role/aussie-eco-len-lambda-role}"
-PYTHON_RUNTIME="${PYTHON_RUNTIME:-python3.12}"
-ARCHITECTURE="${LAMBDA_ARCHITECTURE:-x86_64}"
-TIMEOUT="${LAMBDA_TIMEOUT:-60}"
-MEMORY="${LAMBDA_MEMORY:-1024}"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/load_env.sh" "${BACKEND_V2_DIR}/.env"
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-BACKEND_V2_DIR="${ROOT_DIR}/backend-v2"
-BUILD_DIR="${BACKEND_V2_DIR}/.build/${FUNCTION_NAME}"
-ZIP_PATH="${BACKEND_V2_DIR}/.build/${FUNCTION_NAME}.zip"
+usage() {
+  echo "Usage: $0 <function-name> <function-dir>"
+  echo "Example: $0 process_ml_result_v2 backend-v2/aws/functions/process_ml_result"
+}
 
-rm -rf "$BUILD_DIR" "$ZIP_PATH"
-mkdir -p "$BUILD_DIR"
-
-echo "Packaging ${FUNCTION_NAME} from ${SOURCE_DIR}"
-
-cp -R "${BACKEND_V2_DIR}/layers/python/shared" "${BUILD_DIR}/shared"
-cp "${SOURCE_DIR}/app.py" "${BUILD_DIR}/app.py"
-
-if [ -f "${SOURCE_DIR}/requirements.txt" ] && [ -s "${SOURCE_DIR}/requirements.txt" ]; then
-  echo "Installing dependencies with uv"
-  uv pip install \
-    --target "$BUILD_DIR" \
-    --python-platform "x86_64-manylinux2014" \
-    --python-version "3.12" \
-    -r "${SOURCE_DIR}/requirements.txt"
+if [[ $# -ne 2 ]]; then
+  usage
+  exit 2
 fi
 
-(
-  cd "$BUILD_DIR"
-  zip -qr "$ZIP_PATH" .
-)
+FUNCTION_NAME="$1"
+FUNCTION_DIR_INPUT="$2"
 
-if aws lambda get-function \
-  --function-name "$FUNCTION_NAME" \
-  --region "$AWS_REGION" \
-  --profile "$AWS_PROFILE" >/dev/null 2>&1
-then
-  echo "Updating existing Lambda ${FUNCTION_NAME}"
-  aws lambda update-function-code \
-    --function-name "$FUNCTION_NAME" \
-    --zip-file "fileb://${ZIP_PATH}" \
-    --region "$AWS_REGION" \
-    --profile "$AWS_PROFILE" >/dev/null
-
-  aws lambda wait function-updated \
-    --function-name "$FUNCTION_NAME" \
-    --region "$AWS_REGION" \
-    --profile "$AWS_PROFILE"
-
-  aws lambda update-function-configuration \
-    --function-name "$FUNCTION_NAME" \
-    --runtime "$PYTHON_RUNTIME" \
-    --handler "app.lambda_handler" \
-    --timeout "$TIMEOUT" \
-    --memory-size "$MEMORY" \
-    --region "$AWS_REGION" \
-    --profile "$AWS_PROFILE" >/dev/null
+if [[ "${FUNCTION_DIR_INPUT}" = /* ]]; then
+  FUNCTION_DIR="${FUNCTION_DIR_INPUT}"
 else
-  echo "Creating Lambda ${FUNCTION_NAME}"
-  aws lambda create-function \
-    --function-name "$FUNCTION_NAME" \
-    --runtime "$PYTHON_RUNTIME" \
-    --handler "app.lambda_handler" \
-    --role "$LAMBDA_ROLE_ARN" \
-    --zip-file "fileb://${ZIP_PATH}" \
-    --timeout "$TIMEOUT" \
-    --memory-size "$MEMORY" \
-    --architectures "$ARCHITECTURE" \
-    --region "$AWS_REGION" \
-    --profile "$AWS_PROFILE" >/dev/null
+  FUNCTION_DIR="${REPO_ROOT}/${FUNCTION_DIR_INPUT}"
 fi
 
-echo "Deployed ${FUNCTION_NAME}"
+if [[ ! -d "${FUNCTION_DIR}" ]]; then
+  echo "Missing function directory: ${FUNCTION_DIR}" >&2
+  exit 1
+fi
+
+if [[ ! -f "${FUNCTION_DIR}/app.py" ]]; then
+  echo "Missing app.py in function directory: ${FUNCTION_DIR}" >&2
+  exit 1
+fi
+
+: "${AWS_REGION:?Missing AWS_REGION}"
+: "${AWS_PROFILE:?Missing AWS_PROFILE}"
+
+BUILD_ROOT="${BACKEND_V2_DIR}/.build"
+BUILD_DIR="${BUILD_ROOT}/${FUNCTION_NAME}"
+ZIP_PATH="${BUILD_ROOT}/${FUNCTION_NAME}.zip"
+SHARED_DIR="${BACKEND_V2_DIR}/aws/layers/python/shared"
+
+echo "== Deploy backend v2 zip Lambda =="
+echo "FUNCTION_NAME=${FUNCTION_NAME}"
+echo "FUNCTION_DIR=${FUNCTION_DIR}"
+echo "SHARED_DIR=${SHARED_DIR}"
+
+if [[ ! -d "${SHARED_DIR}" ]]; then
+  echo "Missing shared layer directory: ${SHARED_DIR}" >&2
+  exit 1
+fi
+
+rm -rf "${BUILD_DIR}" "${ZIP_PATH}"
+mkdir -p "${BUILD_DIR}"
+
+cp "${FUNCTION_DIR}/app.py" "${BUILD_DIR}/app.py"
+cp -R "${SHARED_DIR}" "${BUILD_DIR}/shared"
+
+if [[ -f "${FUNCTION_DIR}/requirements.txt" ]]; then
+  python3 -m pip install \
+    --no-cache-dir \
+    --platform manylinux2014_x86_64 \
+    --implementation cp \
+    --python-version 3.12 \
+    --only-binary=:all: \
+    -r "${FUNCTION_DIR}/requirements.txt" \
+    -t "${BUILD_DIR}"
+fi
+
+(cd "${BUILD_DIR}" && zip -qr "${ZIP_PATH}" .)
+
+aws lambda update-function-code \
+  --function-name "${FUNCTION_NAME}" \
+  --zip-file "fileb://${ZIP_PATH}" \
+  --region "${AWS_REGION}" \
+  --profile "${AWS_PROFILE}" >/dev/null
+
+echo "Waiting for Lambda code update..."
+aws lambda wait function-updated \
+  --function-name "${FUNCTION_NAME}" \
+  --region "${AWS_REGION}" \
+  --profile "${AWS_PROFILE}"
+
+echo "Deployed ${FUNCTION_NAME} from ${ZIP_PATH}"
