@@ -410,7 +410,7 @@ class Handler(BaseHTTPRequestHandler):
                 "tag_counts": inference_result["tag_counts"],
                 "detections": inference_result["detections"],
                 "model_name": "gcp_image_tagger",
-                "model_version": "mdv5a-plus-classifier",
+                "model_version": model_version,
             })
 
         except PermissionError as exc:
