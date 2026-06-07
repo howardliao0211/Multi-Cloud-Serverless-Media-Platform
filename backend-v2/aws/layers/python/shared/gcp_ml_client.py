@@ -160,22 +160,18 @@ def call_gcp_ml_processor(
     url = endpoint.rstrip("/") + "/process-media"
     payload = {
         "request_id": request.request_id,
-        "hash": request.checksum,
         "media_type": request.media_type,
-        "inputs": [
-            {
-                "source": "original",
-                "url": str(request.input_url),
-                "timestamp_sec": None,
-            }
-        ],
+        "input_url": str(request.input_url),
+        "model_urls": request.model_urls.model_dump(),
+        "model_version": request.model_version,
     }
 
-    if request.model_urls:
-        payload["model_urls"] = request.model_urls
+    if request.sample_every_n_frames is not None:
+        payload["sample_every_n_frames"] = request.sample_every_n_frames
 
-    if request.model_version:
-        payload["model_version"] = request.model_version
+    if request.max_frame is not None:
+        payload["max_frame"] = request.max_frame
+
     body = _canonical_body(payload)
 
     headers = sign_request(payload)

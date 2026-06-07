@@ -9,6 +9,11 @@ MediaType = Literal["image", "video"]
 MlStatus = Literal["ok", "failed"]
 
 
+class GcpModelUrls(BaseModel):
+    classifier: str
+    detector: str
+
+
 class GcpMlRequest(BaseModel):
     request_id: str
     checksum: str
@@ -17,8 +22,10 @@ class GcpMlRequest(BaseModel):
     media_type: MediaType
     input_url: str
     source: str = "media_ingest"
-    model_urls: dict[str, str] | None = None
-    model_version: str | None = None
+    model_urls: GcpModelUrls
+    model_version: str
+    sample_every_n_frames: int | None = None
+    max_frame: int | None = None
 
 
 class GcpDetection(BaseModel):

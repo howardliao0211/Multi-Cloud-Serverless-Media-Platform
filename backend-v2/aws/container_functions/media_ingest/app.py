@@ -10,7 +10,7 @@ import boto3
 
 from shared.gcp_ml_client import call_gcp_ml_processor, generate_presigned_get_url
 from shared.media_type import infer_media_type_from_content_type, infer_media_type_from_key
-from shared.ml_contracts import GcpMlRequest, ProcessMlResultEvent
+from shared.ml_contracts import GcpMlRequest, GcpModelUrls, ProcessMlResultEvent
 from shared.ml_result_processor import process_ml_result_payload
 from shared.thumbnailing import create_and_upload_image_thumbnail, create_and_upload_video_thumbnail
 from shared.utils import build_db_key
@@ -124,6 +124,22 @@ def _presign_model_urls(bucket: str) -> dict[str, str]:
     }
 
 
+def _optional_positive_int_env(name: str) -> int | None:
+    raw_value = os.environ.get(name)
+    if raw_value is None or raw_value.strip() == "":
+        return None
+
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a positive integer when set") from exc
+
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer when set")
+
+    return value
+
+
 def _invoke_process_ml_result(payload: dict[str, Any]) -> dict[str, Any]:
     function_name = os.environ.get("PROCESS_ML_RESULT_FUNCTION_NAME")
 
@@ -193,6 +209,12 @@ def handle_s3_object(bucket: str, key: str) -> dict[str, Any]:
 
         input_url = generate_presigned_get_url(bucket, key)
         model_urls = _presign_model_urls(bucket)
+        sample_every_n_frames = None
+        max_frame = None
+
+        if media_type == "video":
+            sample_every_n_frames = _optional_positive_int_env("GCP_VIDEO_SAMPLE_EVERY_N_FRAMES")
+            max_frame = _optional_positive_int_env("GCP_VIDEO_MAX_FRAME")
 
         gcp_request = GcpMlRequest(
             request_id=str(uuid.uuid4()),
@@ -202,8 +224,10 @@ def handle_s3_object(bucket: str, key: str) -> dict[str, Any]:
             media_type=media_type,
             input_url=input_url,
             source="media_ingest",
-            model_urls=model_urls,
+            model_urls=GcpModelUrls(**model_urls),
             model_version=os.environ.get("GCP_MODEL_VERSION", "mdv5a-plus-classifier"),
+            sample_every_n_frames=sample_every_n_frames,
+            max_frame=max_frame,
         )
 
         gcp_result = call_gcp_ml_processor(gcp_request)
