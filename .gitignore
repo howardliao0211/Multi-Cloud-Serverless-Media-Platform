@@ -306,3 +306,4 @@ backend-v2/.env
 !tests/fixtures/media/*.jpeg
 !tests/fixtures/media/*.png
 !tests/fixtures/media/*.mp4
+terraform/variables.tf

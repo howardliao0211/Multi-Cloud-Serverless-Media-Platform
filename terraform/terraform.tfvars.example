@@ -1,0 +1,36 @@
+aws_region = "us-east-1"
+
+project_name = "aussie-eco-len"
+
+bucket_name = "aussie-eco-len-bucket-12345"
+
+media_table_name = "aussie-eco-len-media"
+
+subscription_table_name = "aussie-eco-len-subscriptions"
+
+sns_topic_name = "image-tag-notifications"
+
+lambda_image_uris = {
+  change_visibility    = ""
+  create_query_file_job = ""
+  delete_file           = ""
+  edit_tags             = ""
+  get_private_media     = "539913718279.dkr.ecr.us-east-1.amazonaws.com/get_private_media:latest"
+  get_public_media      = "539913718279.dkr.ecr.us-east-1.amazonaws.com/get_public_media:latest"
+  get_query_file_job    = ""
+  get_query_upload_url  = ""
+  get_signed_url        = "539913718279.dkr.ecr.us-east-1.amazonaws.com/get_signed_url:latest"
+  get_subscription      = ""
+  get_upload_status     = "539913718279.dkr.ecr.us-east-1.amazonaws.com/get_upload_status:latest"
+  media_ingest          = ""
+  process_ml_result     = ""
+  publish_tags          = ""
+  query_file            = "539913718279.dkr.ecr.us-east-1.amazonaws.com/query_file:latest"
+  query_species         = ""
+  query_tags            = ""
+  query_thumbnail_url   = ""
+  tag_image             = "539913718279.dkr.ecr.us-east-1.amazonaws.com/tag_image:latest"
+  tag_video             = "539913718279.dkr.ecr.us-east-1.amazonaws.com/tag_video:latest"
+  subscribe_tags        = "539913718279.dkr.ecr.us-east-1.amazonaws.com/subscribe_tags:latest"
+  unsubscribe_tags      = "539913718279.dkr.ecr.us-east-1.amazonaws.com/unsubscribe_tags:latest"
+}
