@@ -11,4 +11,11 @@ resource "aws_lambda_function" "this" {
   environment {
     variables = var.environment_variables
   }
+
+  lifecycle {
+    ignore_changes = [
+      environment,
+      image_uri
+    ]
+  }
 }
