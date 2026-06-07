@@ -16,12 +16,8 @@ class GcpModelUrls(BaseModel):
 
 class GcpMlRequest(BaseModel):
     request_id: str
-    checksum: str
-    bucket: str
-    key: str
     media_type: MediaType
     input_url: str
-    source: str = "media_ingest"
     model_urls: GcpModelUrls
     model_version: str
     sample_every_n_frames: int | None = None

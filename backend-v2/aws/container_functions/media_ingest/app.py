@@ -208,7 +208,7 @@ def handle_s3_object(bucket: str, key: str) -> dict[str, Any]:
         thumbnail_key, thumbnail_url = _create_thumbnail_if_supported(bucket, key, media_type)
 
         input_url = generate_presigned_get_url(bucket, key)
-        model_urls = _presign_model_urls(bucket)
+        model_urls = GcpModelUrls(**_presign_model_urls(bucket))
         sample_every_n_frames = None
         max_frame = None
 
@@ -218,16 +218,20 @@ def handle_s3_object(bucket: str, key: str) -> dict[str, Any]:
 
         gcp_request = GcpMlRequest(
             request_id=str(uuid.uuid4()),
-            checksum=metadata["checksum"],
-            bucket=bucket,
-            key=key,
             media_type=media_type,
             input_url=input_url,
-            source="media_ingest",
-            model_urls=GcpModelUrls(**model_urls),
-            model_version=os.environ.get("GCP_MODEL_VERSION", "mdv5a-plus-classifier"),
-            sample_every_n_frames=sample_every_n_frames,
-            max_frame=max_frame,
+            model_urls=model_urls,
+            model_version=os.environ.get("GCP_MODEL_VERSION", "request-presigned-models-v1"),
+            sample_every_n_frames=(
+                _optional_positive_int_env("GCP_VIDEO_SAMPLE_EVERY_N_FRAMES")
+                if media_type == "video"
+                else None
+            ),
+            max_frame=(
+                _optional_positive_int_env("GCP_VIDEO_MAX_FRAME")
+                if media_type == "video"
+                else None
+            ),
         )
 
         gcp_result = call_gcp_ml_processor(gcp_request)

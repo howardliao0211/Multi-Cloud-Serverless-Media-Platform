@@ -172,6 +172,12 @@ def call_gcp_ml_processor(
     if request.max_frame is not None:
         payload["max_frame"] = request.max_frame
 
+    if request.sample_every_n_frames is not None:
+        payload["sample_every_n_frames"] = request.sample_every_n_frames
+
+    if request.max_frame is not None:
+        payload["max_frame"] = request.max_frame
+
     body = _canonical_body(payload)
 
     headers = sign_request(payload)
