@@ -6,6 +6,7 @@ set -euo pipefail
 #
 # Expected repo root layout:
 # - backend/base_images/ml_base/Dockerfile
+# - backend/base_images/gcp_client_base/Dockerfile
 # - backend/container_functions/tag_image/Dockerfile
 # - backend/container_functions/tag_video/Dockerfile
 
@@ -78,6 +79,10 @@ AWS_BASE_CONTEXT="${PROJECT_ROOT}/backend/base_images/ml_base"
 AWS_LAMBDA_PYTHON_BASE_IMAGE_NAME="${AWS_LAMBDA_PYTHON_BASE_IMAGE_NAME:-lambda_python_base}"
 AWS_LAMBDA_PYTHON_BASE_DOCKERFILE="${PROJECT_ROOT}/backend/base_images/lambda_python_base/Dockerfile"
 AWS_LAMBDA_PYTHON_BASE_CONTEXT="${PROJECT_ROOT}/backend/base_images/lambda_python_base"
+
+AWS_GCP_CLIENT_BASE_IMAGE_NAME="${AWS_GCP_CLIENT_BASE_IMAGE_NAME:-gcp_client_base}"
+AWS_GCP_CLIENT_BASE_DOCKERFILE="${PROJECT_ROOT}/backend/base_images/gcp_client_base/Dockerfile"
+AWS_GCP_CLIENT_BASE_CONTEXT="${PROJECT_ROOT}/backend/base_images/gcp_client_base"
 
 TAG_IMAGE_DOCKERFILE="${PROJECT_ROOT}/backend/container_functions/tag_image/Dockerfile"
 TAG_VIDEO_DOCKERFILE="${PROJECT_ROOT}/backend/container_functions/tag_video/Dockerfile"
@@ -213,6 +218,7 @@ need_cmd gcloud
 
 require_file "${AWS_BASE_DOCKERFILE}"
 require_file "${AWS_LAMBDA_PYTHON_BASE_DOCKERFILE}"
+require_file "${AWS_GCP_CLIENT_BASE_DOCKERFILE}"
 require_file "${TAG_IMAGE_DOCKERFILE}"
 require_file "${TAG_VIDEO_DOCKERFILE}"
 require_file "${QUERY_FILE_DOCKERFILE}"
@@ -283,22 +289,29 @@ ensure_ecr_repo "${TAG_VIDEO_REPO}"
 ensure_ecr_repo "${QUERY_FILE_REPO}"
 
 # ---------- AWS base images ----------
-# Lightweight Lambda Python base for non-ML container Lambdas.
-build_image_docker \
-  "${AWS_DOCKER_PLATFORM}" \
-  "${AWS_LAMBDA_PYTHON_BASE_IMAGE_NAME}:latest" \
-  "${AWS_LAMBDA_PYTHON_BASE_DOCKERFILE}" \
-  "${AWS_LAMBDA_PYTHON_BASE_CONTEXT}"
+# Legacy base image, currently unused by container_functions/* Dockerfiles.
+# Re-enable if a Lambda image starts using FROM lambda_python_base:latest.
+# build_image_docker \
+#   "${AWS_DOCKER_PLATFORM}" \
+#   "${AWS_LAMBDA_PYTHON_BASE_IMAGE_NAME}:latest" \
+#   "${AWS_LAMBDA_PYTHON_BASE_DOCKERFILE}" \
+#   "${AWS_LAMBDA_PYTHON_BASE_CONTEXT}"
 
-# Heavy ML Lambda base for image/video inference Lambdas.
-# This is local-only because child Dockerfiles use FROM ml_base:latest.
-# If you later want this pushed too, create an ECR repo for it and change
-# child Dockerfiles to FROM <remote-uri>.
+# Base image for Lambda functions that call the GCP Cloud Run ML processor.
+# tag_image, tag_video, and query_file all use FROM gcp_client_base:latest.
 build_image_docker \
   "${AWS_DOCKER_PLATFORM}" \
-  "${AWS_BASE_IMAGE_NAME}:latest" \
-  "${AWS_BASE_DOCKERFILE}" \
-  "${AWS_BASE_CONTEXT}"
+  "${AWS_GCP_CLIENT_BASE_IMAGE_NAME}:latest" \
+  "${AWS_GCP_CLIENT_BASE_DOCKERFILE}" \
+  "${AWS_GCP_CLIENT_BASE_CONTEXT}"
+
+# Legacy heavy ML Lambda base, currently unused by container_functions/*
+# Dockerfiles. Re-enable if a Lambda image starts using FROM ml_base:latest.
+# build_image_docker \
+#   "${AWS_DOCKER_PLATFORM}" \
+#   "${AWS_BASE_IMAGE_NAME}:latest" \
+#   "${AWS_BASE_DOCKERFILE}" \
+#   "${AWS_BASE_CONTEXT}"
 
 # ---------- AWS Lambda function images ----------
 TAG_IMAGE_LOCAL="${TAG_IMAGE_REPO}:${TAG_IMAGE_TAG}"
