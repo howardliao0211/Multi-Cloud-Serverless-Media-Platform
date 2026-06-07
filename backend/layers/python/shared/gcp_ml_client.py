@@ -12,6 +12,10 @@ from pathlib import Path
 from typing import Any
 
 import boto3
+from PIL import Image
+from io import BytesIO
+import numpy as np
+
 
 import google.auth as google_auth
 from google.auth import impersonated_credentials
@@ -21,6 +25,55 @@ from shared.gcp_ml_contracts import GcpMlRequest, GcpMlResponse
 
 DEFAULT_TIMEOUT_SECONDS = 120
 DEFAULT_PRESIGNED_URL_SECONDS = 600
+
+
+def create_thumbnail_bytes(
+    image: Path | np.ndarray,
+    max_size: tuple[int, int] = (300, 300),
+    quality: int = 70,
+    ndarray_is_bgr: bool = True,
+) -> bytes:
+    if isinstance(image, Path):
+        with Image.open(image) as pil_image:
+            return _pil_image_to_thumbnail_bytes(
+                pil_image,
+                max_size=max_size,
+                quality=quality,
+            )
+
+    if isinstance(image, np.ndarray):
+        # convert opencv format to pillow
+        if image.ndim == 3 and image.shape[2] == 3 and ndarray_is_bgr:
+            image = image[:, :, ::-1]  # BGR -> RGB
+
+        pil_image = Image.fromarray(image)
+
+        return _pil_image_to_thumbnail_bytes(
+            pil_image,
+            max_size=max_size,
+            quality=quality,
+        )
+
+    raise TypeError(f"Unsupported image type: {type(image)}")
+
+
+def _pil_image_to_thumbnail_bytes(
+    pil_image: Image.Image,
+    max_size: tuple[int, int],
+    quality: int,
+) -> bytes:
+    pil_image = pil_image.convert("RGB")
+    pil_image.thumbnail(max_size)
+
+    output = BytesIO()
+    pil_image.save(
+        output,
+        format="JPEG",
+        quality=quality,
+        optimize=True,
+    )
+
+    return output.getvalue()
 
 
 def generate_presigned_get_url(
@@ -106,7 +159,8 @@ def get_google_id_token() -> str | None:
         return None
 
     if not Path(credentials_file).exists():
-        print(f"GCP auth disabled: WIF credentials file not found: {credentials_file}")
+        print(
+            f"GCP auth disabled: WIF credentials file not found: {credentials_file}")
         return None
 
     source_credentials, _ = google_auth.load_credentials_from_file(
@@ -203,6 +257,7 @@ def call_gcp_ml_processor(
             return GcpMlResponse.model_validate_json(response_body)
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"GCP ML processor HTTP {exc.code}: {error_body}") from exc
+        raise RuntimeError(
+            f"GCP ML processor HTTP {exc.code}: {error_body}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"GCP ML processor request failed: {exc}") from exc

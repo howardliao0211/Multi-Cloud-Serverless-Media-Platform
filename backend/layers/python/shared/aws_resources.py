@@ -261,3 +261,17 @@ def scan_media_record(
             pass
 
     return results
+
+
+def upload_thumbnail_to_s3(
+    image_bytes: bytes,
+    s3,
+    bucket: str,
+    s3_key: str,
+) -> None:
+    s3.put_object(
+        Bucket=bucket,
+        Key=s3_key,
+        Body=image_bytes,
+        ContentType="image/jpeg",
+    )

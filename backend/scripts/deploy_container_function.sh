@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-FUNCTION_NAME="${FUNCTION_NAME:-query_file}"
+FUNCTION_NAME="${FUNCTION_NAME:-tag_video}"
 REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-aussie_eco_len}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 ARCHITECTURE="${ARCHITECTURE:-x86_64}"

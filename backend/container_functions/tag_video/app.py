@@ -14,10 +14,11 @@ from shared.aws_resources import (
     update_media_record_in_db,
     get_s3_object_head_and_url,
     is_media_record_processing,
+    upload_thumbnail_to_s3
 )
 from shared.utils import build_db_key, build_thumbnail_s3_key
 from shared.gcp_ml_contracts import GcpMlRequest, GcpModelUrls
-from shared.gcp_ml_client import call_gcp_ml_processor, generate_presigned_get_url
+from shared.gcp_ml_client import call_gcp_ml_processor, generate_presigned_get_url, create_thumbnail_bytes
 
 s3, bucket_name = get_bucket_and_name()
 table = get_table()
@@ -105,31 +106,6 @@ def process_video_frames(bucket, video_s3_key, local_path):
     return final_tags, thumbnail_frame
 
 
-def create_thumbnail(image: np.ndarray, fx: float = 0.5, fy: float = 0.5):
-    resized_scaled = cv2.resize(image, None, fx=fx, fy=fy, interpolation=cv2.INTER_AREA)
-    return resized_scaled
-
-
-def upload_thumbnail_to_s3(
-    image_array: np.ndarray,
-    s3_key: str,
-    bucket: str,
-) -> None:
-    success, encoded_image = cv2.imencode(".jpg", image_array)
-
-    if not success:
-        raise ValueError("Failed to encode thumbnail image as JPEG.")
-
-    image_bytes = encoded_image.tobytes()
-
-    s3.put_object(
-        Bucket=bucket,
-        Key=s3_key,
-        Body=image_bytes,
-        ContentType="image/jpeg",
-    )
-
-
 def process_video(bucket: str, s3_key: str):
 
     head, full_url = get_s3_object_head_and_url(s3_key)
@@ -155,7 +131,8 @@ def process_video(bucket: str, s3_key: str):
     should_process = is_media_record_processing(table, db_key)
 
     if not should_process:
-        print(f"Duplicate media already exists, skipping model run: {file_name}")
+        print(
+            f"Duplicate media already exists, skipping model run: {file_name}")
         return None
 
     try:
@@ -181,9 +158,10 @@ def process_video(bucket: str, s3_key: str):
         )
 
         # Use the frame with most animal to create thumbnail
-        thumbnail = create_thumbnail(thumbnail_frame)
+        thumbnail_bytes = create_thumbnail_bytes(thumbnail_frame)
 
-        upload_thumbnail_to_s3(thumbnail, thumbnail_s3_key, bucket)
+        upload_thumbnail_to_s3(thumbnail_bytes, s3,
+                               bucket_name, thumbnail_s3_key)
         _, thumbnail_url = get_s3_object_head_and_url(thumbnail_s3_key)
 
         db_entry = {

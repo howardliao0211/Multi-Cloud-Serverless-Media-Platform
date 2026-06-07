@@ -215,7 +215,8 @@ def detect_image_query_tags(s3_key) -> Dict[str, int]:
     # ImageTagger returns the animal tags found in the temporary query image.
     input_url = generate_presigned_get_url(bucket_name, s3_key)
     model_urls = GcpModelUrls(
-        classifier=generate_presigned_get_url(bucket_name, CLASSIFIER_MODEL_KEY),
+        classifier=generate_presigned_get_url(
+            bucket_name, CLASSIFIER_MODEL_KEY),
         detector=generate_presigned_get_url(bucket_name, DETECTOR_MODEL_KEY),
     )
     gcp_request = GcpMlRequest(
@@ -249,7 +250,8 @@ def detect_video_query_tags(s3_key, temp_path: Path) -> Dict[str, int]:
     input_url = generate_presigned_get_url(bucket_name, s3_key)
 
     model_urls = GcpModelUrls(
-        classifier=generate_presigned_get_url(bucket_name, CLASSIFIER_MODEL_KEY),
+        classifier=generate_presigned_get_url(
+            bucket_name, CLASSIFIER_MODEL_KEY),
         detector=generate_presigned_get_url(bucket_name, DETECTOR_MODEL_KEY),
     )
 
