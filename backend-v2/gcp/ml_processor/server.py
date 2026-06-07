@@ -341,14 +341,12 @@ def real_video_inference(
             if frame_count % frame_interval == 0:
                 result = tagger.tag_image(frame)
                 item_tags = result.get("tags", {})
-                frame_tag_counts = {}
 
                 _merge_max_counts(all_tags, item_tags)
-                _merge_max_counts(frame_tag_counts, item_tags)
 
                 frames.append({
                     "frame_index": sampled_count,
-                    "tag_counts": dict(frame_tag_counts),
+                    "tag_counts": dict(item_tags),
                 })
 
                 sampled_count += 1
