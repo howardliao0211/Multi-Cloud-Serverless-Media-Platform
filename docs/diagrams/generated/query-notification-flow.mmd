@@ -1,0 +1,47 @@
+flowchart TD
+  user[User] --> frontend[React frontend]
+  frontend --> apigw[Amazon API Gateway]
+
+  subgraph query[Query and media read path]
+    apigw --> query_tags[query_tags Lambda]
+    apigw --> query_species[query_species Lambda]
+    apigw --> query_thumbnail[query_thumbnail_url Lambda]
+    apigw --> get_private[get_private_media Lambda]
+    apigw --> get_public[get_public_media Lambda]
+    apigw --> get_upload_status[get_upload_status Lambda]
+    query_tags --> media_table[DynamoDB media table]
+    query_species --> media_table
+    query_thumbnail --> media_table
+    get_private --> media_table
+    get_public --> media_table
+    get_upload_status --> media_table
+    query_tags --> s3[S3 media bucket]
+    query_species --> s3
+    query_thumbnail --> s3
+    get_private --> s3
+    get_public --> s3
+    s3 --> presigned_get[Presigned GET for private media and thumbnails]
+    presigned_get --> frontend
+  end
+
+  subgraph notifications[Subscription and notification path]
+    apigw --> subscribe[subscribe_tags Lambda]
+    apigw --> unsubscribe[unsubscribe_tags Lambda]
+    apigw --> get_subscription[get_subscription Lambda]
+    subscribe --> sns[SNS topic]
+    unsubscribe --> sns
+    get_subscription --> sns
+    sns --> email[Email subscriber]
+    media_table -- DynamoDB Streams INSERT/MODIFY --> publish_tags[publish_tags Lambda]
+    publish_tags --> sns
+  end
+
+  media_table --> ready_records[Ready media records with tags]
+  ready_records --> publish_tags
+  publish_tags -- message attributes tag=<species> --> sns
+  sns -- filter policy matches subscribed tag --> email
+
+  classDef aws fill:#fff5e6,stroke:#d97706,color:#111827
+  classDef user fill:#ffffff,stroke:#111827,color:#111827
+  class apigw,query_tags,query_species,query_thumbnail,get_private,get_public,get_upload_status,media_table,s3,presigned_get,subscribe,unsubscribe,get_subscription,sns,publish_tags,ready_records,email aws
+  class user,frontend user
