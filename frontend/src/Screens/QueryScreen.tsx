@@ -405,6 +405,14 @@ function QueryScreen() {
                     setDetectedTags(jobStatus.detected_tags ?? {});
                     setResults(jobStatus.results ?? []);
                     setResultCount(jobStatus.count ?? jobStatus.results?.length ?? 0);
+                    
+                    await authFetch<QueryFileJobStatusResponse>(
+                        `/query_file/jobs/${job.job_id}`,
+                        {
+                            method: "DELETE",
+                        },
+                        true
+                    );
                     return;
                 }
 

@@ -289,7 +289,7 @@ def detect_query_file_tags(
     media_type = infer_uploaded_media_type(file_name, content_type)
 
     if media_type == "image":
-        return detect_image_query_tags(s3_key, temp_path)
+        return detect_image_query_tags(s3_key)
 
     return detect_video_query_tags(s3_key, temp_path)
 
