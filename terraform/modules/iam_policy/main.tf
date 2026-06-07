@@ -43,6 +43,19 @@ locals {
     "${local.bucket_arn}/query_uploads/*"
   ]
 
+  s3_upload_object_arns = [
+    "${local.bucket_arn}/images/*",
+    "${local.bucket_arn}/videos/*"
+  ]
+
+  s3_thumbnail_object_arns = [
+    "${local.bucket_arn}/thumbnails/*"
+  ]
+
+  s3_query_upload_object_arns = [
+    "${local.bucket_arn}/query_uploads/*"
+  ]
+
   s3_allowed_prefixes = [
     "images/*",
     "videos/*",
@@ -153,6 +166,104 @@ resource "aws_iam_policy" "s3_write_media" {
   policy      = data.aws_iam_policy_document.s3_write_media.json
 }
 
+data "aws_iam_policy_document" "s3_put_upload_media" {
+  statement {
+    sid    = "S3PutUploadMediaObjects"
+    effect = "Allow"
+
+    actions = [
+      "s3:PutObject"
+    ]
+
+    resources = local.s3_upload_object_arns
+  }
+}
+
+resource "aws_iam_policy" "s3_put_upload_media" {
+  name        = "${var.project_name}-s3-put-upload-media"
+  description = "Allow Lambda functions to create presigned uploads for image and video media."
+  policy      = data.aws_iam_policy_document.s3_put_upload_media.json
+}
+
+data "aws_iam_policy_document" "s3_put_query_uploads" {
+  statement {
+    sid    = "S3PutQueryUploadObjects"
+    effect = "Allow"
+
+    actions = [
+      "s3:PutObject"
+    ]
+
+    resources = local.s3_query_upload_object_arns
+  }
+}
+
+resource "aws_iam_policy" "s3_put_query_uploads" {
+  name        = "${var.project_name}-s3-put-query-uploads"
+  description = "Allow Lambda functions to create presigned uploads for query files."
+  policy      = data.aws_iam_policy_document.s3_put_query_uploads.json
+}
+
+data "aws_iam_policy_document" "s3_put_thumbnails" {
+  statement {
+    sid    = "S3PutThumbnailObjects"
+    effect = "Allow"
+
+    actions = [
+      "s3:PutObject"
+    ]
+
+    resources = local.s3_thumbnail_object_arns
+  }
+}
+
+resource "aws_iam_policy" "s3_put_thumbnails" {
+  name        = "${var.project_name}-s3-put-thumbnails"
+  description = "Allow Lambda functions to write generated thumbnails."
+  policy      = data.aws_iam_policy_document.s3_put_thumbnails.json
+}
+
+data "aws_iam_policy_document" "s3_delete_media" {
+  statement {
+    sid    = "S3DeleteMediaObjects"
+    effect = "Allow"
+
+    actions = [
+      "s3:DeleteObject"
+    ]
+
+    resources = concat(
+      local.s3_upload_object_arns,
+      local.s3_thumbnail_object_arns
+    )
+  }
+}
+
+resource "aws_iam_policy" "s3_delete_media" {
+  name        = "${var.project_name}-s3-delete-media"
+  description = "Allow Lambda functions to delete stored media and thumbnails."
+  policy      = data.aws_iam_policy_document.s3_delete_media.json
+}
+
+data "aws_iam_policy_document" "s3_delete_query_uploads" {
+  statement {
+    sid    = "S3DeleteQueryUploadObjects"
+    effect = "Allow"
+
+    actions = [
+      "s3:DeleteObject"
+    ]
+
+    resources = local.s3_query_upload_object_arns
+  }
+}
+
+resource "aws_iam_policy" "s3_delete_query_uploads" {
+  name        = "${var.project_name}-s3-delete-query-uploads"
+  description = "Allow Lambda functions to clean up temporary query uploads."
+  policy      = data.aws_iam_policy_document.s3_delete_query_uploads.json
+}
+
 data "aws_iam_policy_document" "dynamodb_media_rw" {
   statement {
     sid    = "DynamoDBMediaReadWrite"
@@ -178,6 +289,93 @@ resource "aws_iam_policy" "dynamodb_media_rw" {
   name        = "${var.project_name}-dynamodb-media-rw"
   description = "Allow Lambda functions to read and write the media table."
   policy      = data.aws_iam_policy_document.dynamodb_media_rw.json
+}
+
+data "aws_iam_policy_document" "dynamodb_media_read" {
+  statement {
+    sid    = "DynamoDBMediaRead"
+    effect = "Allow"
+
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:Query",
+      "dynamodb:Scan"
+    ]
+
+    resources = [
+      local.media_table_arn,
+      "${local.media_table_arn}/index/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "dynamodb_media_read" {
+  name        = "${var.project_name}-dynamodb-media-read"
+  description = "Allow Lambda functions to read the media table."
+  policy      = data.aws_iam_policy_document.dynamodb_media_read.json
+}
+
+data "aws_iam_policy_document" "dynamodb_media_put" {
+  statement {
+    sid    = "DynamoDBMediaPut"
+    effect = "Allow"
+
+    actions = [
+      "dynamodb:PutItem"
+    ]
+
+    resources = [
+      local.media_table_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "dynamodb_media_put" {
+  name        = "${var.project_name}-dynamodb-media-put"
+  description = "Allow Lambda functions to insert media table records."
+  policy      = data.aws_iam_policy_document.dynamodb_media_put.json
+}
+
+data "aws_iam_policy_document" "dynamodb_media_update" {
+  statement {
+    sid    = "DynamoDBMediaUpdate"
+    effect = "Allow"
+
+    actions = [
+      "dynamodb:UpdateItem"
+    ]
+
+    resources = [
+      local.media_table_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "dynamodb_media_update" {
+  name        = "${var.project_name}-dynamodb-media-update"
+  description = "Allow Lambda functions to update media table records."
+  policy      = data.aws_iam_policy_document.dynamodb_media_update.json
+}
+
+data "aws_iam_policy_document" "dynamodb_media_delete" {
+  statement {
+    sid    = "DynamoDBMediaDelete"
+    effect = "Allow"
+
+    actions = [
+      "dynamodb:DeleteItem"
+    ]
+
+    resources = [
+      local.media_table_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "dynamodb_media_delete" {
+  name        = "${var.project_name}-dynamodb-media-delete"
+  description = "Allow Lambda functions to delete media table records."
+  policy      = data.aws_iam_policy_document.dynamodb_media_delete.json
 }
 
 data "aws_iam_policy_document" "dynamodb_subscription_rw" {
@@ -277,6 +475,73 @@ resource "aws_iam_policy" "sns_subscription_manage" {
   name        = "${var.project_name}-sns-subscription-manage"
   description = "Allow Lambda functions to manage SNS subscriptions."
   policy      = data.aws_iam_policy_document.sns_subscription_manage.json
+}
+
+data "aws_iam_policy_document" "sns_subscription_read" {
+  statement {
+    sid    = "SNSSubscriptionRead"
+    effect = "Allow"
+
+    actions = [
+      "sns:ListSubscriptionsByTopic",
+      "sns:GetSubscriptionAttributes"
+    ]
+
+    resources = [
+      local.sns_topic_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "sns_subscription_read" {
+  name        = "${var.project_name}-sns-subscription-read"
+  description = "Allow Lambda functions to read SNS subscription status."
+  policy      = data.aws_iam_policy_document.sns_subscription_read.json
+}
+
+data "aws_iam_policy_document" "sns_subscription_subscribe" {
+  statement {
+    sid    = "SNSSubscriptionSubscribe"
+    effect = "Allow"
+
+    actions = [
+      "sns:ListSubscriptionsByTopic",
+      "sns:Subscribe",
+      "sns:SetSubscriptionAttributes"
+    ]
+
+    resources = [
+      local.sns_topic_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "sns_subscription_subscribe" {
+  name        = "${var.project_name}-sns-subscription-subscribe"
+  description = "Allow Lambda functions to create or update SNS email subscriptions."
+  policy      = data.aws_iam_policy_document.sns_subscription_subscribe.json
+}
+
+data "aws_iam_policy_document" "sns_subscription_unsubscribe" {
+  statement {
+    sid    = "SNSSubscriptionUnsubscribe"
+    effect = "Allow"
+
+    actions = [
+      "sns:ListSubscriptionsByTopic",
+      "sns:Unsubscribe"
+    ]
+
+    resources = [
+      local.sns_topic_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "sns_subscription_unsubscribe" {
+  name        = "${var.project_name}-sns-subscription-unsubscribe"
+  description = "Allow Lambda functions to remove SNS email subscriptions."
+  policy      = data.aws_iam_policy_document.sns_subscription_unsubscribe.json
 }
 
 data "aws_iam_policy_document" "invoke_query_file" {

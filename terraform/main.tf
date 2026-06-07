@@ -40,111 +40,123 @@ module "iam_policies" {
 locals {
   lambda_policy_attachments = {
     change_visibility = [
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.dynamodb_media_read,
+      module.iam_policies.policy_arns.dynamodb_media_update
     ]
 
     create_query_file_job = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw,
-      module.iam_policies.policy_arns.lambda_invoke
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.dynamodb_media_put,
+      module.iam_policies.policy_arns.invoke_query_file
     ]
 
     delete_file = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.s3_delete_media,
+      module.iam_policies.policy_arns.dynamodb_media_read,
+      module.iam_policies.policy_arns.dynamodb_media_delete
     ]
 
     edit_tags = [
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.dynamodb_media_read,
+      module.iam_policies.policy_arns.dynamodb_media_update
     ]
 
     get_signed_url = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.s3_put_upload_media,
+      module.iam_policies.policy_arns.dynamodb_media_read,
+      module.iam_policies.policy_arns.dynamodb_media_put
     ]
 
     get_private_media = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.dynamodb_media_read
     ]
 
     get_public_media = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.dynamodb_media_read
     ]
 
     get_query_file_job = [
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.dynamodb_media_read
     ]
 
     get_query_upload_url = [
-      module.iam_policies.policy_arns.s3_media_rw
+      module.iam_policies.policy_arns.s3_put_query_uploads
     ]
 
     get_subscription = [
-      module.iam_policies.policy_arns.sns_topic_manage
+      module.iam_policies.policy_arns.sns_subscription_read
     ]
 
     get_upload_status = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.dynamodb_media_read
     ]
 
     media_ingest = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw,
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.s3_put_thumbnails,
+      module.iam_policies.policy_arns.dynamodb_media_read,
+      module.iam_policies.policy_arns.dynamodb_media_put,
+      module.iam_policies.policy_arns.dynamodb_media_update,
       module.iam_policies.policy_arns.lambda_invoke,
       module.iam_policies.policy_arns.secretsmanager_read
     ]
 
     process_ml_result = [
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.dynamodb_media_read,
+      module.iam_policies.policy_arns.dynamodb_media_put,
+      module.iam_policies.policy_arns.dynamodb_media_update
     ]
 
     publish_tags = [
       module.iam_policies.policy_arns.dynamodb_stream_read,
-      module.iam_policies.policy_arns.sns_topic_manage
+      module.iam_policies.policy_arns.sns_publish
     ]
 
     query_file = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.s3_delete_query_uploads,
+      module.iam_policies.policy_arns.dynamodb_media_read,
+      module.iam_policies.policy_arns.dynamodb_media_update
     ]
 
     query_species = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.dynamodb_media_read
     ]
 
     query_tags = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.dynamodb_media_read
     ]
 
     query_thumbnail_url = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.dynamodb_media_read
     ]
 
     tag_image = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw,
-      module.iam_policies.policy_arns.sns_topic_manage,
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.s3_put_thumbnails,
+      module.iam_policies.policy_arns.dynamodb_media_read,
+      module.iam_policies.policy_arns.dynamodb_media_update,
       module.iam_policies.policy_arns.secretsmanager_read
     ]
 
     tag_video = [
-      module.iam_policies.policy_arns.s3_media_rw,
-      module.iam_policies.policy_arns.dynamodb_media_rw,
-      module.iam_policies.policy_arns.sns_topic_manage
+      module.iam_policies.policy_arns.s3_read_media,
+      module.iam_policies.policy_arns.s3_put_thumbnails,
+      module.iam_policies.policy_arns.dynamodb_media_read,
+      module.iam_policies.policy_arns.dynamodb_media_update
     ]
 
     subscribe_tags = [
-      module.iam_policies.policy_arns.sns_topic_manage
+      module.iam_policies.policy_arns.sns_subscription_subscribe
     ]
 
     unsubscribe_tags = [
-      module.iam_policies.policy_arns.sns_topic_manage
+      module.iam_policies.policy_arns.sns_subscription_unsubscribe
     ]
   }
 
