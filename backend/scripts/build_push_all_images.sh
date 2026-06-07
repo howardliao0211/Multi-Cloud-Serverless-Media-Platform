@@ -10,8 +10,8 @@ set -euo pipefail
 # - backend/container_functions/tag_video/Dockerfile
 
 # - backend/container_functions/query_file/Dockerfile
-# - gcp/base_images/ml_processor_base/Dockerfile
-# - gcp/ml_processor/Dockerfile
+# - backend/gcp/base_images/ml_processor_base/Dockerfile
+# - backend/gcp/ml_processor/Dockerfile
 #
 # This script builds AWS Lambda images as linux/amd64 by default,
 # because current ML deps include intel-openmp, which has Linux x86_64
@@ -84,8 +84,8 @@ TAG_VIDEO_DOCKERFILE="${PROJECT_ROOT}/backend/container_functions/tag_video/Dock
 QUERY_FILE_DOCKERFILE="${PROJECT_ROOT}/backend/container_functions/query_file/Dockerfile"
 AWS_FUNCTION_CONTEXT="${PROJECT_ROOT}/backend"
 
-GCP_BASE_DOCKERFILE="${PROJECT_ROOT}/gcp/base_images/ml_processor_base/Dockerfile"
-GCP_APP_DOCKERFILE="${PROJECT_ROOT}/gcp/ml_processor/Dockerfile"
+GCP_BASE_DOCKERFILE="${PROJECT_ROOT}/backend/gcp/base_images/ml_processor_base/Dockerfile"
+GCP_APP_DOCKERFILE="${PROJECT_ROOT}/backend/gcp/ml_processor/Dockerfile"
 GCP_CONTEXT="${PROJECT_ROOT}"
 
 # ---------- Helpers ----------
@@ -225,10 +225,10 @@ if [[ ! -f "${PROJECT_ROOT}/backend/container_functions/tag_image/auth/gcp_wif_c
   echo "The image can build, but private Cloud Run invocation may fail at runtime."
 fi
 
-if [[ ! -f "${PROJECT_ROOT}/gcp/ml_processor/models/model.pt" || ! -f "${PROJECT_ROOT}/gcp/ml_processor/models/mdv5a.pt" ]]; then
+if [[ ! -f "${PROJECT_ROOT}/backend/gcp/ml_processor/models/model.pt" || ! -f "${PROJECT_ROOT}/backend/gcp/ml_processor/models/mdv5a.pt" ]]; then
   echo "Error: GCP model files are required for gcp/ml_processor image:"
-  echo "  gcp/ml_processor/models/model.pt"
-  echo "  gcp/ml_processor/models/mdv5a.pt"
+  echo "  backend/gcp/ml_processor/models/model.pt"
+  echo "  backend/gcp/ml_processor/models/mdv5a.pt"
   exit 1
 fi
 

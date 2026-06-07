@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install --no-cache-dir uv
 
-COPY backend-v2/gcp/ml_processor/pyproject.toml backend-v2/gcp/ml_processor/uv.lock ./
+COPY backend/gcp/ml_processor/pyproject.toml backend/gcp/ml_processor/uv.lock ./
 # The classifier checkpoint was saved from a model object that imports onnx2torch.
 # onnx2torch is required when torch.load unpickles the classifier model.
 # Install it without dependencies, while explicitly installing the ONNX runtime
