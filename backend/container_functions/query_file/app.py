@@ -231,22 +231,6 @@ def detect_image_query_tags(s3_key) -> Dict[str, int]:
 
 
 def detect_video_query_tags(s3_key, temp_path: Path) -> Dict[str, int]:
-    cap = cv2.VideoCapture(str(temp_path))
-
-    if not cap.isOpened():
-        raise ValueError(f"Cannot open video: {temp_path}")
-
-    try:
-        fps = cap.get(cv2.CAP_PROP_FPS)
-
-        if fps is None or fps <= 0:
-            fps = 30
-
-        frame_interval = max(int(round(fps)), 1)
-
-    finally:
-        cap.release()
-
     input_url = generate_presigned_get_url(bucket_name, s3_key)
 
     model_urls = GcpModelUrls(
@@ -260,8 +244,7 @@ def detect_video_query_tags(s3_key, temp_path: Path) -> Dict[str, int]:
         input_url=input_url,
         model_urls=model_urls,
         model_version=os.getenv("GCP_MODEL_VERSION", "model_presigned_url"),
-        sample_every_n_frames=frame_interval,
-        max_frame=None,
+        second_per_frame=1,
     )
 
     gcp_result = call_gcp_ml_processor(gcp_request)
