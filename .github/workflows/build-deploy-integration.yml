@@ -4,10 +4,10 @@ on:
     workflow_dispatch:
     pull_request:
         branches:
-            - fix/fixing_CDCD_script
+            - fix/fixing_CICD_script
     push:
         branches:
-            - fix/fixing_CDCD_script
+            - fix/fixing_CICD_script
 
 permissions:
     contents: read
@@ -74,7 +74,6 @@ jobs:
 
             - name: Build and deploy container functions
               env:
-                  LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}
                   BASE_IMAGE_NAME: gcp_client_base
                   IMAGE_TAG: integration
               run: |
@@ -82,8 +81,6 @@ jobs:
                   df -h
                   docker system df || true
 
-                  chmod +x backend/scripts/create_iam_role.sh
-                  bash backend/scripts/create_iam_role.sh
                   chmod +x backend/scripts/deploy_all_functions.sh
                   bash backend/scripts/deploy_all_functions.sh
 

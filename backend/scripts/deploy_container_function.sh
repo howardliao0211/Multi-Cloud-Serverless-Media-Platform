@@ -12,9 +12,12 @@ EPHEMERAL_STORAGE_MB="${EPHEMERAL_STORAGE_MB:-4096}"
 BUILD_NO_CACHE="${BUILD_NO_CACHE:-false}"
 
 # For creating the Lambda if it does not exist.
-# Prefer LAMBDA_ROLE_ARN. If it is not set, resolve LAMBDA_ROLE_NAME.
-LAMBDA_ROLE_NAME="${LAMBDA_ROLE_NAME:-aussie-eco-len-lambda-role}"
-LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-arn:aws:iam::539913718279:role/aussie-eco-len-lambda-role}"
+# Terraform creates one role per Lambda using:
+#   ${PROJECT_NAME}-${FUNCTION_NAME}-role
+# Prefer an explicit LAMBDA_ROLE_ARN, otherwise resolve the per-function role.
+PROJECT_NAME="${PROJECT_NAME:-aussie-eco-len}"
+LAMBDA_ROLE_NAME="${LAMBDA_ROLE_NAME:-${PROJECT_NAME}-${FUNCTION_NAME}-role}"
+LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-}"
 
 # Optional environment variables passed to the Lambda container.
 BUCKET_NAME="${BUCKET_NAME:-}"
