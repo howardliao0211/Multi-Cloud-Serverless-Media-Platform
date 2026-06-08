@@ -17,7 +17,7 @@ def _get_media_record(table, item):
     return response.get("Item")
 
 
-def _api_event(method, body=None, user_id="integration-test-user"):
+def _api_event(method, body=None, query_params=None, user_id="integration-test-user", email="integration-test-user@example.com"):
     event = {
         "httpMethod": method,
         "requestContext": {
@@ -25,6 +25,7 @@ def _api_event(method, body=None, user_id="integration-test-user"):
                 "jwt": {
                     "claims": {
                         "sub": user_id,
+                        "email": email,
                     }
                 }
             }
@@ -33,6 +34,9 @@ def _api_event(method, body=None, user_id="integration-test-user"):
 
     if body is not None:
         event["body"] = json.dumps(body)
+
+    if query_params is not None:
+        event["queryStringParameters"] = query_params
 
     return event
 
@@ -62,25 +66,25 @@ def _build_db_key(owner_id, full_key):
 
 def _put_media_record(table, **overrides):
     item = {
+        "key": "OWNER#integration-test-user#KEY#integration-tests/integration-test.png",
         "owner_id": "integration-test-user",
-        "file_name": "integration-query-test.png",
-        "checksum": "integration-query-test-checksum",
-        "full_key": "integration-tests/query/integration-query-test.png",
+        "file_name": "integration-test.png",
+        "checksum": "integration-test-checksum",
+        "full_key": "integration-tests/integration-test.png",
         "visibility": "private",
-        "full_url": "https://example.invalid/full.png",
+        "full_url": "https://example.invalid/full",
         "file_type": "image/png",
-        "thumbnail_key": "integration-tests/query/integration-query-test-thumb.jpg",
-        "thumbnail_url": "https://example.invalid/thumb.jpg",
-        "tags": {
-            "koala": 2,
-            "wombat": 1,
-        },
+        "thumbnail_key": "integration-tests/integration-test-thumb.jpg",
+        "thumbnail_url": "https://example.invalid/thumb",
+        "tags": {},
         "ml_detections": [],
         "upload_status": "ready",
         "error_message": None,
     }
 
     item.update(overrides)
+    if "owner_email" not in overrides:
+        item["owner_email"] = f"{item["owner_id"]}@example.com"
     item["key"] = _build_db_key(item["owner_id"], item["full_key"])
 
     table.put_item(Item=item)
@@ -165,7 +169,7 @@ def test_query_tag(aws_clients, integration_config, unique_id):
     try:
         response = _invoke_lambda(
             lambda_client,
-            integration_config["query_tags_function"],
+            "query_tags",
             _api_event(
                 "POST",
                 body={

@@ -38,7 +38,7 @@ def _checksum(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def _api_event(method, body=None, query_params=None, user_id="integration-test-user"):
+def _api_event(method, body=None, query_params=None, user_id="integration-test-user", email="integration-test-user@example.com"):
     event = {
         "httpMethod": method,
         "requestContext": {
@@ -46,6 +46,7 @@ def _api_event(method, body=None, query_params=None, user_id="integration-test-u
                 "jwt": {
                     "claims": {
                         "sub": user_id,
+                        "email": email,
                     }
                 }
             }
@@ -163,6 +164,7 @@ def _put_media_record(table, **overrides):
     }
 
     item.update(overrides)
+    item["owner_email"] = f"{item["owner_id"]}@example.com"
     item["key"] = _build_db_key(item["owner_id"], item["full_key"])
     item["full_url"] = f"https://test_bucket.s3.test-region.amazonaws.com/{item["full_key"]}"
 
@@ -263,7 +265,6 @@ def _cleanup_media(table, s3, bucket, record=None, s3_keys=None):
 
 def test_tag_image(aws_clients, integration_config, unique_id):
     s3 = aws_clients["s3"]
-    lambda_client = aws_clients["lambda"]
     table = aws_clients["table"]
     bucket = integration_config["bucket"]
 
@@ -418,6 +419,7 @@ def test_media(aws_clients, integration_config, unique_id):
     table = aws_clients["table"]
     bucket = integration_config["bucket"]
     user_id = integration_config["test_user_id"]
+    user_email = integration_config["test_user_email"]
 
     image = _solid_png_bytes()
     checksum = "integration_test_" + _checksum(image)
@@ -441,6 +443,7 @@ def test_media(aws_clients, integration_config, unique_id):
                     "visibility": "private",
                 },
                 user_id=user_id,
+                email=user_email
             ),
         )
 
@@ -488,6 +491,7 @@ def test_media(aws_clients, integration_config, unique_id):
         assert record["file_name"] == file_name
         assert record["checksum"] == checksum
         assert record["owner_id"] == user_id
+        assert record["owner_email"] == user_email
         assert record["visibility"] == "private"
 
     finally:

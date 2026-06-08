@@ -2,22 +2,18 @@
 set -euo pipefail
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-FUNCTION_NAME="${FUNCTION_NAME:-query_file}"
+FUNCTION_NAME="${FUNCTION_NAME:-tag_image}"
 REPOSITORY_NAME="${ECR_REPOSITORY_NAME:-aussie_eco_len}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
-ARCHITECTURE="${ARCHITECTURE:-${AWS_ARCHITECTURE:-x86_64}}"
+ARCHITECTURE="${ARCHITECTURE:-x86_64}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-900}"
 MEMORY_SIZE_MB="${MEMORY_SIZE_MB:-3008}"
 EPHEMERAL_STORAGE_MB="${EPHEMERAL_STORAGE_MB:-4096}"
-BUILD_NO_CACHE="${BUILD_NO_CACHE:-false}"
 
 # For creating the Lambda if it does not exist.
-# Terraform creates one role per Lambda using:
-#   ${PROJECT_NAME}-${FUNCTION_NAME}-role
-# Prefer an explicit LAMBDA_ROLE_ARN, otherwise resolve the per-function role.
-PROJECT_NAME="${PROJECT_NAME:-aussie-eco-len}"
-LAMBDA_ROLE_NAME="${LAMBDA_ROLE_NAME:-${PROJECT_NAME}-${FUNCTION_NAME}-role}"
-LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-}"
+# Prefer LAMBDA_ROLE_ARN. If it is not set, resolve LAMBDA_ROLE_NAME.
+LAMBDA_ROLE_NAME="${LAMBDA_ROLE_NAME:-aussie-eco-len-lambda-role}"
+LAMBDA_ROLE_ARN="${LAMBDA_ROLE_ARN:-arn:aws:iam::539913718279:role/aussie-eco-len-lambda-role}"
 
 # Optional environment variables passed to the Lambda container.
 BUCKET_NAME="${BUCKET_NAME:-}"
@@ -25,10 +21,6 @@ TABLE_NAME="${TABLE_NAME:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-if [[ -z "${ECR_REPOSITORY_NAME:-}" ]]; then
-  REPOSITORY_NAME="aussie-ecolens-${FUNCTION_NAME//_/-}"
-fi
 
 # Important:
 # Use the backend root as Docker context so the Dockerfile can access:
@@ -137,17 +129,13 @@ aws ecr get-login-password --region "${AWS_REGION}" | \
   docker login --username AWS --password-stdin "${ECR_REGISTRY}"
 
 echo "Building Docker image..."
-DOCKER_BUILD_ARGS=(
-  --platform "${DOCKER_PLATFORM}"
-  -t "${LOCAL_IMAGE}"
-  -f "${DOCKERFILE}"
-)
-
-if [[ "${BUILD_NO_CACHE}" == "true" ]]; then
-  DOCKER_BUILD_ARGS+=(--no-cache)
-fi
-
-docker build "${DOCKER_BUILD_ARGS[@]}" "${DOCKER_CONTEXT}"
+docker buildx build \
+  --platform "${DOCKER_PLATFORM}" \
+  --provenance=false \
+  --no-cache \
+  -t "${LOCAL_IMAGE}" \
+  -f "${DOCKERFILE}" \
+  "${DOCKER_CONTEXT}"
 
 echo "Pushing Docker image..."
 docker tag "${LOCAL_IMAGE}" "${REMOTE_IMAGE}"

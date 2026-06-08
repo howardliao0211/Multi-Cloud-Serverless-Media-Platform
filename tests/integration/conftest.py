@@ -108,6 +108,7 @@ def integration_config():
         "query_tags_function": "query_tags",
         "delete_file_function": "delete_file",
         "test_user_id": "integration-test-user",
+        "test_user_email": "integration-test-user@example.com",
         "test_video_path": os.getenv("TEST_VIDEO_PATH", "./integration/test_video.mp4")
     }
 

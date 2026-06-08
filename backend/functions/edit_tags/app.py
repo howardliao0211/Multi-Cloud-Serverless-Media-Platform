@@ -53,15 +53,29 @@ def build_requested_tag_deltas(
     request: EditTagsRequest,
 ) -> dict[str, int]:
     tag_deltas: dict[str, int] = {}
+
     direction = 1 if request.operation_key == 1 else -1
+
+    # normalized tag -> first cleaned raw tag from request
+    normalized_to_request_tag: dict[str, str] = {}
 
     for tag_count in request.tags:
         raw_tag, count = next(iter(tag_count.items()))
-        normalized_tag = raw_tag.strip().lower()
+
+        cleaned_tag = raw_tag.strip()
+        normalized_tag = cleaned_tag.lower()
 
         delta = count * direction
-        tag_deltas[normalized_tag] = (
-            tag_deltas.get(normalized_tag, 0) + delta
+
+        # Preserve request casing for new tags,
+        # but merge same tags case-insensitively.
+        request_tag_key = normalized_to_request_tag.setdefault(
+            normalized_tag,
+            cleaned_tag,
+        )
+
+        tag_deltas[request_tag_key] = (
+            tag_deltas.get(request_tag_key, 0) + delta
         )
 
     return {
@@ -77,14 +91,28 @@ def apply_tag_deltas_to_media(
 ) -> dict[str, int]:
     updated_tags = dict(media_record.tags)
 
-    for tag, delta in tag_deltas.items():
-        next_count = updated_tags.get(tag, 0) + delta
+    # normalized tag -> original tag key from media_record.tags
+    existing_tag_lookup: dict[str, str] = {
+        tag.strip().lower(): tag
+        for tag in updated_tags
+    }
+
+    for requested_tag, delta in tag_deltas.items():
+        normalized_tag = requested_tag.strip().lower()
+
+        # Existing tag: preserve media_record casing.
+        # New tag: use request casing.
+        tag_key = existing_tag_lookup.get(normalized_tag, requested_tag)
+
+        next_count = updated_tags.get(tag_key, 0) + delta
 
         if next_count <= 0:
-            updated_tags.pop(tag, None)
+            updated_tags.pop(tag_key, None)
+            existing_tag_lookup.pop(normalized_tag, None)
             continue
 
-        updated_tags[tag] = next_count
+        updated_tags[tag_key] = next_count
+        existing_tag_lookup[normalized_tag] = tag_key
 
     return updated_tags
 
