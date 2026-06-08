@@ -2,9 +2,10 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEPLOY_SCRIPT="${PROJECT_ROOT}/scripts/deploy_function.sh"
-FUNCTIONS_DIR="${PROJECT_ROOT}/functions"
-BUILD_DIR="${PROJECT_ROOT}/build"
+BUILD_BASE_SCRIPT="${PROJECT_ROOT}/scripts/build_base_image.sh"
+DEPLOY_SCRIPT="${PROJECT_ROOT}/scripts/deploy_container_function.sh"
+FUNCTIONS_DIR="${PROJECT_ROOT}/container_functions"
+BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-gcp_client_base}"
 
 if [[ ! -d "${FUNCTIONS_DIR}" ]]; then
   echo "Error: functions directory not found: ${FUNCTIONS_DIR}" >&2
@@ -13,6 +14,11 @@ fi
 
 if [[ ! -f "${DEPLOY_SCRIPT}" ]]; then
   echo "Error: deploy script not found: ${DEPLOY_SCRIPT}" >&2
+  exit 1
+fi
+
+if [[ ! -f "${BUILD_BASE_SCRIPT}" ]]; then
+  echo "Error: build base image script not found: ${BUILD_BASE_SCRIPT}" >&2
   exit 1
 fi
 
@@ -30,12 +36,13 @@ if [[ "${#FUNCTIONS[@]}" -eq 0 ]]; then
 fi
 
 chmod +x "${DEPLOY_SCRIPT}"
+chmod +x "${BUILD_BASE_SCRIPT}"
 
-echo "Cleaning build directory: ${BUILD_DIR}"
-rm -rf "${BUILD_DIR}"
-mkdir -p "${BUILD_DIR}"
+echo "Building shared container base image: ${BASE_IMAGE_NAME}"
+BASE_IMAGE_NAME="${BASE_IMAGE_NAME}" bash "${BUILD_BASE_SCRIPT}"
+echo
 
-echo "Deploying ${#FUNCTIONS[@]} Lambda functions..."
+echo "Deploying ${#FUNCTIONS[@]} container Lambda functions..."
 echo
 
 for FUNCTION_NAME in "${FUNCTIONS[@]}"; do
@@ -43,9 +50,7 @@ for FUNCTION_NAME in "${FUNCTIONS[@]}"; do
   echo "Deploying function: ${FUNCTION_NAME}"
   echo "=================================================="
 
-  BUILD_DIR="${BUILD_DIR}" \
   FUNCTION_NAME="${FUNCTION_NAME}" \
-  REBUILD_LAYER=false \
   bash "${DEPLOY_SCRIPT}"
 
   echo
@@ -53,4 +58,4 @@ for FUNCTION_NAME in "${FUNCTIONS[@]}"; do
   echo
 done
 
-echo "All Lambda functions deployed successfully."
+echo "All container Lambda functions deployed successfully."
