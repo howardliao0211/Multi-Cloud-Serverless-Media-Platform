@@ -304,8 +304,7 @@ def real_video_inference(
     input_url: str,
     model_urls: dict | None = None,
     model_version: str | None = None,
-    sample_every_n_frames: int | None = None,
-    max_frame: int | None = None,
+    second_per_frame: int | None = None,
 ):
     tagger = get_tagger(model_urls, model_version)
 
@@ -321,14 +320,16 @@ def real_video_inference(
 
     try:
         fps = cap.get(cv2.CAP_PROP_FPS) or 0
-        explicit_interval = _positive_int_or_none(sample_every_n_frames, "sample_every_n_frames")
-        frame_interval = explicit_interval or (max(int(round(fps)), 1) if fps > 0 else 30)
+        seconds_interval = _positive_int_or_none(second_per_frame, "second_per_frame") or 1
+        frame_interval = (
+            max(int(round(fps * seconds_interval)), 1)
+            if fps > 0
+            else 30 * seconds_interval
+        )
 
         frame_count = 0
         sampled_count = 0
-        max_sampled_frames = _positive_int_or_none(max_frame, "max_frame")
-        if max_sampled_frames is None:
-            max_sampled_frames = _video_max_sampled_frames()
+        max_sampled_frames = _video_max_sampled_frames()
 
         while True:
             if max_sampled_frames is not None and sampled_count >= max_sampled_frames:
@@ -424,8 +425,7 @@ class Handler(BaseHTTPRequestHandler):
             input_url = _extract_input_url(payload)
             model_urls = payload.get("model_urls") or {}
             model_version = payload.get("model_version") or os.environ.get("GCP_MODEL_VERSION", "default")
-            sample_every_n_frames = payload.get("sample_every_n_frames")
-            max_frame = payload.get("max_frame")
+            second_per_frame = payload.get("second_per_frame")
 
             if not request_id:
                 return json_response(self, 400, {"error": "Missing request_id"})
@@ -443,8 +443,7 @@ class Handler(BaseHTTPRequestHandler):
                     input_url,
                     model_urls,
                     model_version,
-                    sample_every_n_frames,
-                    max_frame,
+                    second_per_frame,
                 )
             else:
                 return json_response(self, 400, {"error": "media_type must be image or video"})

@@ -19,8 +19,7 @@ class GcpMlRequest(BaseModel):
     input_url: str
     model_urls: GcpModelUrls
     model_version: str
-    sample_every_n_frames: int | None = None
-    max_frame: int | None = None
+    second_per_frame: int | None = None
 
 
 class GcpMlFrame(BaseModel):
