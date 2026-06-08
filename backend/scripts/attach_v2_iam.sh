@@ -9,7 +9,7 @@ LAMBDA_ROLE_NAME="${LAMBDA_ROLE_NAME:-aussie-eco-len-lambda-role}"
 
 PROCESS_ML_RESULT_FUNCTION_NAME="${PROCESS_ML_RESULT_FUNCTION_NAME:-process_ml_result_v2}"
 
-POLICY_NAME="${POLICY_NAME:-backend-v2-runtime-access}"
+POLICY_NAME="${POLICY_NAME:-backend-runtime-access}"
 POLICY_FILE="$(mktemp)"
 
 cat > "$POLICY_FILE" <<JSON

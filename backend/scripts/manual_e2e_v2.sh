@@ -2,18 +2,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-REPO_ROOT="$(cd "${BACKEND_V2_DIR}/.." && pwd)"
+BACKEND_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${BACKEND_DIR}/.." && pwd)"
 
 # shellcheck source=/dev/null
-source "${SCRIPT_DIR}/load_env.sh" "${BACKEND_V2_DIR}/.env"
+source "${SCRIPT_DIR}/load_env.sh" "${BACKEND_DIR}/.env"
 
 export AWS_PAGER=""
 
 OWNER_ID="${OWNER_ID:-manual-v2-test-user}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%d%H%M%S)}"
 IMAGE_FILE="${IMAGE_FILE:-${REPO_ROOT}/tests/fixtures/media/Perameles_nasuta_1.JPG}"
-VIDEO_FILE="${VIDEO_FILE:-${REPO_ROOT}/tests/integration/test_video.mp4}"
+VIDEO_FILE="${VIDEO_FILE:-${REPO_ROOT}/tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4}"
 DO_CLEANUP="false"
 
 if [[ "${1:-}" == "--cleanup" ]]; then
@@ -221,7 +221,7 @@ PY
   echo
 }
 
-echo "== Manual backend-v2 E2E =="
+echo "== Manual backend E2E =="
 echo "RUN_ID=${RUN_ID}"
 echo "OWNER_ID=${OWNER_ID}"
 echo "MEDIA_BUCKET_NAME=${MEDIA_BUCKET_NAME}"

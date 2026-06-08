@@ -2,18 +2,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_V2_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-REPO_ROOT="$(cd "${BACKEND_V2_DIR}/.." && pwd)"
+BACKEND_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${BACKEND_DIR}/.." && pwd)"
 
 # shellcheck source=/dev/null
-source "${SCRIPT_DIR}/load_env.sh" "${BACKEND_V2_DIR}/.env"
+source "${SCRIPT_DIR}/load_env.sh" "${BACKEND_DIR}/.env"
 
 export AWS_PAGER=""
 
 OWNER_ID="${OWNER_ID:-verify-live-flow-user}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%d%H%M%S)}"
 IMAGE_FILE="${IMAGE_FILE:-${REPO_ROOT}/tests/fixtures/media/Perameles_nasuta_1.JPG}"
-VIDEO_FILE="${VIDEO_FILE:-${REPO_ROOT}/tests/integration/test_video.mp4}"
+VIDEO_FILE="${VIDEO_FILE:-${REPO_ROOT}/tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4}"
 OUT_DIR="${OUT_DIR:-${REPO_ROOT}/.verify-live-flow/${RUN_ID}}"
 POLL_INTERVAL_SECONDS="${POLL_INTERVAL_SECONDS:-5}"
 IMAGE_TIMEOUT_SECONDS="${IMAGE_TIMEOUT_SECONDS:-300}"

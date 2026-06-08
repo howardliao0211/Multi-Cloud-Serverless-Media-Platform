@@ -164,7 +164,9 @@ def _put_media_record(table, **overrides):
 
     item.update(overrides)
     item["key"] = _build_db_key(item["owner_id"], item["full_key"])
-    item["full_url"] = f"https://test_bucket.s3.test-region.amazonaws.com/{item["full_key"]}"
+    item["full_url"] = (
+        f"https://test_bucket.s3.test-region.amazonaws.com/{item['full_key']}"
+    )
 
     table.put_item(Item=item)
     return item

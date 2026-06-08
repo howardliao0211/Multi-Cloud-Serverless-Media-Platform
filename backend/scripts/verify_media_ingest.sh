@@ -4,24 +4,24 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-ENV_FILE="${ENV_FILE:-backend-v2/.env}"
+ENV_FILE="${ENV_FILE:-backend/.env}"
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "Missing env file: $ENV_FILE"
   exit 1
 fi
 
-source backend-v2/scripts/load_env.sh "$ENV_FILE"
+source backend/scripts/load_env.sh "$ENV_FILE"
 
 export AWS_PAGER="${AWS_PAGER:-}"
 export GCP_PROJECT_ID="${GCP_PROJECT_ID:-hazel-sphinx-490908-u6}"
 export GCP_REGION="${GCP_REGION:-us-east4}"
 export SERVICE_NAME="${GCP_SERVICE_NAME:-aussie-eco-len-us-demo-ml-processor}"
 
-TEST_FILE="tests/integration/test_media_flow_v2.py"
+TEST_FILE="tests/integration/test_media_flow.py"
 EVIDENCE_DIR="evidence"
 
-echo "== Backend v2 media ingest verification =="
+echo "== Backend media ingest verification =="
 echo "ROOT_DIR=$ROOT_DIR"
 echo "TEST_FILE=$TEST_FILE"
 echo "GCP_PROJECT_ID=$GCP_PROJECT_ID"
@@ -35,15 +35,15 @@ if [ ! -f "$TEST_FILE" ]; then
 fi
 
 echo "== Checking whether video test already exists =="
-if grep -q "test_backend_v2_video_ingest_end_to_end" "$TEST_FILE"; then
+if grep -q "test_backend_video_ingest_end_to_end" "$TEST_FILE"; then
   echo "Video integration test already exists. Skipping patch."
 else
   echo "Adding video integration test to $TEST_FILE"
 
   cat >> "$TEST_FILE" <<'PY'
 
-def test_backend_v2_video_ingest_end_to_end() -> None:
-    test_video = Path("integration/test_video.mp4")
+def test_backend_video_ingest_end_to_end() -> None:
+    test_video = Path("fixtures/media/5214219-hd_1920_1080_25fps.mp4")
     assert test_video.exists(), f"Missing test video: {test_video}"
 
     run_id = uuid.uuid4().hex
@@ -101,8 +101,8 @@ mkdir -p "$EVIDENCE_DIR"
 
 (
   cd tests
-  uv run pytest -s integration/test_media_flow_v2.py
-) | tee "$EVIDENCE_DIR/backend-v2-media-ingest-final.txt"
+  uv run pytest -s integration/test_media_flow.py
+) | tee "$EVIDENCE_DIR/backend-media-ingest-final.txt"
 
 echo
 echo "== Capturing Cloud Run evidence =="
@@ -133,6 +133,6 @@ git status --short
 echo
 echo "Done."
 echo "Evidence written to:"
-echo "  $EVIDENCE_DIR/backend-v2-media-ingest-final.txt"
+echo "  $EVIDENCE_DIR/backend-media-ingest-final.txt"
 echo "  $EVIDENCE_DIR/gcp-cloud-run-v2-final.yaml"
 echo "  $EVIDENCE_DIR/gcp-cloud-run-debug-version.json"

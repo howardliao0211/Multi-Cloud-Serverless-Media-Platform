@@ -108,7 +108,10 @@ def integration_config():
         "query_tags_function": "query_tags",
         "delete_file_function": "delete_file",
         "test_user_id": "integration-test-user",
-        "test_video_path": os.getenv("TEST_VIDEO_PATH", "./integration/test_video.mp4")
+        "test_video_path": os.getenv(
+            "TEST_VIDEO_PATH",
+            "tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4",
+        )
     }
 
 

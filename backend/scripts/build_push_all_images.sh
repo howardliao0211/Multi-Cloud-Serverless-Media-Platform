@@ -231,13 +231,6 @@ if [[ ! -f "${PROJECT_ROOT}/backend/container_functions/tag_image/auth/gcp_wif_c
   echo "The image can build, but private Cloud Run invocation may fail at runtime."
 fi
 
-if [[ ! -f "${PROJECT_ROOT}/backend/gcp/ml_processor/models/model.pt" || ! -f "${PROJECT_ROOT}/backend/gcp/ml_processor/models/mdv5a.pt" ]]; then
-  echo "Error: GCP model files are required for gcp/ml_processor image:"
-  echo "  backend/gcp/ml_processor/models/model.pt"
-  echo "  backend/gcp/ml_processor/models/mdv5a.pt"
-  exit 1
-fi
-
 if [[ -z "${GCP_PROJECT_ID}" ]]; then
   echo "Error: GCP_PROJECT_ID is required." >&2
   exit 1

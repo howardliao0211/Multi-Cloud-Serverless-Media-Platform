@@ -2,6 +2,15 @@ name: Integration Tests
 
 on:
     workflow_dispatch:
+        inputs:
+            run_cloud_tests:
+                description: "Run tests against deployed AWS resources"
+                required: false
+                default: "false"
+                type: choice
+                options:
+                    - "false"
+                    - "true"
     pull_request:
         branches:
             - main
@@ -12,23 +21,83 @@ permissions:
     contents: read
 
 jobs:
-    integration-tests:
-        name: Run integration tests
+    static-checks:
+        name: Static CI checks
         runs-on: ubuntu-latest
         timeout-minutes: 20
 
         env:
-            TEST_VIDEO_PATH: tests/integration/test_video.mp4
+            TEST_VIDEO_PATH: tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4
 
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
+              with:
+                  lfs: true
 
             - name: Set up Python
               uses: actions/setup-python@v5
               with:
                   python-version: "3.12"
                   cache: "pip"
+
+            - name: Pull Git LFS media fixtures
+              run: git lfs pull
+
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  python -m pip install -e tests
+
+            - name: Validate shell scripts
+              run: |
+                  bash -n backend/scripts/build_push_all_images.sh
+                  bash -n backend/scripts/create_iam_role.sh
+                  bash -n backend/scripts/deploy_all_functions.sh
+                  bash -n backend/scripts/deploy_gcp_ml_processor.sh
+                  bash -n backend/scripts/load_env.sh
+
+            - name: Compile Python files
+              run: |
+                  python -m py_compile \
+                    tests/integration/conftest.py \
+                    tests/integration/test_media_flow.py \
+                    tests/integration/test_query_flow.py \
+                    backend/gcp/ml_processor/server.py \
+                    backend/layers/python/shared/model.py
+
+            - name: Validate required video fixture
+              run: test -s "$TEST_VIDEO_PATH"
+
+    cloud-integration-tests:
+        name: Cloud integration tests
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        if: github.event_name == 'workflow_dispatch' && inputs.run_cloud_tests == 'true'
+
+        env:
+            TEST_VIDEO_PATH: tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  lfs: true
+
+            - name: Pull Git LFS media fixtures
+              run: git lfs pull
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+                  cache: "pip"
+
+            - name: Validate required AWS secrets
+              run: |
+                  test -n "${{ secrets.AWS_ACCESS_KEY_ID }}" || (echo "Missing secret AWS_ACCESS_KEY_ID" && exit 1)
+                  test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || (echo "Missing secret AWS_SECRET_ACCESS_KEY" && exit 1)
+                  test -n "${{ secrets.AWS_REGION }}" || (echo "Missing secret AWS_REGION" && exit 1)
 
             - name: Configure AWS credentials
               uses: aws-actions/configure-aws-credentials@v4
@@ -38,14 +107,12 @@ jobs:
                   aws-region: ${{ secrets.AWS_REGION }}
 
             - name: Verify AWS identity
-              run: |
-                  aws sts get-caller-identity
+              run: aws sts get-caller-identity
 
             - name: Install dependencies
               run: |
                   python -m pip install --upgrade pip
-                  pip install pytest boto3 requests
+                  python -m pip install -e tests
 
             - name: Run integration tests
-              run: |
-                  pytest tests/integration -vv -s
+              run: pytest tests/integration -vv -s

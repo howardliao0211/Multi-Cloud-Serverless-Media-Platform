@@ -15,7 +15,10 @@ permissions:
 env:
     AWS_REGION: ${{ secrets.AWS_REGION }}
     AWS_ARCHITECTURE: x86_64
-    TEST_VIDEO_PATH: tests/integration/test_video.mp4
+    GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+    GCP_REGION: ${{ vars.GCP_REGION }}
+    GCP_APP_IMAGE_URL: ${{ secrets.GCP_APP_IMAGE_URL }}
+    TEST_VIDEO_PATH: tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4
 
 jobs:
     build-deploy-test:
@@ -26,6 +29,11 @@ jobs:
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
+              with:
+                  lfs: true
+
+            - name: Pull Git LFS media fixtures
+              run: git lfs pull
 
             - name: Set up Python
               uses: actions/setup-python@v5
@@ -66,6 +74,8 @@ jobs:
             - name: Verify cloud identities
               run: |
                   aws sts get-caller-identity
+                  gcloud auth list
+                  gcloud config set project "$GCP_PROJECT_ID"
 
             - name: Install test dependencies
               run: |

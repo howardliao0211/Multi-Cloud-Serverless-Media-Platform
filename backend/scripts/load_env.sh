@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-ENV_FILE="${1:-backend-v2/.env}"
+ENV_FILE="${1:-backend/.env}"
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "Missing env file: $ENV_FILE"
-  echo "Create one with: cp backend-v2/.env.example backend-v2/.env"
+  echo "Create one with: cp backend/.env.example backend/.env"
   return 1 2>/dev/null || exit 1
 fi
 
