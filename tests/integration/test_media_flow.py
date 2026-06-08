@@ -23,8 +23,10 @@ def _png_chunk(chunk_type, data):
     )
 
 
-def _solid_png_bytes(width=32, height=32):
-    row = b"\x00" + (b"\x35\x8f\xcf" * width)
+def _solid_png_bytes(seed="default", width=32, height=32):
+    digest = hashlib.sha256(seed.encode("utf-8")).digest()
+    color = digest[:3]
+    row = b"\x00" + (color * width)
     raw = row * height
     return (
         b"\x89PNG\r\n\x1a\n"
@@ -278,7 +280,7 @@ def test_tag_image(aws_clients, integration_config, unique_id):
     table = aws_clients["table"]
     bucket = integration_config["bucket"]
 
-    image = _solid_png_bytes()
+    image = _solid_png_bytes(unique_id)
     checksum = "integration_test_" + _checksum(image)
     file_name = f"{unique_id}.png"
 
@@ -357,7 +359,7 @@ def test_tag_video(aws_clients, integration_config, unique_id):
     bucket = integration_config["bucket"]
 
     video = Path(video_path).read_bytes()
-    checksum = "integration_test_" + _checksum(video)
+    checksum = f"integration_test_{unique_id}_{_checksum(video)}"
     file_name = f"{unique_id}.mp4"
 
     # Fixed: do not add integration_test_ twice.
@@ -435,7 +437,7 @@ def test_media(aws_clients, integration_config, unique_id):
     user_id = integration_config["test_user_id"]
     user_email = integration_config["test_user_email"]
 
-    image = _solid_png_bytes()
+    image = _solid_png_bytes(unique_id)
     checksum = "integration_test_" + _checksum(image)
     file_name = f"{unique_id}.png"
 
@@ -531,7 +533,7 @@ def test_upper_case_media(aws_clients, integration_config, unique_id):
     user_id = integration_config["test_user_id"]
     user_email = integration_config["test_user_email"]
 
-    image = _solid_png_bytes()
+    image = _solid_png_bytes(unique_id)
     checksum = "integration_test_" + _checksum(image)
     file_name = f"{unique_id}.png"
 

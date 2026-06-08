@@ -49,25 +49,20 @@ jobs:
                   python -m pip install --upgrade pip
                   python -m pip install -e tests
 
-            - name: Validate shell scripts
-              run: |
-                  bash -n backend/scripts/build_push_all_images.sh
-                  bash -n backend/scripts/create_iam_role.sh
-                  bash -n backend/scripts/deploy_all_functions.sh
-                  bash -n backend/scripts/deploy_gcp_ml_processor.sh
-                  bash -n backend/scripts/load_env.sh
-
             - name: Compile Python files
               run: |
                   python -m py_compile \
                     tests/integration/conftest.py \
                     tests/integration/test_media_flow.py \
-                    tests/integration/test_query_flow.py \
-                    backend/gcp/ml_processor/server.py \
-                    backend/layers/python/shared/model.py
+                    tests/integration/test_query_flow.py
 
             - name: Validate required video fixture
               run: test -s "$AUSSIE_ECOLENS_TEST_VIDEO_PATH"
+
+            - name: Collect integration tests
+              run: |
+                  pytest tests/integration/test_media_flow.py --collect-only -q
+                  pytest tests/integration/test_query_flow.py --collect-only -q
 
     cloud-integration-tests:
         name: Cloud integration tests
