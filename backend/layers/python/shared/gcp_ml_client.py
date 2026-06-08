@@ -159,8 +159,7 @@ def get_google_id_token() -> str | None:
         return None
 
     if not Path(credentials_file).exists():
-        print(
-            f"GCP auth disabled: WIF credentials file not found: {credentials_file}")
+        print(f"GCP auth disabled: WIF credentials file not found: {credentials_file}")
         return None
 
     source_credentials, _ = google_auth.load_credentials_from_file(
@@ -222,17 +221,8 @@ def call_gcp_ml_processor(
         "model_version": request.model_version,
     }
 
-    if request.sample_every_n_frames is not None:
-        payload["sample_every_n_frames"] = request.sample_every_n_frames
-
-    if request.max_frame is not None:
-        payload["max_frame"] = request.max_frame
-
-    if request.sample_every_n_frames is not None:
-        payload["sample_every_n_frames"] = request.sample_every_n_frames
-
-    if request.max_frame is not None:
-        payload["max_frame"] = request.max_frame
+    if request.second_per_frame is not None:
+        payload["second_per_frame"] = request.second_per_frame
 
     body = _canonical_body(payload)
 
@@ -257,7 +247,6 @@ def call_gcp_ml_processor(
             return GcpMlResponse.model_validate_json(response_body)
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"GCP ML processor HTTP {exc.code}: {error_body}") from exc
+        raise RuntimeError(f"GCP ML processor HTTP {exc.code}: {error_body}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"GCP ML processor request failed: {exc}") from exc

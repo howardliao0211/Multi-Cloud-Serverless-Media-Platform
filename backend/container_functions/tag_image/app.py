@@ -22,10 +22,14 @@ from shared.aws_resources import (
     update_media_record_in_db,
     get_s3_object_head_and_url,
     is_media_record_processing,
-    upload_thumbnail_to_s3
+    upload_thumbnail_to_s3,
 )
 from shared.gcp_ml_contracts import GcpMlRequest, GcpModelUrls
-from shared.gcp_ml_client import call_gcp_ml_processor, generate_presigned_get_url, create_thumbnail_bytes
+from shared.gcp_ml_client import (
+    call_gcp_ml_processor,
+    generate_presigned_get_url,
+    create_thumbnail_bytes,
+)
 from shared.utils import build_db_key, build_thumbnail_s3_key, build_response_message
 
 s3, bucket_name = get_bucket_and_name()
@@ -59,8 +63,7 @@ def process_image(bucket: str, s3_key: str, request_id: str):
     should_process = is_media_record_processing(table, db_key)
 
     if not should_process:
-        print(
-            f"Duplicate media already exists, skipping model run: {file_name}")
+        print(f"Duplicate media already exists, skipping model run: {file_name}")
         return
 
     try:
@@ -81,15 +84,14 @@ def process_image(bucket: str, s3_key: str, request_id: str):
             local_path=local_path,
         )
 
-        thumbnail_bytes = create_thumbnail_bytes(image_path=local_path)
+        thumbnail_bytes = create_thumbnail_bytes(Path(local_path))
 
         upload_thumbnail_to_s3(thumbnail_bytes, s3, bucket, thumbnail_s3_key)
         _, thumbnail_url = get_s3_object_head_and_url(thumbnail_s3_key)
 
         input_url = generate_presigned_get_url(bucket, s3_key)
         model_urls = GcpModelUrls(
-            classifier=generate_presigned_get_url(
-                bucket, CLASSIFIER_MODEL_KEY),
+            classifier=generate_presigned_get_url(bucket, CLASSIFIER_MODEL_KEY),
             detector=generate_presigned_get_url(bucket, DETECTOR_MODEL_KEY),
         )
 
