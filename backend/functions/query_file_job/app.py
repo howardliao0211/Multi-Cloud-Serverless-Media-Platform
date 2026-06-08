@@ -4,7 +4,6 @@ from shared.aws_resources import get_table
 from shared.schemas import QueryFileJobStatusResponse
 from shared.utils import build_response_message, get_current_user, get_http_method
 
-
 table = get_table()
 
 
@@ -68,7 +67,8 @@ def lambda_handler(event, context):
                 return build_response_message(
                     status_code=HTTPStatus.FORBIDDEN,
                     body={
-                        "message": "Query file job does not belong to the current user"},
+                        "message": "Query file job does not belong to the current user"
+                    },
                     allow_http_methods=allow_methods,
                 )
 
@@ -90,8 +90,7 @@ def lambda_handler(event, context):
         except ValueError as error:
             return build_response_message(
                 status_code=HTTPStatus.BAD_REQUEST,
-                body={"message": "Invalid query file job request",
-                      "error": str(error)},
+                body={"message": "Invalid query file job request", "error": str(error)},
                 allow_http_methods=allow_methods,
             )
 
@@ -101,15 +100,14 @@ def lambda_handler(event, context):
         if deleted_item is not None:
             return build_response_message(
                 status_code=HTTPStatus.OK,
-                body={
-                    "message": f"successfully deleted job {deleted_item["key"]}"},
+                body={"message": f"successfully deleted job {deleted_item["key"]}"},
                 allow_http_methods=allow_methods,
             )
         else:
             return build_response_message(
                 status_code=HTTPStatus.BAD_REQUEST,
                 body={"message": f"fail to delete job {job_id}"},
-                allow_http_methods=allow_methods
+                allow_http_methods=allow_methods,
             )
 
     else:

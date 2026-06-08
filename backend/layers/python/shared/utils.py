@@ -9,8 +9,14 @@ def get_current_user(event):
     return event["requestContext"]["authorizer"]["jwt"]["claims"]["sub"]
 
 
+def get_current_user_email(event):
+    return event["requestContext"]["authorizer"]["jwt"]["claims"]["email"]
+
+
 def get_http_method(event) -> str | None:
-    return event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method")
+    return event.get("httpMethod") or event.get("requestContext", {}).get(
+        "http", {}
+    ).get("method")
 
 
 def build_s3_key(key_name: str, media_type: Literal["image", "video"]) -> str:

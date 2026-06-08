@@ -32,6 +32,7 @@ class QueryFileJobStatus(str, Enum):
 class MediaRecord(BaseModel):
     key: str
     owner_id: str
+    owner_email: str
     file_name: str
     checksum: str
     full_key: str
@@ -71,6 +72,7 @@ class MediaRecord(BaseModel):
 
 class MediaRecordResponse(BaseModel):
     owner_id: str
+    owner_email: str
     file_name: str
     visibility: MediaVisibility
 
@@ -111,6 +113,7 @@ class MediaRecordResponse(BaseModel):
 
         return cls(
             owner_id=media_record.owner_id,
+            owner_email=media_record.owner_email,
             file_name=media_record.file_name,
             visibility=media_record.visibility,
             full_url=media_record.full_url,
@@ -220,6 +223,7 @@ class QueryFileRequest(BaseModel):
 
 class QueryFileResult(BaseModel):
     owner_id: str
+    owner_email: str
     checksum: str
     file_name: str
     visibility: MediaVisibility
@@ -287,8 +291,7 @@ class EditTagsRequest(BaseModel):
 
         for tag_count in tags:
             if len(tag_count) != 1:
-                raise ValueError(
-                    "each tag count must contain exactly one species")
+                raise ValueError("each tag count must contain exactly one species")
 
             raw_tag, raw_count = next(iter(tag_count.items()))
             tag = raw_tag.strip().lower()

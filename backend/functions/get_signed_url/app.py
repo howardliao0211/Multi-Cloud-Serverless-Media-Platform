@@ -5,11 +5,7 @@ from http import HTTPMethod, HTTPStatus
 
 from boto3.dynamodb.conditions import Key
 
-from shared.schemas import (
-    MediaRecord,
-    UploadUrlRequest,
-    UploadUrlResponse
-)
+from shared.schemas import MediaRecord, UploadUrlRequest, UploadUrlResponse
 from shared.aws_resources import (
     get_bucket_and_name,
     get_table,
@@ -18,6 +14,7 @@ from shared.aws_resources import (
 from shared.utils import (
     build_response_message,
     get_current_user,
+    get_current_user_email,
     build_db_key,
     build_s3_key,
 )
@@ -27,12 +24,16 @@ table = get_table()
 URL_EXPIRES_SECONDS = 300
 
 
-def parse_request(event: dict, ) -> UploadUrlRequest | None:
+def parse_request(
+    event: dict,
+) -> UploadUrlRequest | None:
     body = event.get("body")
     return UploadUrlRequest(**json.loads(body))
 
 
-def generate_upload_url(s3_key: str, file_name: str, checksum: str, owner_id: str) -> str:
+def generate_upload_url(
+    s3_key: str, file_name: str, checksum: str, owner_id: str
+) -> str:
     return s3.generate_presigned_url(
         ClientMethod="put_object",
         Params={
@@ -41,7 +42,7 @@ def generate_upload_url(s3_key: str, file_name: str, checksum: str, owner_id: st
             "Metadata": {
                 "file_name": file_name,
                 "checksum": checksum,
-                "owner_id": owner_id
+                "owner_id": owner_id,
             },
         },
         ExpiresIn=URL_EXPIRES_SECONDS,
@@ -77,10 +78,11 @@ def lambda_handler(event, context):
         return build_response_message(
             status_code=HTTPStatus.OK,
             body={"message": "OK"},
-            allow_http_methods=[HTTPMethod.OPTIONS]
+            allow_http_methods=[HTTPMethod.OPTIONS],
         )
 
     owner_id = get_current_user(event)
+    owner_email = get_current_user_email(event)
     request = parse_request(event)
 
     _, file_ext = normalize_file_extension(request.file_name)
@@ -95,41 +97,37 @@ def lambda_handler(event, context):
     if duplicate:
 
         res = UploadUrlResponse(
-            duplicate=duplicate,
-            upload_url=upload_url,
-            expires_in=expires_in
+            duplicate=duplicate, upload_url=upload_url, expires_in=expires_in
         )
 
         return build_response_message(
             status_code=HTTPStatus.OK,
             body=res.model_dump(mode="json"),
-            allow_http_methods=[HTTPMethod.POST]
+            allow_http_methods=[HTTPMethod.POST],
         )
 
     upload_url = generate_upload_url(
-        s3_key, request.file_name, request.checksum, owner_id)
+        s3_key, request.file_name, request.checksum, owner_id
+    )
     expires_in = URL_EXPIRES_SECONDS
 
     media = MediaRecord(
         owner_id=owner_id,
+        owner_email=owner_email,
         checksum=request.checksum,
         file_name=request.file_name,
         full_key=s3_key,
-        visibility=request.visibility.value
+        visibility=request.visibility.value,
     )
 
-    create_new_media_record(
-        table, media
-    )
+    create_new_media_record(table, media)
 
     res = UploadUrlResponse(
-        duplicate=duplicate,
-        upload_url=upload_url,
-        expires_in=expires_in
+        duplicate=duplicate, upload_url=upload_url, expires_in=expires_in
     )
 
     return build_response_message(
         status_code=HTTPStatus.OK,
         body=res.model_dump(mode="json"),
-        allow_http_methods=[HTTPMethod.POST]
+        allow_http_methods=[HTTPMethod.POST],
     )

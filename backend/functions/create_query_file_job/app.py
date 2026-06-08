@@ -12,7 +12,6 @@ from shared.query_utils import parse_json_request
 from shared.schemas import QueryFileJobResponse, QueryFileJobStatus, QueryFileRequest
 from shared.utils import build_response_message, get_current_user, get_http_method
 
-
 s3, bucket_name = get_bucket_and_name()
 table = get_table()
 lambda_client = boto3.client("lambda")
