@@ -5,14 +5,10 @@ on:
 
 permissions:
     contents: read
-    id-token: write
 
 env:
     AWS_REGION: ${{ secrets.AWS_REGION }}
     AWS_ARCHITECTURE: x86_64
-    GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-    GCP_REGION: ${{ vars.GCP_REGION }}
-    GCP_APP_IMAGE_URL: ${{ secrets.GCP_APP_IMAGE_URL }}
     TEST_VIDEO_PATH: tests/integration/test_video.mp4
 
 jobs:
@@ -54,23 +50,6 @@ jobs:
                   df -h
                   docker system df || true
 
-            - name: Validate required Google Cloud variables
-              run: |
-                  test -n "${{ vars.GCP_PROJECT_ID }}" || (echo "Missing repo variable GCP_PROJECT_ID" && exit 1)
-                  test -n "${{ vars.GCP_REGION }}" || (echo "Missing repo variable GCP_REGION" && exit 1)
-                  test -n "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing repo variable GCP_WORKLOAD_IDENTITY_PROVIDER" && exit 1)
-                  test -n "${{ vars.GCP_SERVICE_ACCOUNT }}" || (echo "Missing repo variable GCP_SERVICE_ACCOUNT" && exit 1)
-
-            - id: gcp-auth
-              name: Authenticate to Google Cloud
-              uses: google-github-actions/auth@v3
-              with:
-                  workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-
-            - name: Set up Google Cloud SDK
-              uses: google-github-actions/setup-gcloud@v3
-
             - name: Configure AWS credentials
               uses: aws-actions/configure-aws-credentials@v4
               with:
@@ -81,44 +60,27 @@ jobs:
             - name: Verify cloud identities
               run: |
                   aws sts get-caller-identity
-                  gcloud auth list
-                  gcloud config set project "$GCP_PROJECT_ID"
-
-            - name: Stage GCP model files
-              run: |
-                  mkdir -p backend/gcp/ml_processor/models
-                  cp models/model.pt backend/gcp/ml_processor/models/model.pt
-                  cp models/mdv5a.pt backend/gcp/ml_processor/models/mdv5a.pt
 
             - name: Install test dependencies
               run: |
                   python -m pip install --upgrade pip
                   python -m pip install -e tests
 
-            - name: Run build_all_image
-              run: |
-                  echo "Disk before image build:"
-                  df -h
-                  docker system df || true
-
-                  chmod +x backend/scripts/build_push_all_images.sh
-                  bash backend/scripts/build_push_all_images.sh
-
-                  echo "Disk after image build:"
-                  df -h
-                  docker system df || true
-
-            - name: Sync Lambda IAM role policy
-              run: |
-                  chmod +x backend/scripts/create_iam_role.sh
-                  bash backend/scripts/create_iam_role.sh
-
-            - name: Run deploy_all_functions
+            - name: Build and deploy container functions
               env:
-                  LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}
+                  BASE_IMAGE_NAME: gcp_client_base
+                  IMAGE_TAG: integration
               run: |
+                  echo "Disk before container deploy:"
+                  df -h
+                  docker system df || true
+
                   chmod +x backend/scripts/deploy_all_functions.sh
                   bash backend/scripts/deploy_all_functions.sh
+
+                  echo "Disk after container deploy:"
+                  df -h
+                  docker system df || true
 
             - name: Run integration tests
               run: |
