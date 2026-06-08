@@ -314,13 +314,24 @@ function DashboardScreen() {
                     {myMediaRecords.map((record) => (
                         <article className="media-card" key={`${record.owner_id}-${record.checksum}-${record.file_name}`}>
                             <div className="media-thumbnail">
-                                {record.thumbnail_presigned_url ? (
+                                {record.upload_status === "failed" ? (
+                                    <span>
+                                        {record.error_message ??
+                                            "Processing failed"}
+                                    </span>
+                                ) : record.upload_status !== "ready" ? (
+                                    <span>Processing...</span>
+                                ) : record.thumbnail_presigned_url ? (
                                     <img
                                         src={record.thumbnail_presigned_url}
                                         alt={`${record.file_name} thumbnail`}
                                         onClick={() => {
                                             if (record.full_presigned_url) {
-                                                window.open(record.full_presigned_url, "_blank");
+                                                window.open(
+                                                    record.full_presigned_url,
+                                                    "_blank",
+                                                    "noopener,noreferrer"
+                                                );
                                             }
                                         }}
                                     />
