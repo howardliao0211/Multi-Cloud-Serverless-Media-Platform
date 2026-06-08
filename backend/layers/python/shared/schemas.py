@@ -284,33 +284,6 @@ class EditTagsRequest(BaseModel):
 
         return normalized_urls
 
-    @field_validator("tags")
-    @classmethod
-    def validate_tags(cls, tags: List[Dict[str, int]]) -> List[Dict[str, int]]:
-        normalized_tags: List[Dict[str, int]] = []
-
-        for tag_count in tags:
-            if len(tag_count) != 1:
-                raise ValueError("each tag count must contain exactly one species")
-
-            raw_tag, raw_count = next(iter(tag_count.items()))
-            tag = raw_tag.strip().lower()
-
-            if not tag:
-                raise ValueError("tag names must not be empty")
-
-            count = int(raw_count)
-
-            if count < 1:
-                raise ValueError("tag counts must be at least 1")
-
-            normalized_tags.append({tag: count})
-
-        if not tags:
-            raise ValueError("tags must not be empty")
-
-        return normalized_tags
-
 
 class EditTagsResult(BaseModel):
     url: str

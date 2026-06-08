@@ -1,3 +1,4 @@
+from typing import TypedDict
 import json
 from http import HTTPMethod, HTTPStatus
 from typing import Optional
@@ -11,6 +12,11 @@ from shared.utils import build_response_message, get_current_user
 
 
 table = get_table()
+
+
+class TagDelta(TypedDict):
+    raw_tag: str
+    delta: int
 
 
 def parse_request(event: dict) -> EditTagsRequest:
@@ -51,58 +57,60 @@ def find_user_media_by_url(
 
 def build_requested_tag_deltas(
     request: EditTagsRequest,
-) -> dict[str, int]:
-    tag_deltas: dict[str, int] = {}
-
+) -> dict[str, TagDelta]:
+    tag_deltas: dict[str, TagDelta] = {}
     direction = 1 if request.operation_key == 1 else -1
-
-    # normalized tag -> first cleaned raw tag from request
-    normalized_to_request_tag: dict[str, str] = {}
 
     for tag_count in request.tags:
         raw_tag, count = next(iter(tag_count.items()))
 
         cleaned_tag = raw_tag.strip()
         normalized_tag = cleaned_tag.lower()
-
         delta = count * direction
 
-        # Preserve request casing for new tags,
-        # but merge same tags case-insensitively.
-        request_tag_key = normalized_to_request_tag.setdefault(
+        existing = tag_deltas.get(
             normalized_tag,
-            cleaned_tag,
+            {
+                "raw_tag": cleaned_tag,
+                "delta": 0,
+            },
         )
 
-        tag_deltas[request_tag_key] = (
-            tag_deltas.get(request_tag_key, 0) + delta
-        )
+        tag_deltas[normalized_tag] = {
+            # Internal lookup is normalized, but raw request casing is preserved.
+            # If duplicate tags appear, this keeps the latest raw casing.
+            "raw_tag": cleaned_tag,
+            "delta": existing["delta"] + delta,
+        }
 
     return {
-        tag: delta
-        for tag, delta in tag_deltas.items()
-        if delta != 0
+        normalized_tag: tag_delta
+        for normalized_tag, tag_delta in tag_deltas.items()
+        if tag_delta["delta"] != 0
     }
 
 
 def apply_tag_deltas_to_media(
     media_record: MediaRecord,
-    tag_deltas: dict[str, int],
+    tag_deltas: dict[str, TagDelta],
 ) -> dict[str, int]:
     updated_tags = dict(media_record.tags)
 
-    # normalized tag -> original tag key from media_record.tags
     existing_tag_lookup: dict[str, str] = {
-        tag.strip().lower(): tag
-        for tag in updated_tags
+        existing_tag.strip().lower(): existing_tag
+        for existing_tag in updated_tags
     }
 
-    for requested_tag, delta in tag_deltas.items():
-        normalized_tag = requested_tag.strip().lower()
+    for normalized_tag, tag_delta in tag_deltas.items():
+        requested_raw_tag = tag_delta["raw_tag"]
+        delta = tag_delta["delta"]
 
-        # Existing tag: preserve media_record casing.
-        # New tag: use request casing.
-        tag_key = existing_tag_lookup.get(normalized_tag, requested_tag)
+        # Existing tag: preserve casing from media_record.tags.
+        # New tag: preserve casing from request.
+        tag_key = existing_tag_lookup.get(
+            normalized_tag,
+            requested_raw_tag,
+        )
 
         next_count = updated_tags.get(tag_key, 0) + delta
 
