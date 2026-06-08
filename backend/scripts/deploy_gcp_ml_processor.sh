@@ -28,11 +28,14 @@ fi
 
 IMAGE_TAG="${IMAGE_TAG:-v2-$(date -u +%Y%m%d%H%M%S)}"
 BASE_IMAGE="gcr.io/${GCP_PROJECT_ID}/aussie-ecolens-ml-processor-base:${IMAGE_TAG}"
+LOCAL_BASE_IMAGE_TAG="aussie-ecolens-ml-processor-base:latest"
 IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}/ml-processor:${IMAGE_TAG}"
 
 echo "== Deploy backend v2 GCP ML processor =="
 echo "BASE_DOCKERFILE=${BASE_DOCKERFILE}"
 echo "APP_DOCKERFILE=${APP_DOCKERFILE}"
+echo "BASE_IMAGE=${BASE_IMAGE}"
+echo "LOCAL_BASE_IMAGE_TAG=${LOCAL_BASE_IMAGE_TAG}"
 echo "IMAGE_URI=${IMAGE_URI}"
 
 HMAC_DEPLOY_ARGS=()
@@ -63,11 +66,11 @@ docker build \
   --platform linux/amd64 \
   -f "${BASE_DOCKERFILE}" \
   -t "${BASE_IMAGE}" \
+  -t "${LOCAL_BASE_IMAGE_TAG}" \
   "${REPO_ROOT}"
 
 docker build \
   --platform linux/amd64 \
-  --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
   -f "${APP_DOCKERFILE}" \
   -t "${IMAGE_URI}" \
   "${REPO_ROOT}"
