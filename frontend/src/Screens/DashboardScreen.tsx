@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import koala from "../assets/koala.png";
 import animals from "../assets/animals.jpg";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     createStatus, getErrorMessage, getMyPrivateMedia, getMyPublicMedia,
     type StatusMessage, type MediaRecordResponse,
@@ -44,6 +44,9 @@ function DashboardScreen() {
     const [selectedUrl, setSelectedUrl] = useState<string>("");
 
     const [status, setStatus] = useState<StatusMessage>(createStatus("idle", ""));
+
+    const mediaPollingRef = useRef<number | null>(null);
+
 
     /**
      * Shared data made available to nested dashboard pages through Outlet.
@@ -90,15 +93,22 @@ function DashboardScreen() {
     }
 
     /**
-     * Loads media required by the dashboard.
-     * 
-     * Private media is already restricted to the current user by the backend.
-     * Public media is separated into:
-     * -the current user's public media.
-     * -public media owned by other users.
+     * Loads the current user's media and public media from other users.
+     *
+     * @param silent - When true, refreshes data without showing the loading state.
+     * @returns The current user's combined private and public media records.
      */
-    async function loadMyMedia() {
-        setStatus(createStatus("loading", "Loading your uploads..."));
+    async function loadMyMedia(
+        silent = false
+    ): Promise<MediaRecordResponse[]> {
+        if (!silent) {
+            setStatus(
+                createStatus(
+                    "loading",
+                    "Loading your uploads..."
+                )
+            );
+        }
 
         try {
             const currentUserId = await getCurrentUserId();
@@ -114,19 +124,85 @@ function DashboardScreen() {
             );
 
             // Combine the current user's private and public media.
-            setMyMediaRecords(
+            const myRecords =
                 mergeUniqueMediaRecords([
                     ...privateData.media_records,
                     ...myPublicRecords,
-                ])
+                ]);
+
+            setMyMediaRecords(myRecords);
+            setOtherPublicMediaRecords(
+                otherPublicRecords
             );
 
-            setOtherPublicMediaRecords(otherPublicRecords);
+            if (!silent) {
+                setStatus(
+                    createStatus("success", "")
+                );
+            }
 
-            setStatus(createStatus("success", ""));
+            return myRecords;
         } catch (error) {
-            setStatus(createStatus("error", getErrorMessage(error)));
+            setStatus(createStatus(
+                "error",
+                getErrorMessage(error)
+            ));
+
+            return [];
         }
+    }
+
+    /**
+     * Checks whether a media record is still being processed.
+     *
+     * @param record - The media record to inspect.
+     * @returns True when processing has not reached a final state.
+     */
+    function isMediaStillProcessing(
+        record: MediaRecordResponse
+    ): boolean {
+        return (
+            record.upload_status === "pending" ||
+            record.upload_status === "uploaded" ||
+            record.upload_status === "processing"
+        );
+    }
+
+    /**
+     * Stops the dashboard media polling interval.
+     */
+    function stopMediaPolling(): void {
+        if (mediaPollingRef.current !== null) {
+            window.clearInterval(
+                mediaPollingRef.current
+            );
+
+            mediaPollingRef.current = null;
+        }
+    }
+
+    /**
+     * Refreshes dashboard media in the background while uploads are processing.
+     */
+    function startMediaPolling(): void {
+        if (mediaPollingRef.current !== null) {
+            return;
+        }
+
+        mediaPollingRef.current =
+            window.setInterval(async () => {
+                const records =
+                    await loadMyMedia(true);
+
+                const hasProcessingMedia =
+                    records.some(
+                        isMediaStillProcessing
+                    );
+
+                if (!hasProcessingMedia) {
+                    stopMediaPolling();
+                }
+            }, 3000);
     }
 
     /**
@@ -134,9 +210,31 @@ function DashboardScreen() {
      * or Tags page.
      */
     useEffect(() => {
-        if (location.pathname === "/dashboard" || isSplitPage) {
-            void loadMyMedia();
+        async function initialiseMedia(): Promise<void> {
+            const shouldLoadMedia =
+                location.pathname === "/dashboard" ||
+                isSplitPage;
+
+            if (!shouldLoadMedia) {
+                stopMediaPolling();
+                return;
+            }
+
+            // Initial load shows the normal loading message.
+            const records = await loadMyMedia();
+
+            if (records.some(isMediaStillProcessing)) {
+                startMediaPolling();
+            } else {
+                stopMediaPolling();
+            }
         }
+
+        void initialiseMedia();
+
+        return () => {
+            stopMediaPolling();
+        };
     }, [location.pathname]);
 
     /**
@@ -321,13 +419,24 @@ function DashboardScreen() {
                                             key={`${record.owner_id}-${record.file_name}-${record.full_url ?? ""}`}
                                         >
                                             <div className="media-thumbnail">
-                                                {record.thumbnail_presigned_url ? (
+                                                {record.upload_status === "failed" ? (
+                                                    <span>
+                                                        {record.error_message ??
+                                                            "Processing failed"}
+                                                    </span>
+                                                ) : record.upload_status !== "ready" ? (
+                                                    <span>Processing...</span>
+                                                ) : record.thumbnail_presigned_url ? (
                                                     <img
                                                         src={record.thumbnail_presigned_url}
                                                         alt={`${record.file_name} thumbnail`}
                                                         onClick={() => {
                                                             if (record.full_presigned_url) {
-                                                                window.open(record.full_presigned_url, "_blank");
+                                                                window.open(
+                                                                    record.full_presigned_url,
+                                                                    "_blank",
+                                                                    "noopener,noreferrer"
+                                                                );
                                                             }
                                                         }}
                                                     />
