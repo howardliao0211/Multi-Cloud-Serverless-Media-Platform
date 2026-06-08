@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from shared.aws_resources import get_table, scan_media_record, update_media_record_in_db
 from shared.query_utils import parse_json_request
 from shared.schemas import EditTagsRequest, EditTagsResponse, EditTagsResult, MediaRecord
-from shared.species import normalize_species_tag
 from shared.utils import build_response_message, get_current_user
 
 
@@ -52,29 +51,24 @@ def find_user_media_by_url(
 
 def build_requested_tag_deltas(
     request: EditTagsRequest,
-) -> tuple[dict[str, int], list[str]]:
-    valid_tag_deltas: dict[str, int] = {}
-    invalid_tags: list[str] = []
+) -> dict[str, int]:
+    tag_deltas: dict[str, int] = {}
     direction = 1 if request.operation_key == 1 else -1
 
     for tag_count in request.tags:
         raw_tag, count = next(iter(tag_count.items()))
-        normalized_tag = normalize_species_tag(raw_tag)
-
-        if normalized_tag is None:
-            invalid_tags.append(raw_tag)
-            continue
+        normalized_tag = raw_tag.strip().lower()
 
         delta = count * direction
-        valid_tag_deltas[normalized_tag] = (
-            valid_tag_deltas.get(normalized_tag, 0) + delta
+        tag_deltas[normalized_tag] = (
+            tag_deltas.get(normalized_tag, 0) + delta
         )
 
     return {
         tag: delta
-        for tag, delta in valid_tag_deltas.items()
+        for tag, delta in tag_deltas.items()
         if delta != 0
-    }, invalid_tags
+    }
 
 
 def apply_tag_deltas_to_media(
@@ -98,7 +92,7 @@ def apply_tag_deltas_to_media(
 def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResponse:
     results: list[EditTagsResult] = []
     updated_count = 0
-    valid_tag_deltas, invalid_tags = build_requested_tag_deltas(request)
+    tag_deltas = build_requested_tag_deltas(request)
     media_records = scan_media_record(table)
 
     for url in request.urls:
@@ -118,20 +112,7 @@ def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResp
             )
             continue
 
-        if invalid_tags:
-            results.append(
-                EditTagsResult(
-                    url=url,
-                    updated=False,
-                    checksum=media_record.checksum,
-                    file_name=media_record.file_name,
-                    tags=media_record.tags,
-                    message=f"invalid species tags: {', '.join(invalid_tags)}",
-                )
-            )
-            continue
-
-        if not valid_tag_deltas:
+        if not tag_deltas:
             results.append(
                 EditTagsResult(
                     url=url,
@@ -144,7 +125,7 @@ def apply_edit_tags(request: EditTagsRequest, current_user: str) -> EditTagsResp
             )
             continue
 
-        updated_tags = apply_tag_deltas_to_media(media_record, valid_tag_deltas)
+        updated_tags = apply_tag_deltas_to_media(media_record, tag_deltas)
         result = EditTagsResult(
             url=url,
             updated=True,
