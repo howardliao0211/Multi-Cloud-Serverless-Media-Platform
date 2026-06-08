@@ -34,17 +34,19 @@ export async function getCurrentUserEmail(): Promise<string> {
 }
 
 /**
- * Masks an owner ID before displaying it in the UI.
+ * Masks an owner email before displaying it in the UI.
  *
- * @param ownerId - The original owner ID.
+ * @param email the original owner ID.
  * @returns The first five characters followed by four asterisks.
  */
-export function maskOwnerId(ownerId: string): string {
-  if (!ownerId) {
-    return "Unknown";
+export function maskOwnerEmail(email: string): string {
+  const atIndex = email.indexOf("@");
+
+  if (atIndex === -1){
+    return `${email}****`;
   }
 
-  return `${ownerId.slice(0, 5)}****`;
+  return `${email.slice(0, atIndex)}****`;
 }
 
 /**
@@ -185,6 +187,7 @@ export type MediaRecordStatus =
 
 export type MediaRecordResponse = {
   owner_id: string;
+  owner_email: string;
   file_name: string;
   checksum: string;
   visibility: MediaVisibility;
@@ -283,6 +286,7 @@ export type QueryFileUploadUrlResponse = {
 
 export type QueryFileResult = {
   owner_id: string;
+  owner_email: string;
   checksum: string;
   file_name: string;
   visibility: MediaVisibility;

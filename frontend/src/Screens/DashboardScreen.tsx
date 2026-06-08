@@ -6,7 +6,7 @@ import {
     createStatus, getErrorMessage, getMyPrivateMedia, getMyPublicMedia,
     type StatusMessage, type MediaRecordResponse,
     getCurrentUserId,
-    maskOwnerId
+    maskOwnerEmail
 } from "../utils";
 import { authFetch } from "../services/api";
 
@@ -446,7 +446,7 @@ function DashboardScreen() {
                                             </div>
 
                                             <p>
-                                                Owner: <strong>{maskOwnerId(record.owner_id)}</strong>
+                                                Owner: <strong>{maskOwnerEmail(record.owner_email)}</strong>
                                             </p>
 
                                             <p>

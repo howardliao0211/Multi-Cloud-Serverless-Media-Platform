@@ -15,7 +15,7 @@ import {
     type QueryFileJobStatusResponse,
     type QueryFileResult,
     getMediaType,
-    maskOwnerId,
+    maskOwnerEmail,
 } from "../utils";
 
 /**
@@ -405,7 +405,7 @@ function QueryScreen() {
                     setDetectedTags(jobStatus.detected_tags ?? {});
                     setResults(jobStatus.results ?? []);
                     setResultCount(jobStatus.count ?? jobStatus.results?.length ?? 0);
-                    
+
                     await authFetch<QueryFileJobStatusResponse>(
                         `/query_file/jobs/${job.job_id}`,
                         {
@@ -629,7 +629,7 @@ function QueryScreen() {
                     <div className="selected-tags">
                         {Object.entries(detectedTags).map(([tag, count]) => (
                             <span key={tag} className="tag-pill">
-                                {tag} : {count} 
+                                {tag} : {count}
                             </span>
                         ))}
                     </div>
@@ -657,94 +657,96 @@ function QueryScreen() {
                         const permanentFullUrl = getResultPermanentFullUrl(record);
                         const thumbnailUrl = getResultThumbnailUrl(record);
                         const permanentThumbnailUrl = getResultPermanentThumbnailUrl(record);
-                        const ownerKey = "owner_id" in record ? record.owner_id : "query";
 
                         return (
-                        <article className="media-card" key={`${ownerKey}-${record.file_name}-${permanentFullUrl ?? ""}`} >
-                            <div className="media-thumbnail">
-                                {thumbnailUrl ? (
-                                    <img
-                                        src={thumbnailUrl}
-                                        alt={`${record.file_name} thumbnail`}
-                                        onClick={() => {
-                                            if (fullUrl) {
-                                                window.open(fullUrl, "_blank");
-                                            }
-                                        }}
-                                    />
-                                ) : (
-                                    <span>No thumbnail available</span>
-                                )}
-                            </div>
-                            <div className="media-card-body">
-                                <p className="media-file-name">
-                                    File Name:
-                                    <strong>{record.file_name}</strong>
-                                </p>
-
-                                <p>
-                                    Owner: <strong>{maskOwnerId(record.owner_id)}</strong>
-                                </p>
-
-                                <p>
-                                    Visibility: <strong>{record.visibility}</strong>
-                                </p>
-
-                                <div className="media-tags-text">
-                                    {Object.entries(record.tags ?? {}).length > 0 ? (
-                                        Object.entries(record.tags).map(([tag, count]) => (
-                                            <p key={tag}>
-                                                {tag} ({count})
-                                            </p>
-                                        ))
+                            <article className="media-card" key={`${record.owner_email}-${record.file_name}-${permanentFullUrl ?? ""}`} >
+                                <div className="media-thumbnail">
+                                    {thumbnailUrl ? (
+                                        <img
+                                            src={thumbnailUrl}
+                                            alt={`${record.file_name} thumbnail`}
+                                            onClick={() => {
+                                                if (fullUrl) {
+                                                    window.open(fullUrl, "_blank", "noopener,noreferrer");
+                                                }
+                                            }}
+                                        />
                                     ) : (
-                                        <p>No tags yet</p>
+                                        <span>No thumbnail available</span>
                                     )}
                                 </div>
+                                <div className="media-card-body">
+                                    <p className="media-file-name">
+                                        File Name:
+                                        <strong>{record.file_name}</strong>
+                                    </p>
 
-                                <div className="media-url-actions">
-                                    {mode !== "thumbnail" && (
+                                    <p>
+                                        Owner:{" "}
+                                        <strong>
+                                            {maskOwnerEmail(record.owner_email)}
+                                        </strong>
+                                    </p>
+
+                                    <p>
+                                        Visibility: <strong>{record.visibility}</strong>
+                                    </p>
+
+                                    <div className="media-tags-text">
+                                        {Object.entries(record.tags ?? {}).length > 0 ? (
+                                            Object.entries(record.tags).map(([tag, count]) => (
+                                                <p key={tag}>
+                                                    {tag} ({count})
+                                                </p>
+                                            ))
+                                        ) : (
+                                            <p>No tags yet</p>
+                                        )}
+                                    </div>
+
+                                    <div className="media-url-actions">
+                                        {mode !== "thumbnail" && (
+                                            <button
+                                                type="button"
+                                                disabled={!permanentThumbnailUrl}
+                                                className={permanentThumbnailUrl === selectedUrl ? "selected" : ""}
+                                                onClick={() => {
+                                                    if (permanentThumbnailUrl) {
+                                                        void handleUseThumbnailUrl(permanentThumbnailUrl);
+                                                    }
+                                                }}
+                                            >
+                                                {permanentThumbnailUrl === selectedUrl
+                                                    ? "Copied to Search"
+                                                    : "Copy Thumbnail URL"}
+                                            </button>
+                                        )}
+
                                         <button
                                             type="button"
-                                            disabled={!permanentThumbnailUrl}
-                                            className={permanentThumbnailUrl === selectedUrl ? "selected" : ""}
-                                            onClick={() => {
-                                                if (permanentThumbnailUrl) {
-                                                    void handleUseThumbnailUrl(permanentThumbnailUrl);
+                                            disabled={!permanentFullUrl}
+                                            onClick={async () => {
+                                                if (!permanentFullUrl) return;
+
+                                                try {
+                                                    await navigator.clipboard.writeText(permanentFullUrl);
+                                                    setCopiedFullUrl(permanentFullUrl);
+
+                                                    window.setTimeout(() => {
+                                                        setCopiedFullUrl("");
+                                                    }, 2000);
+                                                } catch (error) {
+                                                    setError(getErrorMessage(error));
                                                 }
                                             }}
                                         >
-                                            {permanentThumbnailUrl === selectedUrl
-                                                ? "Copied to Search"
-                                                : "Copy Thumbnail URL"}
+                                            {permanentFullUrl === copiedFullUrl
+                                                ? "Copied Successfully"
+                                                : "Copy Full URL"}
                                         </button>
-                                    )}
-
-                                    <button
-                                        type="button"
-                                        disabled={!permanentFullUrl}
-                                        onClick={async () => {
-                                            if (!permanentFullUrl) return;
-
-                                            try {
-                                                await navigator.clipboard.writeText(permanentFullUrl);
-                                                setCopiedFullUrl(permanentFullUrl);
-
-                                                window.setTimeout(() => {
-                                                    setCopiedFullUrl("");
-                                                }, 2000);
-                                            } catch (error) {
-                                                setError(getErrorMessage(error));
-                                            }
-                                        }}
-                                    >
-                                        {permanentFullUrl === copiedFullUrl
-                                            ? "Copied Successfully"
-                                            : "Copy Full URL"}
-                                    </button>
+                                    </div>
                                 </div>
-                            </div>
-                        </article>
+                            </article>
                         );
                     })}
                 </section>
