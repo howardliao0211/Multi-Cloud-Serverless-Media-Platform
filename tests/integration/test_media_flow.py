@@ -38,7 +38,13 @@ def _checksum(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def _api_event(method, body=None, query_params=None, user_id="integration-test-user"):
+def _api_event(
+    method,
+    body=None,
+    query_params=None,
+    user_id="integration-test-user",
+    user_email="integration-test-user@example.com",
+):
     event = {
         "httpMethod": method,
         "requestContext": {
@@ -46,6 +52,7 @@ def _api_event(method, body=None, query_params=None, user_id="integration-test-u
                 "jwt": {
                     "claims": {
                         "sub": user_id,
+                        "email": user_email,
                     }
                 }
             }
@@ -148,6 +155,7 @@ def _put_media_record(table, **overrides):
     item = {
         "key": "OWNER#integration-test-user#KEY#integration-tests/integration-test.png",
         "owner_id": "integration-test-user",
+        "owner_email": "integration-test-user@example.com",
         "file_name": "integration-test.png",
         "checksum": "integration-test-checksum",
         "full_key": "integration-tests/integration-test.png",
@@ -163,6 +171,7 @@ def _put_media_record(table, **overrides):
     }
 
     item.update(overrides)
+    item.setdefault("owner_email", "integration-test-user@example.com")
     item["key"] = _build_db_key(item["owner_id"], item["full_key"])
     item["full_url"] = (
         f"https://test_bucket.s3.test-region.amazonaws.com/{item['full_key']}"
@@ -286,6 +295,7 @@ def test_tag_image(aws_clients, integration_config, unique_id):
     record = _put_media_record(
         table,
         owner_id=integration_config["test_user_id"],
+        owner_email=integration_config["test_user_email"],
         file_name=file_name,
         checksum=checksum,
         full_key=full_key,
@@ -302,7 +312,8 @@ def test_tag_image(aws_clients, integration_config, unique_id):
             Metadata={
                 "file_name": file_name,
                 "checksum": checksum,
-                "owner_id": integration_config["test_user_id"]
+                "owner_id": integration_config["test_user_id"],
+                "owner_email": integration_config["test_user_email"],
             },
         )
 
@@ -364,6 +375,7 @@ def test_tag_video(aws_clients, integration_config, unique_id):
     record = _put_media_record(
         table,
         owner_id=integration_config["test_user_id"],
+        owner_email=integration_config["test_user_email"],
         file_name=file_name,
         checksum=checksum,
         full_key=full_key,
@@ -380,7 +392,8 @@ def test_tag_video(aws_clients, integration_config, unique_id):
             Metadata={
                 "file_name": file_name,
                 "checksum": checksum,
-                "owner_id": integration_config["test_user_id"]
+                "owner_id": integration_config["test_user_id"],
+                "owner_email": integration_config["test_user_email"],
             },
         )
 
@@ -420,6 +433,7 @@ def test_media(aws_clients, integration_config, unique_id):
     table = aws_clients["table"]
     bucket = integration_config["bucket"]
     user_id = integration_config["test_user_id"]
+    user_email = integration_config["test_user_email"]
 
     image = _solid_png_bytes()
     checksum = "integration_test_" + _checksum(image)
@@ -443,6 +457,7 @@ def test_media(aws_clients, integration_config, unique_id):
                     "visibility": "private",
                 },
                 user_id=user_id,
+                user_email=user_email,
             ),
         )
 
@@ -514,6 +529,7 @@ def test_upper_case_media(aws_clients, integration_config, unique_id):
     table = aws_clients["table"]
     bucket = integration_config["bucket"]
     user_id = integration_config["test_user_id"]
+    user_email = integration_config["test_user_email"]
 
     image = _solid_png_bytes()
     checksum = "integration_test_" + _checksum(image)
@@ -537,6 +553,7 @@ def test_upper_case_media(aws_clients, integration_config, unique_id):
                     "visibility": "private",
                 },
                 user_id=user_id,
+                user_email=user_email,
             ),
         )
 
@@ -606,6 +623,7 @@ def test_deduplicate_media_in_s3(aws_clients, integration_config, unique_id):
     lambda_client = aws_clients["lambda"]
     table = aws_clients["table"]
     user_id = integration_config["test_user_id"]
+    user_email = integration_config["test_user_email"]
 
     checksum = f"{unique_id}-dedupe"
     file_name = f"{unique_id}.png"
@@ -626,6 +644,7 @@ def test_deduplicate_media_in_s3(aws_clients, integration_config, unique_id):
                     "visibility": "private",
                 },
                 user_id=user_id,
+                user_email=user_email,
             ),
         )
 
@@ -641,6 +660,7 @@ def test_deduplicate_media_in_s3(aws_clients, integration_config, unique_id):
                     "visibility": "private",
                 },
                 user_id=user_id,
+                user_email=user_email,
             ),
         )
 
@@ -670,6 +690,7 @@ def test_get_private_media(aws_clients, integration_config, unique_id):
     record = _put_media_record(
         table,
         owner_id=user_id,
+        owner_email=integration_config["test_user_email"],
         file_name=f"{unique_id}.png",
         checksum=f"{unique_id}-private",
         full_key=f"integration-tests/{unique_id}.png",
@@ -683,7 +704,11 @@ def test_get_private_media(aws_clients, integration_config, unique_id):
         response = _invoke_lambda(
             lambda_client,
             integration_config["get_private_media_function"],
-            _api_event("GET", user_id=user_id),
+            _api_event(
+                "GET",
+                user_id=user_id,
+                user_email=integration_config["test_user_email"],
+            ),
         )
 
         body = _body(response)
@@ -708,6 +733,7 @@ def test_get_public_media(aws_clients, integration_config, unique_id):
     record = _put_media_record(
         table,
         owner_id=integration_config["test_user_id"],
+        owner_email=integration_config["test_user_email"],
         file_name=f"{unique_id}.png",
         checksum=f"{unique_id}-public",
         full_key=f"integration-tests/{unique_id}.png",
@@ -746,6 +772,7 @@ def test_get_upload_status(aws_clients, integration_config, unique_id):
     record = _put_media_record(
         table,
         owner_id=integration_config["test_user_id"],
+        owner_email=integration_config["test_user_email"],
         file_name=f"{unique_id}.png",
         checksum=f"{unique_id}-public",
         full_key=f"integration-tests/{unique_id}.png",
@@ -767,6 +794,7 @@ def test_get_upload_status(aws_clients, integration_config, unique_id):
                     "checksum": f"{unique_id}-public",
                 },
                 user_id=integration_config["test_user_id"],
+                user_email=integration_config["test_user_email"],
             ),
         )
 
@@ -792,6 +820,7 @@ def test_change_visibility_to_private(aws_clients, integration_config, unique_id
     record = _put_media_record(
         table,
         owner_id=integration_config["test_user_id"],
+        owner_email=integration_config["test_user_email"],
         file_name=f"{unique_id}.png",
         checksum=f"{unique_id}-public",
         full_key=f"integration-tests/{unique_id}.png",
@@ -809,10 +838,11 @@ def test_change_visibility_to_private(aws_clients, integration_config, unique_id
             _api_event(
                 "PATCH",
                 body={
-                    "url": f"{record["full_url"]}",
+                    "url": record["full_url"],
                     "visibility": "private",
                 },
                 user_id=integration_config["test_user_id"],
+                user_email=integration_config["test_user_email"],
             ),
         )
 
@@ -842,6 +872,7 @@ def test_change_visibility_to_public(aws_clients, integration_config, unique_id)
     record = _put_media_record(
         table,
         owner_id=integration_config["test_user_id"],
+        owner_email=integration_config["test_user_email"],
         file_name=f"{unique_id}.png",
         checksum=f"{unique_id}-private",
         full_key=f"integration-tests/{unique_id}.png",
@@ -859,10 +890,11 @@ def test_change_visibility_to_public(aws_clients, integration_config, unique_id)
             _api_event(
                 "PATCH",
                 body={
-                    "url": f"{record["full_url"]}",
+                    "url": record["full_url"],
                     "visibility": "public",
                 },
                 user_id=integration_config["test_user_id"],
+                user_email=integration_config["test_user_email"],
             ),
         )
 

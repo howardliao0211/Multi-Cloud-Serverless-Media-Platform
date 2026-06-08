@@ -17,7 +17,12 @@ def _get_media_record(table, item):
     return response.get("Item")
 
 
-def _api_event(method, body=None, user_id="integration-test-user"):
+def _api_event(
+    method,
+    body=None,
+    user_id="integration-test-user",
+    user_email="integration-test-user@example.com",
+):
     event = {
         "httpMethod": method,
         "requestContext": {
@@ -25,6 +30,7 @@ def _api_event(method, body=None, user_id="integration-test-user"):
                 "jwt": {
                     "claims": {
                         "sub": user_id,
+                        "email": user_email,
                     }
                 }
             }
@@ -63,6 +69,7 @@ def _build_db_key(owner_id, full_key):
 def _put_media_record(table, **overrides):
     item = {
         "owner_id": "integration-test-user",
+        "owner_email": "integration-test-user@example.com",
         "file_name": "integration-query-test.png",
         "checksum": "integration-query-test-checksum",
         "full_key": "integration-tests/query/integration-query-test.png",
@@ -81,6 +88,7 @@ def _put_media_record(table, **overrides):
     }
 
     item.update(overrides)
+    item.setdefault("owner_email", "integration-test-user@example.com")
     item["key"] = _build_db_key(item["owner_id"], item["full_key"])
 
     table.put_item(Item=item)

@@ -18,7 +18,7 @@ env:
     GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
     GCP_REGION: ${{ vars.GCP_REGION }}
     GCP_APP_IMAGE_URL: ${{ secrets.GCP_APP_IMAGE_URL }}
-    TEST_VIDEO_PATH: tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4
+    AUSSIE_ECOLENS_TEST_VIDEO_PATH: tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4
 
 jobs:
     build-deploy-test:

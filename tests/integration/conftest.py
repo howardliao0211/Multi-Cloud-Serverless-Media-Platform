@@ -1,11 +1,15 @@
 import os
 import uuid
+from pathlib import Path
 
 import boto3
 import pytest
 
 from botocore.config import Config
 from boto3.dynamodb.conditions import Attr
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_TEST_VIDEO_PATH = "tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4"
 
 
 def pytest_configure(config):
@@ -93,6 +97,29 @@ def _cleanup_integration_test_media_records(table, test_user_id: str):
     )
 
 
+def _resolve_test_video_path() -> str:
+    raw_path = (
+        os.getenv("AUSSIE_ECOLENS_TEST_VIDEO_PATH")
+        or os.getenv("TEST_VIDEO_PATH")
+        or DEFAULT_TEST_VIDEO_PATH
+    )
+
+    candidate = Path(raw_path).expanduser()
+
+    if candidate.is_absolute():
+        return str(candidate)
+
+    cwd_candidate = candidate.resolve()
+    if cwd_candidate.exists():
+        return str(cwd_candidate)
+
+    repo_candidate = (REPO_ROOT / candidate).resolve()
+    if repo_candidate.exists():
+        return str(repo_candidate)
+
+    return str(repo_candidate)
+
+
 @pytest.fixture(scope="session")
 def integration_config():
     return {
@@ -108,10 +135,8 @@ def integration_config():
         "query_tags_function": "query_tags",
         "delete_file_function": "delete_file",
         "test_user_id": "integration-test-user",
-        "test_video_path": os.getenv(
-            "TEST_VIDEO_PATH",
-            "tests/fixtures/media/5214219-hd_1920_1080_25fps.mp4",
-        )
+        "test_user_email": "integration-test-user@example.com",
+        "test_video_path": _resolve_test_video_path(),
     }
 
 
