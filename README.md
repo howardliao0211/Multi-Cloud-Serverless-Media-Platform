@@ -1,5 +1,7 @@
 # Multi-Cloud Serverless Wildlife Media Tagging and Search Platform
 
+![Home Page](./assests/HomePage.png)
+
 This project is a serverless wildlife media platform. It allows users to upload wildlife images and videos, processes the media with ML-based species tagging, stores metadata, and supports querying, tag management, visibility changes, deletion, and tag notification workflows.
 
 The project uses a multi-cloud architecture:
